@@ -112,7 +112,7 @@ export default function UserRegisterPage() {
                 <Sparkles size={24} />
               </div>
               <h1 className="text-2xl font-black text-slate-800 tracking-tight italic">
-                SIJAGA <span className="text-emerald-600">LINGKUNGAN</span>
+                PANTAU <span className="text-emerald-600">LIMBAH</span>
               </h1>
               <p className="text-slate-500 text-xs font-semibold uppercase tracking-widest">
                 Registrasi Akun Pengguna Baru
@@ -219,7 +219,7 @@ export default function UserRegisterPage() {
           <span className="text-emerald-600 font-semibold cursor-pointer hover:underline">
             Syarat &amp; Ketentuan
           </span>{" "}
-          SIJAGA Lingkungan.
+          PANTAU LIMBAH.
         </p>
       </div>
     </div>

@@ -20,7 +20,7 @@ export default function LandingPage() {
               <Leaf size={24} />
             </div>
             <span className="text-2xl font-black tracking-tighter italic text-slate-800">
-              SIJAGA <span className="text-emerald-600">LINGKUNGAN</span>
+              PANTAU <span className="text-emerald-600">LIMBAH</span>
             </span>
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm font-bold uppercase tracking-widest text-slate-500">
@@ -108,7 +108,7 @@ export default function LandingPage() {
       <section id="features" className="py-24 bg-slate-50">
         <div className="max-w-7xl mx-auto px-6 text-center space-y-16">
           <div className="space-y-4">
-            <h2 className="text-4xl font-black tracking-tight text-slate-900">Solusi Digital SIJAGA</h2>
+            <h2 className="text-4xl font-black tracking-tight text-slate-900">Solusi Digital PANTAU LIMBAH</h2>
             <p className="text-slate-500 max-w-2xl mx-auto font-medium text-lg">
               Fitur lengkap yang dirancang khusus untuk memudahkan pelaku usaha dan pengawasan DLH.
             </p>
@@ -179,7 +179,7 @@ export default function LandingPage() {
               <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center">
                 <Leaf size={18} />
               </div>
-              <span className="text-2xl font-black italic tracking-tighter">SIJAGA</span>
+              <span className="text-2xl font-black italic tracking-tighter">PANTAU LIMBAH</span>
             </div>
             <p className="text-slate-400 max-w-sm font-medium leading-relaxed">
               Platform pusat data pengawasan dan pelaporan lingkungan hidup digital. Berkomitmen menjaga kelestarian bumi melalui inovasi teknologi.
@@ -203,7 +203,7 @@ export default function LandingPage() {
         </div>
         <div className="max-w-7xl mx-auto pt-8 flex flex-col md:row justify-between items-center gap-4">
           <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">
-            © 2026 SIJAGA LINGKUNGAN — DINAS LINGKUNGAN HIDUP DAERAH. ALL RIGHTS RESERVED.
+            © 2026 PANTAU LIMBAH — DINAS LINGKUNGAN HIDUP DAERAH. ALL RIGHTS RESERVED.
           </p>
         </div>
       </footer>

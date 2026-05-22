@@ -4,11 +4,11 @@ import { useSijagaStore } from "@/store/useSijagaStore";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { 
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger 
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger
 } from "@/components/ui/dialog";
-import { 
-  ShieldCheck, Leaf, QrCode, Download, Eye, 
+import {
+  ShieldCheck, Leaf, QrCode, Download, Eye,
   Clock, CheckCircle2, AlertCircle, FileText,
   Sparkles, ChevronRight
 } from "lucide-react";
@@ -41,7 +41,7 @@ export default function DocumentStatusPage() {
                 Untuk dapat mengakses modul Dokumen Lingkungan SPPL/UKL-UPL, Anda harus mendaftarkan profil badan usaha atau perusahaan Anda terlebih dahulu ke sistem. Satu akun dapat mengelola beberapa perusahaan sekaligus.
               </p>
               <div className="pt-4">
-                <Button 
+                <Button
                   onClick={() => navigate("/company/register")}
                   className="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm px-8 py-6 rounded-2xl shadow-lg shadow-emerald-950/30 flex items-center gap-2 transition-all hover:scale-[1.02]"
                 >
@@ -69,16 +69,16 @@ export default function DocumentStatusPage() {
   return (
     <DashboardLayout role="PERUSAHAAN">
       <div className="space-y-8 text-left">
-        
+
         {/* Header */}
         <div className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div>
             <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-none">Dokumen Lingkungan</h1>
             <p className="text-slate-500 font-medium mt-2">Pantau status validasi dan unduh dokumen kesanggupan lingkungan (SPPL/UKL-UPL) Anda.</p>
           </div>
-          
+
           {company.status === "APPROVED" && (
-            <Button 
+            <Button
               onClick={() => setIsPreviewOpen(true)}
               className="w-full md:w-auto h-12 bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-100 font-bold gap-2 px-6 rounded-xl"
             >
@@ -96,27 +96,27 @@ export default function DocumentStatusPage() {
 
           {/* Stepper UI */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
-            <StepItem 
-              step={1} 
-              active={currentStep >= 1} 
-              label="Registrasi & Data Teknis" 
-              desc="Pengisian identitas, legalitas NIB & smart assessment selesai." 
-              icon={<FileText size={20}/>} 
+            <StepItem
+              step={1}
+              active={currentStep >= 1}
+              label="Registrasi & Data Teknis"
+              desc="Pengisian identitas, legalitas NIB & smart assessment selesai."
+              icon={<FileText size={20} />}
             />
-            <StepItem 
-              step={2} 
-              active={currentStep >= 2} 
-              label="Verifikasi & Validasi DLH" 
-              desc="Petugas melakukan verifikasi NIB & pemetaan geospasial GIS." 
-              icon={<Clock size={20}/>} 
+            <StepItem
+              step={2}
+              active={currentStep >= 2}
+              label="Verifikasi & Validasi DLH"
+              desc="Petugas melakukan verifikasi NIB & pemetaan geospasial GIS."
+              icon={<Clock size={20} />}
             />
-            <StepItem 
-              step={3} 
-              active={currentStep === 3} 
-              label="Sertifikat Diterbitkan" 
-              desc="Dokumen disetujui, QR-Code verifikasi diaktifkan oleh pimpinan." 
-              icon={<ShieldCheck size={20}/>} 
-              isLast 
+            <StepItem
+              step={3}
+              active={currentStep === 3}
+              label="Sertifikat Diterbitkan"
+              desc="Dokumen disetujui, QR-Code verifikasi diaktifkan oleh pimpinan."
+              icon={<ShieldCheck size={20} />}
+              isLast
             />
           </div>
 
@@ -169,7 +169,7 @@ export default function DocumentStatusPage() {
                   </div>
                   <h2 className="text-xl font-bold tracking-wider leading-none uppercase">Pemerintah Kabupaten / Kota Bandung</h2>
                   <h3 className="text-2xl font-black tracking-tight leading-none uppercase mt-1">Dinas Lingkungan Hidup</h3>
-                  <p className="text-[10px] text-stone-500 font-bold tracking-widest uppercase mt-2">Sertifikat Registrasi Lingkungan Digital (SIJAGA)</p>
+                  <p className="text-[10px] text-stone-500 font-bold tracking-widest uppercase mt-2">Sertifikat Registrasi Lingkungan Digital</p>
                 </div>
 
                 {/* Certificate Title */}
@@ -183,7 +183,7 @@ export default function DocumentStatusPage() {
                   <p className="text-justify font-medium">
                     Berdasarkan Undang-Undang Perlindungan dan Pengelolaan Lingkungan Hidup, Dinas Lingkungan Hidup menyatakan bahwa pelaku usaha di bawah ini:
                   </p>
-                  
+
                   <div className="grid grid-cols-3 gap-y-2 border-y border-stone-200 py-4 font-bold text-left">
                     <span className="text-stone-500">Nama Perusahaan</span>
                     <span className="col-span-2 text-stone-900">: {company.companyName}</span>
@@ -199,7 +199,7 @@ export default function DocumentStatusPage() {
                   </div>
 
                   <p className="text-justify font-medium">
-                    Telah terdaftar dalam sistem pengawasan lingkungan **SIJAGA Lingkungan** dengan kewajiban melakukan pelaporan logbook limbah berkala, mematuhi parameter kepatuhan TPS B3, dan bersedia dilakukan inspeksi berkala.
+                    Telah terdaftar dalam sistem pengawasan lingkungan **PANTAU LIMBAH Lingkungan** dengan kewajiban melakukan pelaporan logbook limbah berkala, mematuhi parameter kepatuhan TPS B3, dan bersedia dilakukan inspeksi berkala.
                   </p>
                 </div>
 
@@ -207,7 +207,7 @@ export default function DocumentStatusPage() {
                 <div className="grid grid-cols-2 gap-8 items-end pt-6 border-t border-stone-200">
                   {/* QR Security */}
                   <div className="flex flex-col items-center">
-                    <button 
+                    <button
                       onClick={() => setShowQRVerify(!showQRVerify)}
                       className="p-3 bg-white border border-stone-300 rounded-2xl shadow-sm hover:border-emerald-600 hover:shadow-emerald-50 hover:shadow-lg transition-all relative group"
                     >
@@ -232,7 +232,7 @@ export default function DocumentStatusPage() {
                             <p><strong>Valid:</strong> True</p>
                             <p><strong>Pimpinan:</strong> Kepala Dinas LH</p>
                           </div>
-                          <Button 
+                          <Button
                             onClick={() => setShowQRVerify(false)}
                             className="bg-emerald-600 hover:bg-emerald-700 h-9 w-full rounded-xl text-xs font-bold text-white"
                           >
@@ -286,7 +286,7 @@ function StepItem({ step, active, label, desc, icon, isLast }: { step: number, a
       {!isLast && (
         <div className={`hidden md:block absolute top-7 left-12 right-[-24px] h-[3px] z-0 transition-colors duration-500 ${active ? "bg-emerald-500" : "bg-slate-200"}`} />
       )}
-      
+
       <div className={`w-12 h-12 rounded-2xl flex items-center justify-center z-10 transition-all duration-500 shadow-md ${active ? "bg-emerald-600 text-white shadow-emerald-100" : "bg-slate-100 text-slate-400"}`}>
         {icon}
       </div>

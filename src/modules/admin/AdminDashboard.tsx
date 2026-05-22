@@ -1,18 +1,56 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { cn } from "@/lib/utils"
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useSijagaStore } from '@/store/useSijagaStore';
+import { useNavigate } from 'react-router-dom';
 import {
   Users, ShieldAlert, BarChart3, TrendingUp, Building2,
-  Map as MapIcon, ArrowUpRight, Clock, CheckCircle2
+  Map as MapIcon, ArrowUpRight, Clock, CheckCircle2, XCircle
 } from "lucide-react";
 
 export default function AdminDashboard() {
+  const navigate = useNavigate();
+  const { 
+    companies, 
+    wasteLogs, 
+    notifications,
+    fetchCompanies, 
+    fetchWasteLogs, 
+    fetchNotifications, 
+    fetchPickupRequests 
+  } = useSijagaStore();
+
+  useEffect(() => {
+    fetchCompanies();
+    fetchWasteLogs();
+    fetchNotifications();
+    fetchPickupRequests();
+  }, []);
+
+  // 1. Hitung total perusahaan
+  const totalPerusahaan = companies.length;
+
+  // 2. Antrean Approval (status PENDING atau REVIEW)
+  const antreanApproval = companies.filter(c => c.status === "PENDING" || c.status === "REVIEW").length;
+
+  // 3. Total volume limbah terangkut (total dari waste logs yang terverifikasi/dilaporkan)
+  const totalVolumeLimbah = wasteLogs.reduce((sum, log) => sum + log.volume, 0);
+
+  // 4. Alerts aktif dari notifikasi bertipe WARNING/DANGER
+  const activeAlerts = notifications.filter(n => n.type === "DANGER" || n.type === "WARNING").length;
+
+  // 5. Titik aktif (perusahaan berstatus APPROVED)
+  const titikAktif = companies.filter(c => c.status === "APPROVED").length;
+
+  // 6. Registrasi terbaru (4 perusahaan terakhir)
+  const recentRegistrations = [...companies].reverse().slice(0, 4);
+
   return (
     <DashboardLayout role="ADMIN_DLH">
-      <div className="space-y-8">
+      <div className="space-y-8 text-left">
 
         {/* Welcome Section */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
@@ -23,16 +61,16 @@ export default function AdminDashboard() {
             <p className="text-slate-500 font-medium">Monitoring kepatuhan lingkungan hidup daerah secara realtime.</p>
           </div>
           <Badge className="bg-emerald-600 text-white px-4 py-2 rounded-xl flex gap-2">
-            <Clock size={16} /> Update: 12 Menit Lalu
+            <Clock size={16} /> Live Synchronized
           </Badge>
         </div>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard label="Total Perusahaan" value="1,280" icon={<Users size={24} />} color="blue" />
-          <StatCard label="Antrean Approval" value="42" icon={<ShieldAlert size={24} />} color="amber" />
-          <StatCard label="Limbah Terangkut" value="892 Ton" icon={<TrendingUp size={24} />} color="emerald" />
-          <StatCard label="EWS Alerts" value="03" icon={<ShieldAlert size={24} />} color="red" />
+          <StatCard label="Total Perusahaan" value={totalPerusahaan.toLocaleString()} icon={<Users size={24} />} color="blue" />
+          <StatCard label="Antrean Approval" value={antreanApproval.toLocaleString()} icon={<ShieldAlert size={24} />} color="amber" />
+          <StatCard label="Volume Limbah" value={`${totalVolumeLimbah.toLocaleString()} L/kg`} icon={<TrendingUp size={24} />} color="emerald" />
+          <StatCard label="EWS Alerts" value={String(activeAlerts).padStart(2, '0')} icon={<ShieldAlert size={24} />} color="red" />
         </div>
 
         {/* GIS & Activity Row */}
@@ -42,28 +80,51 @@ export default function AdminDashboard() {
           <Card className="lg:col-span-2 rounded-[2.5rem] overflow-hidden border-none shadow-xl shadow-slate-200/50">
             <div className="p-8 border-b bg-white flex justify-between items-center">
               <h3 className="font-black text-xl tracking-tight">Geospasial Monitoring</h3>
-              <Button variant="ghost" className="text-emerald-600 font-bold">Buka Peta Full <ArrowUpRight size={18} /></Button>
+              <Button 
+                variant="ghost" 
+                className="text-emerald-600 font-bold hover:bg-emerald-50 rounded-xl"
+                onClick={() => navigate('/admin/gis')}
+              >
+                Buka Peta Full <ArrowUpRight size={18} />
+              </Button>
             </div>
-            <div className="h-[400px] bg-slate-100 relative group cursor-crosshair">
-              <div className="absolute inset-0 bg-[url='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')] bg-cover opacity-80 group-hover:scale-105 transition-transform duration-1000" />
+            <div 
+              className="h-[400px] bg-slate-100 relative group cursor-pointer overflow-hidden"
+              onClick={() => navigate('/admin/gis')}
+            >
+              <div 
+                className="absolute inset-0 bg-cover opacity-80 group-hover:scale-105 transition-transform duration-1000" 
+                style={{ backgroundImage: "url('https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}.png')" }}
+              />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent" />
               <div className="absolute top-10 left-10 p-4 bg-white/90 backdrop-blur rounded-2xl border border-white shadow-xl z-10">
                 <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Titik Aktif</p>
-                <p className="text-2xl font-black text-slate-800 italic">459 Lokasi</p>
+                <p className="text-2xl font-black text-slate-800 italic">{titikAktif} Lokasi</p>
               </div>
             </div>
           </Card>
 
           {/* Recent Registrations */}
-          <Card className="rounded-[2.5rem] border-none shadow-xl shadow-slate-200/50 p-8 space-y-6 bg-white">
+          <Card className="rounded-[2.5rem] border-none shadow-xl shadow-slate-200/50 p-8 space-y-6 bg-white flex flex-col">
             <h3 className="font-black text-xl tracking-tight">Registrasi Terbaru</h3>
-            <div className="space-y-4">
-              <RegItem name="PT. Industri Sejati" type="UKL-UPL" status="Review" />
-              <RegItem name="CV. Logam Mulia" type="SPPL" status="Pending" />
-              <RegItem name="Klinik Sehat" type="SPPL" status="Review" />
-              <RegItem name="Restoran Bintang" type="SPPL" status="Approved" />
+            <div className="space-y-4 flex-1">
+              {recentRegistrations.length === 0 ? (
+                <p className="text-sm font-bold text-slate-400 text-center py-10">Belum ada registrasi berkas.</p>
+              ) : (
+                recentRegistrations.map((c) => (
+                  <RegItem 
+                    key={c.id} 
+                    name={c.companyName} 
+                    type={c.docType === "UKL_UPL" ? "UKL-UPL" : c.docType} 
+                    status={c.status} 
+                  />
+                ))
+              )}
             </div>
-            <Button className="w-full h-12 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 font-bold uppercase tracking-widest text-xs">
+            <Button 
+              className="w-full h-12 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 font-bold uppercase tracking-widest text-xs mt-4"
+              onClick={() => navigate('/admin/registrations')}
+            >
               Lihat Semua Antrean
             </Button>
           </Card>
@@ -110,7 +171,13 @@ function RegItem({ name, type, status }: any) {
           <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider">{type}</p>
         </div>
       </div>
-      {status === 'Approved' ? <CheckCircle2 className="text-emerald-500" size={18} /> : <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />}
+      {status === 'APPROVED' ? (
+        <CheckCircle2 className="text-emerald-500" size={18} />
+      ) : status === 'REJECTED' ? (
+        <XCircle className="text-rose-500" size={18} />
+      ) : (
+        <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+      )}
     </div>
   );
 }

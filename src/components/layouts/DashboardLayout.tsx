@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
-import { 
-  LayoutDashboard, Building2, Trash2, Map, 
-  ShieldCheck, CreditCard, Bell, UserCircle, 
-  LogOut, Menu, X, ChevronRight, Search, 
+import {
+  LayoutDashboard, Building2, Trash2, Map,
+  ShieldCheck, CreditCard, Bell, UserCircle,
+  LogOut, Menu, X, ChevronRight, Search,
   Settings, Truck, ClipboardList, BarChart4,
   Users, Key, Layers, Activity, AlertTriangle, CheckCircle, Info
 } from "lucide-react";
@@ -15,39 +15,39 @@ import { useSijagaStore } from "@/store/useSijagaStore";
 // --- MENU CONFIG FOR 6 ROLES ---
 const MENU_CONFIG = {
   SUPER_ADMIN: [
-    { label: "Dashboard", icon: <LayoutDashboard size={20}/>, path: "/super-admin" },
-    { label: "Kelola Pengguna", icon: <Users size={20}/>, path: "/super-admin/users" },
-    { label: "Payment Gateway", icon: <Key size={20}/>, path: "/super-admin/gateway" },
-    { label: "GIS Layers", icon: <Layers size={20}/>, path: "/super-admin/layers" },
-    { label: "Audit Logs", icon: <Activity size={20}/>, path: "/super-admin/logs" },
+    { label: "Dashboard", icon: <LayoutDashboard size={20} />, path: "/super-admin" },
+    { label: "Kelola Pengguna", icon: <Users size={20} />, path: "/super-admin/users" },
+    { label: "Payment Gateway", icon: <Key size={20} />, path: "/super-admin/gateway" },
+    { label: "GIS Layers", icon: <Layers size={20} />, path: "/super-admin/layers" },
+    { label: "Audit Logs", icon: <Activity size={20} />, path: "/super-admin/logs" },
   ],
   ADMIN_DLH: [
-    { label: "Overview", icon: <LayoutDashboard size={20}/>, path: "/admin" },
-    { label: "Registrasi SPPL/UKL", icon: <ShieldCheck size={20}/>, path: "/admin/registrations" },
-    { label: "Monitoring Limbah", icon: <Trash2 size={20}/>, path: "/admin/waste" },
-    { label: "GIS Geospasial", icon: <Map size={20}/>, path: "/admin/gis" },
-    { label: "Transaksi Jasa", icon: <CreditCard size={20}/>, path: "/admin/payments" },
-    { label: "Inspeksi Lapangan", icon: <ClipboardList size={20}/>, path: "/admin/inspections" },
+    { label: "Overview", icon: <LayoutDashboard size={20} />, path: "/admin" },
+    { label: "Registrasi SPPL/UKL", icon: <ShieldCheck size={20} />, path: "/admin/registrations" },
+    { label: "Monitoring Limbah", icon: <Trash2 size={20} />, path: "/admin/waste" },
+    { label: "GIS Geospasial", icon: <Map size={20} />, path: "/admin/gis" },
+    { label: "Transaksi Jasa", icon: <CreditCard size={20} />, path: "/admin/payments" },
+    { label: "Inspeksi Lapangan", icon: <ClipboardList size={20} />, path: "/admin/inspections" },
   ],
   PETUGAS_LAPANGAN: [
-    { label: "Jadwal Inspeksi", icon: <ClipboardList size={20}/>, path: "/officer/inspections" },
-    { label: "Peta GIS Patroli", icon: <Map size={20}/>, path: "/officer/gis" },
+    { label: "Jadwal Inspeksi", icon: <ClipboardList size={20} />, path: "/officer/inspections" },
+    { label: "Peta GIS Patroli", icon: <Map size={20} />, path: "/officer/gis" },
   ],
   PERUSAHAAN: [
-    { label: "Dashboard", icon: <LayoutDashboard size={20}/>, path: "/company" },
-    { label: "Logbook Limbah", icon: <Trash2 size={20}/>, path: "/company/logbook" },
-    { label: "Request Pickup", icon: <Truck size={20}/>, path: "/company/pickup" },
-    { label: "Pembayaran Digital", icon: <CreditCard size={20}/>, path: "/company/payments" },
-    { label: "Dokumen Lingkungan", icon: <ShieldCheck size={20}/>, path: "/company/documents" },
+    { label: "Dashboard", icon: <LayoutDashboard size={20} />, path: "/company" },
+    { label: "Logbook Limbah", icon: <Trash2 size={20} />, path: "/company/logbook" },
+    { label: "Request Pickup", icon: <Truck size={20} />, path: "/company/pickup" },
+    { label: "Pembayaran Digital", icon: <CreditCard size={20} />, path: "/company/payments" },
+    { label: "Dokumen Lingkungan", icon: <ShieldCheck size={20} />, path: "/company/documents" },
   ],
   PENGANGKUT: [
-    { label: "Order Masuk", icon: <Truck size={20}/>, path: "/transporter" },
-    { label: "Tracking Armada", icon: <Map size={20}/>, path: "/transporter/tracking" },
+    { label: "Order Masuk", icon: <Truck size={20} />, path: "/transporter" },
+    { label: "Tracking Armada", icon: <Map size={20} />, path: "/transporter/tracking" },
   ],
   AUDITOR: [
-    { label: "Executive Analytics", icon: <BarChart4 size={20}/>, path: "/auditor" },
-    { label: "Geospasial Kepatuhan", icon: <Map size={20}/>, path: "/auditor/gis" },
-    { label: "Laporan Kinerja", icon: <ClipboardList size={20}/>, path: "/auditor/performance" },
+    { label: "Executive Analytics", icon: <BarChart4 size={20} />, path: "/auditor" },
+    { label: "Geospasial Kepatuhan", icon: <Map size={20} />, path: "/auditor/gis" },
+    { label: "Laporan Kinerja", icon: <ClipboardList size={20} />, path: "/auditor/performance" },
   ]
 };
 
@@ -107,13 +107,13 @@ export default function DashboardLayout({ children, noPadding = false }: any) {
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">
-      
+
       {/* --- SIDEBAR (FIXED HEIGHT) --- */}
       <aside className={cn(
         "bg-slate-900 text-slate-300 transition-all duration-300 border-r border-slate-800 flex flex-col h-screen sticky top-0 z-50",
         sidebarOpen ? "w-72" : "w-20"
       )}>
-        
+
         {/* 1. Logo Section (Static) */}
         <div className="h-20 flex items-center px-6 gap-3 border-b border-slate-800 shrink-0">
           <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center text-white shrink-0 shadow-lg shadow-emerald-500/20">
@@ -121,7 +121,7 @@ export default function DashboardLayout({ children, noPadding = false }: any) {
           </div>
           {sidebarOpen && (
             <span className="font-black text-xl tracking-tighter text-white italic">
-              SIJAGA <span className="text-emerald-500">SYSTEM</span>
+              PANTAU <span className="text-emerald-500">LIMBAH</span>
             </span>
           )}
         </div>
@@ -130,15 +130,15 @@ export default function DashboardLayout({ children, noPadding = false }: any) {
         <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto scrollbar-hide">
           {menuItems.map((item, i) => {
             const isActive = location.pathname === item.path;
-            
+
             return (
-              <Link 
-                key={i} 
+              <Link
+                key={i}
                 to={item.path}
                 className={cn(
                   "flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 group relative",
-                  isActive 
-                    ? "bg-emerald-600 text-white shadow-lg shadow-emerald-900/20" 
+                  isActive
+                    ? "bg-emerald-600 text-white shadow-lg shadow-emerald-900/20"
                     : "hover:bg-slate-800 hover:text-white text-slate-400"
                 )}
               >
@@ -149,7 +149,7 @@ export default function DashboardLayout({ children, noPadding = false }: any) {
                   {item.icon}
                 </div>
                 {sidebarOpen && <span className="text-sm font-bold tracking-tight">{item.label}</span>}
-                
+
                 {isActive && sidebarOpen && (
                   <div className="absolute right-2 w-1.5 h-5 bg-white/40 rounded-full" />
                 )}
@@ -160,7 +160,7 @@ export default function DashboardLayout({ children, noPadding = false }: any) {
 
         {/* 3. Logout Section (Fixed at Bottom) */}
         <div className="p-4 border-t border-slate-800 shrink-0 bg-slate-900">
-          <button 
+          <button
             onClick={handleLogout}
             className="flex items-center gap-4 px-4 py-3 w-full text-slate-400 hover:bg-red-500/10 hover:text-red-400 rounded-xl transition-all group"
           >
@@ -172,12 +172,12 @@ export default function DashboardLayout({ children, noPadding = false }: any) {
 
       {/* --- MAIN CONTENT --- */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
-        
+
         {/* Navbar */}
         <header className="h-20 bg-white border-b border-slate-200 px-8 flex items-center justify-between shrink-0 z-40">
           <div className="flex items-center gap-4">
             <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-500">
-              {sidebarOpen ? <X size={20}/> : <Menu size={20}/>}
+              {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
             <div className="hidden lg:flex items-center bg-slate-100 px-4 py-2 rounded-full gap-2 border border-slate-200">
               <Search size={16} className="text-slate-400" />
@@ -217,7 +217,7 @@ export default function DashboardLayout({ children, noPadding = false }: any) {
           <div className="flex items-center gap-6">
             {/* Notification Bell */}
             <div className="relative">
-              <button 
+              <button
                 onClick={() => {
                   setNotifOpen(!notifOpen);
                   if (!notifOpen) readAllNotifications();
@@ -237,7 +237,7 @@ export default function DashboardLayout({ children, noPadding = false }: any) {
                 <div className="absolute right-0 mt-3 w-96 bg-white border border-slate-200 rounded-3xl shadow-2xl z-[999] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                   <div className="p-5 border-b bg-slate-50/50 flex justify-between items-center">
                     <span className="font-black text-sm text-slate-800">NOTIFIKASI EWS</span>
-                    <button 
+                    <button
                       onClick={() => setNotifOpen(false)}
                       className="text-xs font-bold text-emerald-600 hover:underline"
                     >
@@ -263,11 +263,11 @@ export default function DashboardLayout({ children, noPadding = false }: any) {
                     )}
                   </div>
                   <div className="p-3 border-t bg-slate-50/30 text-center">
-                    <button 
+                    <button
                       onClick={() => {
                         readAllNotifications();
                         setNotifOpen(false);
-                      }} 
+                      }}
                       className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-emerald-600 transition-colors"
                     >
                       Tandai Semua Dibaca

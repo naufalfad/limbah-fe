@@ -94,16 +94,15 @@ export default function RegistrationPage() {
   const onSubmit = async (data: RegistrationFormValues) => {
     setLoading(true);
     try {
-      // Memanggil API Service yang terhubung ke backend
-      const response = await apiService.companies.create(data);
-
-      if (response.success) {
-        toast.success("Registrasi Berhasil Terkirim!");
-        navigate("/company");
-      }
+      // Memanggil store action addCompany
+      await addCompany({
+        ...data,
+        docType: docType || "SPPL"
+      });
+      navigate("/company");
     } catch (error: any) {
       // Menangkap error dari backend (misal: NIB duplikat atau error validasi)
-      const serverMsg = error.response?.data?.message || "Terjadi kesalahan saat menghubungi server.";
+      const serverMsg = error.response?.data?.error || error.response?.data?.message || "Terjadi kesalahan saat menghubungi server.";
       toast.error(serverMsg);
       console.error("API Error:", error);
     } finally {
@@ -136,7 +135,7 @@ export default function RegistrationPage() {
       <div className="flex flex-col md:flex-row justify-between items-end gap-4 mb-10">
         <div className="space-y-1">
           <h1 className="text-4xl font-black text-slate-900 tracking-tighter italic">
-            SIJAGA <span className="text-emerald-600 font-black">LINGKUNGAN</span>
+            PANTAU <span className="text-emerald-600 font-black">LIMBAH</span>
           </h1>
           <p className="text-slate-500 font-bold uppercase text-xs tracking-[0.2em]">
             Wizard Registrasi Dokumen Lingkungan Perusahaan ({currentUser.name})
@@ -501,7 +500,7 @@ function SuccessState() {
       </div>
       <h2 className="text-4xl font-black text-slate-900 tracking-tighter">Registrasi Dikirim!</h2>
       <p className="text-slate-500 mt-4 max-w-md text-center font-medium px-6 leading-relaxed">
-        Terima kasih. Data perusahaan dan pengajuan dokumen lingkungan Anda berhasil masuk ke database <span className="text-emerald-600 font-bold underline">SIJAGA Lingkungan</span>.
+        Terima kasih. Data perusahaan dan pengajuan dokumen lingkungan Anda berhasil masuk ke database <span className="text-emerald-600 font-bold underline">PANTAU LIMBAH</span>.
         Petugas DLH akan melakukan verifikasi data dan GIS dalam waktu 1-3 hari kerja.
       </p>
       <div className="mt-10 flex gap-4">

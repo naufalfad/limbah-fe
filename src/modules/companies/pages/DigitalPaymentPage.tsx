@@ -5,11 +5,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Dialog, DialogContent, DialogHeader, DialogTitle 
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle
 } from "@/components/ui/dialog";
-import { 
-  CreditCard, ShieldCheck, CheckCircle2, ArrowRight, 
+import {
+  CreditCard, ShieldCheck, CheckCircle2, ArrowRight,
   Wallet, Sparkles, QrCode, Building, Loader2, Info, ArrowUpRight, Copy, Check,
   ChevronRight
 } from "lucide-react";
@@ -17,13 +17,21 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
 export default function DigitalPaymentPage() {
-  const { currentUser, companies, invoices, payInvoice, pickupRequests, selectedCompanyId } = useSijagaStore();
+  const { currentUser, companies, invoices, payInvoice, pickupRequests, selectedCompanyId, fetchInvoices, fetchPickupRequests } = useSijagaStore();
   const navigate = useNavigate();
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
   const [payMethod, setPayMethod] = useState<"VA" | "QRIS">("VA");
   const [selectedBank, setSelectedBank] = useState<"BJB" | "MANDIRI" | "BNI">("BJB");
   const [paymentStep, setPaymentStep] = useState<"SELECT" | "SIMULATION" | "PAYING" | "SUCCESS">("SELECT");
   const [copied, setCopied] = useState(false);
+
+  // Sync data with backend API
+  React.useEffect(() => {
+    if (selectedCompanyId) {
+      fetchInvoices(selectedCompanyId);
+      fetchPickupRequests(selectedCompanyId);
+    }
+  }, [selectedCompanyId, fetchInvoices, fetchPickupRequests]);
 
   // Find company
   const company = companies.find(c => c.id === selectedCompanyId) || companies.find(c => c.id === currentUser?.companyId) || companies[0];
@@ -45,7 +53,7 @@ export default function DigitalPaymentPage() {
                 Untuk dapat mengakses modul Pembayaran Digital Pemda, Anda harus mendaftarkan profil badan usaha atau perusahaan Anda terlebih dahulu ke sistem. Satu akun dapat mengelola beberapa perusahaan sekaligus.
               </p>
               <div className="pt-4">
-                <Button 
+                <Button
                   onClick={() => navigate("/company/register")}
                   className="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm px-8 py-6 rounded-2xl shadow-lg shadow-emerald-950/30 flex items-center gap-2 transition-all hover:scale-[1.02]"
                 >
@@ -76,13 +84,18 @@ export default function DigitalPaymentPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const triggerPaymentSimulation = () => {
+  const triggerPaymentSimulation = async () => {
     setPaymentStep("PAYING");
-    setTimeout(() => {
-      payInvoice(selectedInvoice.id);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await payInvoice(selectedInvoice.id);
       setPaymentStep("SUCCESS");
-      toast.success("Simulasi Pembayaran Berhasil!");
-    }, 1500);
+    } catch (error: any) {
+      setPaymentStep("SIMULATION");
+      const serverMsg = error.response?.data?.error || error.response?.data?.message || "Simulasi Pembayaran Gagal!";
+      toast.error(serverMsg);
+      console.error("API Error:", error);
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -102,10 +115,10 @@ export default function DigitalPaymentPage() {
   return (
     <DashboardLayout role="PERUSAHAAN">
       <div className="space-y-8 text-left">
-        
+
         {/* Header & Direct Billing Explainer */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
+
           <Card className="lg:col-span-2 rounded-[2rem] border-none shadow-sm p-8 bg-white flex flex-col justify-between">
             <div className="space-y-2">
               <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-none">Fasilitator Pembayaran Digital</h1>
@@ -116,7 +129,7 @@ export default function DigitalPaymentPage() {
             <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-100 p-4 rounded-2xl mt-6">
               <ShieldCheck className="text-emerald-600 shrink-0" size={24} />
               <p className="text-xs font-bold text-emerald-800 leading-relaxed">
-                <strong>Pembayaran Langsung Kas Daerah:</strong> E-Limbah SIJAGA mendukung pembayaran instan langsung ke Rekening Kas Umum Daerah (RKUD). Tagihan langsung dinyatakan lunas seketika, dan transporter siap meluncur menjemput limbah tanpa hambatan escrow.
+                <strong>Pembayaran Langsung Kas Daerah:</strong> PANTAU LIMBAH mendukung pembayaran instan langsung ke Rekening Kas Umum Daerah (RKUD). Tagihan langsung dinyatakan lunas seketika, dan transporter siap meluncur menjemput limbah tanpa hambatan escrow.
               </p>
             </div>
           </Card>
@@ -152,11 +165,11 @@ export default function DigitalPaymentPage() {
 
         {/* Invoice List */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          
+
           {/* Unpaid Invoices */}
           <Card className="lg:col-span-7 rounded-[2rem] p-8 border-none shadow-xl shadow-slate-200/50 bg-white">
             <h3 className="font-black text-xl tracking-tight text-slate-800 mb-6">Menunggu Pembayaran</h3>
-            
+
             {unpaidInvoices.length === 0 ? (
               <div className="py-12 text-center text-slate-400 border-2 border-dashed border-slate-100 rounded-2xl">
                 <CheckCircle2 className="mx-auto text-slate-300 mb-2" size={32} />
@@ -181,7 +194,7 @@ export default function DigitalPaymentPage() {
                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Total Tagihan</p>
                         <p className="text-sm font-black text-slate-900 italic">Rp {inv.amount.toLocaleString()}</p>
                       </div>
-                      <Button 
+                      <Button
                         onClick={() => startPayment(inv)}
                         className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-10 px-4 text-xs font-bold shadow-md shadow-emerald-100 flex items-center gap-1.5"
                       >
@@ -223,7 +236,7 @@ export default function DigitalPaymentPage() {
             <DialogContent className="sm:max-w-[480px] rounded-[2.5rem] bg-white border border-slate-200 text-left p-8 max-h-[90vh] overflow-y-auto z-[9999]">
               <DialogHeader>
                 <DialogTitle className="text-2xl font-black tracking-tight text-slate-800">Pembayaran Digital</DialogTitle>
-                <p className="text-xs text-slate-400 font-bold uppercase mt-1">SIJAGA Payment Gateway Sandbox Mode</p>
+                <p className="text-xs text-slate-400 font-bold uppercase mt-1">PANTAU LIMBAH Payment Gateway Sandbox Mode</p>
               </DialogHeader>
 
               {/* 1. SELECT PAYMENT METHOD */}
@@ -238,7 +251,7 @@ export default function DigitalPaymentPage() {
                   <div className="space-y-3">
                     <label className="text-xs font-black text-slate-500 uppercase tracking-widest">Pilih Metode Pembayaran</label>
                     <div className="grid grid-cols-2 gap-3">
-                      <button 
+                      <button
                         type="button"
                         onClick={() => setPayMethod("VA")}
                         className={`p-4 rounded-xl border text-left flex flex-col gap-2 transition-all ${payMethod === "VA" ? "border-emerald-500 bg-emerald-50/50 shadow-inner" : "border-slate-200"}`}
@@ -246,8 +259,8 @@ export default function DigitalPaymentPage() {
                         <Building className="text-slate-500" size={20} />
                         <span className="text-xs font-black text-slate-800">Virtual Account</span>
                       </button>
-                      
-                      <button 
+
+                      <button
                         type="button"
                         onClick={() => setPayMethod("QRIS")}
                         className={`p-4 rounded-xl border text-left flex flex-col gap-2 transition-all ${payMethod === "QRIS" ? "border-emerald-500 bg-emerald-50/50 shadow-inner" : "border-slate-200"}`}
@@ -258,7 +271,7 @@ export default function DigitalPaymentPage() {
                     </div>
                   </div>
 
-                  <Button 
+                  <Button
                     type="button"
                     onClick={() => setPaymentStep("SIMULATION")}
                     className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 font-bold rounded-xl shadow-lg shadow-emerald-100 flex items-center justify-center gap-1.5 text-white"
@@ -296,7 +309,7 @@ export default function DigitalPaymentPage() {
 
                         <div className="space-y-1 pt-1 font-sans">
                           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Nama Rekening</span>
-                          <span className="font-black text-slate-800">{company.companyName} (SIJAGA DLH)</span>
+                          <span className="font-black text-slate-800">{company.companyName} (PANTAU LIMBAH DLH)</span>
                         </div>
 
                         <div className="space-y-1 font-sans">
@@ -309,7 +322,7 @@ export default function DigitalPaymentPage() {
                     // QRIS Dynamic Simulator
                     <div className="space-y-4 text-center">
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Pindai QRIS Dengan e-Wallet Anda</p>
-                      
+
                       <div className="bg-slate-50 p-4 border rounded-2xl w-48 h-48 mx-auto flex items-center justify-center relative">
                         {/* Designed SVG QR code simulator */}
                         <svg className="w-40 h-40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -337,7 +350,7 @@ export default function DigitalPaymentPage() {
                     <Button type="button" variant="outline" onClick={() => setPaymentStep("SELECT")} className="w-1/3 h-12 rounded-xl text-slate-500 font-bold border-slate-200">
                       Kembali
                     </Button>
-                    <Button 
+                    <Button
                       type="button"
                       onClick={triggerPaymentSimulation}
                       className="flex-1 h-12 bg-emerald-600 hover:bg-emerald-700 font-bold rounded-xl text-white flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-100"
@@ -367,7 +380,7 @@ export default function DigitalPaymentPage() {
                     <h3 className="text-2xl font-black text-slate-900 leading-none">Pembayaran Berhasil!</h3>
                     <p className="text-xs text-slate-400 font-bold uppercase mt-2">Invoice: {selectedInvoice?.id}</p>
                   </div>
-                  
+
                   {/* Direct billing success notice */}
                   <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-xl text-left space-y-1 text-emerald-900">
                     <h5 className="font-black text-xs flex items-center gap-1.5">
@@ -378,7 +391,7 @@ export default function DigitalPaymentPage() {
                     </p>
                   </div>
 
-                  <Button 
+                  <Button
                     type="button"
                     onClick={() => setSelectedInvoice(null)}
                     className="bg-slate-950 hover:bg-slate-900 w-full h-11 rounded-xl font-bold text-white"
@@ -414,12 +427,11 @@ function TimelineStep({ step, title, desc }: { step: number, title: string, desc
 
 function BankSelectBtn({ label, active, onClick }: { label: string, active: boolean, onClick: () => void }) {
   return (
-    <button 
+    <button
       type="button"
       onClick={onClick}
-      className={`flex-1 h-10 border rounded-xl font-bold text-xs transition-all ${
-        active ? "border-emerald-600 bg-emerald-50 text-emerald-800 font-black shadow-sm" : "border-slate-200 text-slate-500 bg-white"
-      }`}
+      className={`flex-1 h-10 border rounded-xl font-bold text-xs transition-all ${active ? "border-emerald-600 bg-emerald-50 text-emerald-800 font-black shadow-sm" : "border-slate-200 text-slate-500 bg-white"
+        }`}
     >
       {label}
     </button>

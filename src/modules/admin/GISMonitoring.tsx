@@ -39,9 +39,9 @@ interface ObligationStyle {
 }
 
 const OBLIGATION_STYLES: Record<DocObligation, ObligationStyle> = {
-  AMDAL:   { color: '#ef4444', fillColor: '#ef4444', label: 'AMDAL',   tailwind: 'bg-red-500',    hex: '#ef4444' },
-  'UKL-UPL': { color: '#f59e0b', fillColor: '#f59e0b', label: 'UKL-UPL', tailwind: 'bg-amber-500',  hex: '#f59e0b' },
-  SPPL:    { color: '#22c55e', fillColor: '#22c55e', label: 'SPPL',    tailwind: 'bg-emerald-500', hex: '#22c55e' },
+  AMDAL: { color: '#ef4444', fillColor: '#ef4444', label: 'AMDAL', tailwind: 'bg-red-500', hex: '#ef4444' },
+  'UKL-UPL': { color: '#f59e0b', fillColor: '#f59e0b', label: 'UKL-UPL', tailwind: 'bg-amber-500', hex: '#f59e0b' },
+  SPPL: { color: '#22c55e', fillColor: '#22c55e', label: 'SPPL', tailwind: 'bg-emerald-500', hex: '#22c55e' },
 };
 
 // ─── Mock company data dengan poligon ─────────────────────────────────────────
@@ -110,7 +110,11 @@ const MOCK_COMPANY_POLYGONS: CompanyPolygon[] = [
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function GISMonitoring() {
-  const { companies } = useSijagaStore();
+  const { companies, fetchCompanies } = useSijagaStore();
+
+  useEffect(() => {
+    fetchCompanies();
+  }, []);
 
   // Map center (Bandung)
   const center: [number, number] = [-6.9147, 107.6098];
@@ -119,29 +123,61 @@ export default function GISMonitoring() {
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // ── Panel visibility states ───────────────────────────────────────────────
-  const [showLeftPanel,   setShowLeftPanel]   = useState(true);
-  const [showLegend,      setShowLegend]      = useState(true);
-  const [showStatsBar,    setShowStatsBar]    = useState(true);
+  const [showLeftPanel, setShowLeftPanel] = useState(true);
+  const [showLegend, setShowLegend] = useState(true);
+  const [showStatsBar, setShowStatsBar] = useState(true);
 
   // Left panel collapse
   const [leftCollapsed, setLeftCollapsed] = useState(false);
 
   // ── Layer visibility per obligation ──────────────────────────────────────
-  const [showAmdal,  setShowAmdal]  = useState(true);
+  const [showAmdal, setShowAmdal] = useState(true);
   const [showUklUpl, setShowUklUpl] = useState(true);
-  const [showSppl,   setShowSppl]   = useState(true);
+  const [showSppl, setShowSppl] = useState(true);
 
   // ── River & industrial overlay ────────────────────────────────────────────
-  const [riverLayer,      setRiverLayer]      = useState(true);
+  const [riverLayer, setRiverLayer] = useState(true);
   const [industrialLayer, setIndustrialLayer] = useState(true);
 
   // ── Selected company ──────────────────────────────────────────────────────
   const [selected, setSelected] = useState<CompanyPolygon | null>(null);
 
+  // Transform real approved companies from DB into CompanyPolygon shape
+  const realCompanyPolygons = companies
+    .filter(c => c.status === "APPROVED")
+    .map(c => {
+      const lat = parseFloat(c.lat);
+      const lng = parseFloat(c.lng);
+      const offset = 0.0008; // approx 80-100m bounding box
+      
+      const poly: [number, number][] = isNaN(lat) || isNaN(lng)
+        ? [[-6.9147, 107.6098], [-6.9147, 107.6098], [-6.9147, 107.6098], [-6.9147, 107.6098]]
+        : [
+            [lat - offset, lng - offset],
+            [lat + offset, lng - offset],
+            [lat + offset, lng + offset],
+            [lat - offset, lng + offset],
+          ];
+
+      const obligation: DocObligation = c.docType === 'AMDAL' ? 'AMDAL' : (c.docType === 'UKL-UPL' || c.docType === 'UKL_UPL' ? 'UKL-UPL' : 'SPPL');
+
+      return {
+        id: c.id,
+        name: c.companyName,
+        obligation,
+        address: c.address,
+        sector: c.rawMaterials || "Kepatuhan Lingkungan",
+        polygon: poly
+      };
+    });
+
+  // Fallback to mock polygons if no real ones are approved yet
+  const allCompanyPolygons = realCompanyPolygons.length > 0 ? realCompanyPolygons : MOCK_COMPANY_POLYGONS;
+
   // ── Statistics ────────────────────────────────────────────────────────────
-  const countAmdal  = MOCK_COMPANY_POLYGONS.filter(c => c.obligation === 'AMDAL').length;
-  const countUkl    = MOCK_COMPANY_POLYGONS.filter(c => c.obligation === 'UKL-UPL').length;
-  const countSppl   = MOCK_COMPANY_POLYGONS.filter(c => c.obligation === 'SPPL').length;
+  const countAmdal = allCompanyPolygons.filter(c => c.obligation === 'AMDAL').length;
+  const countUkl = allCompanyPolygons.filter(c => c.obligation === 'UKL-UPL').length;
+  const countSppl = allCompanyPolygons.filter(c => c.obligation === 'SPPL').length;
 
   // ── Fullscreen toggle — hide/show DashboardLayout chrome ─────────────────
   const toggleFullscreen = useCallback(() => {
@@ -174,10 +210,10 @@ export default function GISMonitoring() {
   }, []);
 
   // ── Filtered polygon data ─────────────────────────────────────────────────
-  const visibleCompanies = MOCK_COMPANY_POLYGONS.filter(c => {
-    if (c.obligation === 'AMDAL'   && !showAmdal)  return false;
+  const visibleCompanies = allCompanyPolygons.filter(c => {
+    if (c.obligation === 'AMDAL' && !showAmdal) return false;
     if (c.obligation === 'UKL-UPL' && !showUklUpl) return false;
-    if (c.obligation === 'SPPL'    && !showSppl)   return false;
+    if (c.obligation === 'SPPL' && !showSppl) return false;
     return true;
   });
 
@@ -193,7 +229,7 @@ export default function GISMonitoring() {
           <Globe size={18} className="text-emerald-400 animate-spin" style={{ animationDuration: '8s' }} />
           <div>
             <h1 className="text-xs font-black tracking-widest uppercase text-emerald-400 leading-none">
-              SIJAGA GIS Monitor
+              PANTAU LIMBAH GIS
             </h1>
             <p className="text-[9px] text-slate-500 font-semibold uppercase tracking-wider mt-0.5">
               Pemantauan Kewajiban Lingkungan
@@ -248,7 +284,7 @@ export default function GISMonitoring() {
               label="SPPL" value={countSppl} />
             <div className="w-px h-5 bg-white/10" />
             <StatPill icon={<Factory size={12} className="text-slate-400" />}
-              label="Total" value={MOCK_COMPANY_POLYGONS.length} />
+              label="Total" value={allCompanyPolygons.length} />
             <button
               className="ml-1 text-slate-500 hover:text-slate-300 transition-colors"
               onClick={() => setShowStatsBar(false)}
@@ -319,7 +355,7 @@ export default function GISMonitoring() {
             collapsible
           >
             <div className="max-h-56 overflow-y-auto space-y-1.5 pr-0.5">
-              {MOCK_COMPANY_POLYGONS.map(c => {
+              {allCompanyPolygons.map(c => {
                 const style = OBLIGATION_STYLES[c.obligation];
                 return (
                   <button
@@ -368,7 +404,7 @@ export default function GISMonitoring() {
                   style={{ backgroundColor: OBLIGATION_STYLES[selected.obligation].hex }}
                 >
                   {selected.obligation === 'AMDAL' && <AlertTriangle size={9} />}
-                  {selected.obligation === 'SPPL'  && <CheckCircle2 size={9} />}
+                  {selected.obligation === 'SPPL' && <CheckCircle2 size={9} />}
                   {selected.obligation}
                 </span>
               </div>
@@ -402,9 +438,9 @@ export default function GISMonitoring() {
               </button>
             </div>
             <div className="space-y-1.5">
-              <LegendRow color="bg-red-500"    label="AMDAL"    sub="Risiko Tinggi – Wajib AMDAL" />
-              <LegendRow color="bg-amber-500"  label="UKL-UPL"  sub="Risiko Sedang – Wajib UKL-UPL" />
-              <LegendRow color="bg-emerald-500" label="SPPL"    sub="Risiko Rendah – Wajib SPPL" />
+              <LegendRow color="bg-red-500" label="AMDAL" sub="Risiko Tinggi – Wajib AMDAL" />
+              <LegendRow color="bg-amber-500" label="UKL-UPL" sub="Risiko Sedang – Wajib UKL-UPL" />
+              <LegendRow color="bg-emerald-500" label="SPPL" sub="Risiko Rendah – Wajib SPPL" />
             </div>
             {!showStatsBar && (
               <button

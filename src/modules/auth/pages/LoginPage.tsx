@@ -54,23 +54,18 @@ export default function LoginPage() {
     setLoading(true);
     try {
       /**
-       * Eksekusi Login ke Backend
-       * Menggunakan API Service yang terhubung dengan Axios Interceptor.
+       * Eksekusi Login ke Zustand Store
+       * Store akan otomatis memanggil API, menyimpan token ke localStorage,
+       * memperbarui currentUser, dan mengembalikan user terotentikasi.
        */
-      const response = await apiService.auth.login(email, password);
+      const user = await loginStore(email, password);
 
-      if (response.success) {
-        // 1. Persistensi Token Keamanan
-        localStorage.setItem("sijaga_token", response.token);
-
-        // 2. Sinkronisasi State Global (Zustand)
-        const userRole = response.user.role as UserRole;
-        await loginStore(email, password);
-
-        toast.success(`Berhasil masuk sebagai ${response.user.name}`);
-
-        // 3. Routing Otomatis sesuai Otoritas Database
-        handleRoleRedirection(userRole);
+      if (user) {
+        toast.success(`Berhasil masuk sebagai ${user.name}`);
+        // Routing Otomatis sesuai Otoritas Database
+        handleRoleRedirection(user.role);
+      } else {
+        toast.error("Kredensial tidak valid.");
       }
     } catch (error: any) {
       // Penanganan error spesifik dari backend (Controller Auth)
@@ -97,7 +92,7 @@ export default function LoginPage() {
               <Leaf size={28} />
             </div>
             <span className="text-3xl font-black italic tracking-tighter">
-              SIJAGA <span className="text-emerald-500">LINGKUNGAN</span>
+              PANTAU <span className="text-emerald-500">LIMBAH</span>
             </span>
           </div>
 
@@ -136,6 +131,8 @@ export default function LoginPage() {
               </div>
 
               <form onSubmit={handleLogin} className="space-y-6">
+
+
                 {/* Field Email */}
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Alamat Email</label>
@@ -195,7 +192,7 @@ export default function LoginPage() {
               {/* Bottom Call to Action */}
               <div className="text-center pt-4 border-t border-slate-50">
                 <p className="text-sm font-medium text-slate-400">
-                  Baru di SIJAGA?{" "}
+                  Baru di PANTAU LIMBAH?{" "}
                   <button
                     type="button"
                     onClick={() => navigate("/register")}

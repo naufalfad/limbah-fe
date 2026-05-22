@@ -22,8 +22,8 @@ api.interceptors.request.use((config) => {
 
 export const apiService = {
   auth: {
-    login: async (email: string, password: string) => {
-      const response = await api.post("/api/auth/login", { email, password });
+    login: async (email: string, password: string, role?: string) => {
+      const response = await api.post("/api/auth/login", { email, password, role });
       return response.data;
     },
     register: async (payload: { name: string; email: string; role: string }) => {
@@ -50,8 +50,8 @@ export const apiService = {
     }
   },
   waste: {
-    getAll: async () => {
-      const response = await api.get("/api/waste");
+    getAll: async (companyId?: string) => {
+      const response = await api.get("/api/waste", { params: companyId ? { companyId } : {} });
       return response.data;
     },
     create: async (payload: any) => {
@@ -64,8 +64,8 @@ export const apiService = {
     }
   },
   pickups: {
-    getAll: async () => {
-      const response = await api.get("/api/pickups");
+    getAll: async (companyId?: string) => {
+      const response = await api.get("/api/pickups", { params: companyId ? { companyId } : {} });
       return response.data;
     },
     create: async (payload: any) => {
@@ -82,8 +82,8 @@ export const apiService = {
     }
   },
   invoices: {
-    getAll: async () => {
-      const response = await api.get("/api/invoices");
+    getAll: async (companyId?: string) => {
+      const response = await api.get("/api/invoices", { params: companyId ? { companyId } : {} });
       return response.data;
     },
     pay: async (id: string) => {
@@ -108,6 +108,10 @@ export const apiService = {
   notifications: {
     getAll: async () => {
       const response = await api.get("/api/notifications");
+      return response.data;
+    },
+    read: async (id: string) => {
+      const response = await api.patch(`/api/notifications/${id}/read`);
       return response.data;
     },
     readAll: async () => {

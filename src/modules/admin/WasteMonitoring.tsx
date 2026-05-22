@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { useSijagaStore } from '@/store/useSijagaStore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -6,9 +6,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Trash2, Waves, AlertTriangle, TrendingUp, 
-  Search, Filter, Download, Activity, 
+import {
+  Trash2, Waves, AlertTriangle, TrendingUp,
+  Search, Filter, Download, Activity,
   ArrowUpRight, ArrowDownRight, Map as MapIcon,
   Brain, Sparkles, ShieldAlert, CheckCircle, Calendar, Send
 } from "lucide-react";
@@ -16,12 +16,27 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 export default function WasteMonitoring() {
-  const { wasteLogs, companies, scheduleInspection, addNotification, addAuditLog, currentUser } = useSijagaStore();
+  const { 
+    wasteLogs, 
+    companies, 
+    scheduleInspection, 
+    addNotification, 
+    addAuditLog, 
+    currentUser,
+    fetchCompanies,
+    fetchWasteLogs
+  } = useSijagaStore();
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [scheduledAnomalies, setScheduledAnomalies] = useState<string[]>([]);
   const [warnedAnomalies, setWarnedAnomalies] = useState<string[]>([]);
+
+  useEffect(() => {
+    fetchCompanies();
+    fetchWasteLogs();
+  }, []);
 
   // Helpers for EWS Status and Limit
   const getEwsStatus = (type: string, volume: number) => {
@@ -59,10 +74,10 @@ export default function WasteMonitoring() {
       const ews = getEwsStatus(log.type, log.volume);
       const limit = getLimit(log.type);
       const confidence = ews === "DANGER" ? "98.7%" : "89.4%";
-      const suggestion = ews === "DANGER" 
-        ? "Segera lakukan sidak lapangan dan penalti administratif." 
+      const suggestion = ews === "DANGER"
+        ? "Segera lakukan sidak lapangan dan penalti administratif."
         : "Rekomendasi pemantauan berkala dan surat teguran digital.";
-      
+
       return {
         ...log,
         ews,
@@ -76,7 +91,7 @@ export default function WasteMonitoring() {
   const handleTriggerInspection = (companyId: string, companyName: string, logId: string) => {
     const matchedCompany = companies.find(c => c.id === companyId);
     const location = matchedCompany?.address || "Bandung, Jawa Barat";
-    
+
     // Call store action
     scheduleInspection({
       companyId,
@@ -113,10 +128,10 @@ export default function WasteMonitoring() {
 
   // Filtered Logs
   const filteredLogs = wasteLogs.filter(log => {
-    const matchesSearch = log.companyName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          log.type.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesCategory = categoryFilter === "ALL" || 
+    const matchesSearch = log.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.type.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesCategory = categoryFilter === "ALL" ||
       (categoryFilter === "B3" && (log.type.toLowerCase().includes("b3") || log.type.toLowerCase().includes("oli") || log.type.toLowerCase().includes("kimia"))) ||
       (categoryFilter === "CAIR" && (log.type.toLowerCase().includes("cair") || log.unit === "m³")) ||
       (categoryFilter === "DOMESTIK" && (log.type.toLowerCase().includes("domestik") || log.type.toLowerCase().includes("jelantah")));
@@ -130,7 +145,7 @@ export default function WasteMonitoring() {
   return (
     <DashboardLayout role="ADMIN_DLH">
       <div className="space-y-8 pb-10 text-left">
-        
+
         {/* --- HEADER --- */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
@@ -143,7 +158,7 @@ export default function WasteMonitoring() {
             <Button variant="outline" className="rounded-xl font-bold border-slate-200" onClick={() => toast.info("Data laporan berhasil diexport!")}>
               <Download className="mr-2" size={18} /> Export Laporan
             </Button>
-            <Button className="rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700" onClick={() => window.location.href='/admin/gis'}>
+            <Button className="rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700" onClick={() => window.location.href = '/admin/gis'}>
               <MapIcon className="mr-2" size={18} /> Lihat Heatmap
             </Button>
           </div>
@@ -151,27 +166,27 @@ export default function WasteMonitoring() {
 
         {/* --- STATS SUMMARY (TAMPILAN MODERN DYNAMIC) --- */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <StatMiniCard 
-            title="Total Limbah Cair" 
-            value={`${totalCair.toLocaleString()} m³`} 
-            sub="Bulan Mei 2026" 
-            icon={<Waves className="text-blue-500" />} 
-            trend="+12%" 
+          <StatMiniCard
+            title="Total Limbah Cair"
+            value={`${totalCair.toLocaleString()} m³`}
+            sub="Bulan Mei 2026"
+            icon={<Waves className="text-blue-500" />}
+            trend="+12%"
           />
-          <StatMiniCard 
-            title="Limbah B3 Terdeteksi" 
-            value={`${totalB3.toLocaleString()} L/kg`} 
-            sub="Perlu Pengangkutan" 
-            icon={<Trash2 className="text-orange-500" />} 
-            trend="+5%" 
+          <StatMiniCard
+            title="Limbah B3 Terdeteksi"
+            value={`${totalB3.toLocaleString()} L/kg`}
+            sub="Perlu Pengangkutan"
+            icon={<Trash2 className="text-orange-500" />}
+            trend="+5%"
             isWarning={totalB3 > 200}
           />
-          <StatMiniCard 
-            title="Alert EWS Aktif" 
-            value={String(activeAlerts).padStart(2, '0')} 
-            sub="Ambang Batas Terlewati" 
-            icon={<AlertTriangle className="text-rose-500" />} 
-            trend={activeAlerts > 0 ? `+${activeAlerts}` : "Aman"} 
+          <StatMiniCard
+            title="Alert EWS Aktif"
+            value={String(activeAlerts).padStart(2, '0')}
+            sub="Ambang Batas Terlewati"
+            icon={<AlertTriangle className="text-rose-500" />}
+            trend={activeAlerts > 0 ? `+${activeAlerts}` : "Aman"}
             isDanger={activeAlerts > 0}
           />
         </div>
@@ -181,7 +196,7 @@ export default function WasteMonitoring() {
           {/* Subtle glowing elements */}
           <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
           <div className="absolute bottom-0 left-0 w-80 h-80 bg-rose-500/5 rounded-full blur-3xl -ml-20 -mb-20 pointer-events-none" />
-          
+
           <CardHeader className="p-8 border-b border-white/10 relative z-10">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div className="flex items-center gap-3">
@@ -190,7 +205,7 @@ export default function WasteMonitoring() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <CardTitle className="text-2xl font-black tracking-tight text-white">SIJAGA-AI Anomaly Engine</CardTitle>
+                    <CardTitle className="text-2xl font-black tracking-tight text-white">PANTAU LIMBAH-AI Anomaly Engine</CardTitle>
                     <Badge className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[9px] font-black uppercase tracking-wider py-1 px-2.5 rounded-full">
                       NEURAL NETWORK V2.5
                     </Badge>
@@ -221,19 +236,19 @@ export default function WasteMonitoring() {
                   <ShieldAlert size={16} className="text-rose-400" />
                   <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Terdeteksi {anomalies.length} Anomali Kepatuhan Limbah</span>
                 </div>
-                
+
                 <div className="grid grid-cols-1 gap-4">
                   {anomalies.map((anomaly) => {
                     const isScheduled = scheduledAnomalies.includes(anomaly.id);
                     const isWarned = warnedAnomalies.includes(anomaly.id);
-                    
+
                     return (
-                      <div 
-                        key={anomaly.id} 
+                      <div
+                        key={anomaly.id}
                         className={cn(
                           "p-6 rounded-[2rem] border transition-all flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6",
-                          anomaly.ews === "DANGER" 
-                            ? "bg-rose-950/20 border-rose-500/20 hover:border-rose-500/30" 
+                          anomaly.ews === "DANGER"
+                            ? "bg-rose-950/20 border-rose-500/20 hover:border-rose-500/30"
                             : "bg-amber-950/20 border-amber-500/20 hover:border-amber-500/30"
                         )}
                       >
@@ -242,19 +257,19 @@ export default function WasteMonitoring() {
                             <span className="font-black text-base text-white">{anomaly.companyName}</span>
                             <Badge className={cn(
                               "text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full border",
-                              anomaly.ews === "DANGER" 
-                                ? "bg-rose-500/10 text-rose-400 border-rose-500/30" 
+                              anomaly.ews === "DANGER"
+                                ? "bg-rose-500/10 text-rose-400 border-rose-500/30"
                                 : "bg-amber-500/10 text-amber-400 border-amber-500/30"
                             )}>
                               {anomaly.ews} ALERT
                             </Badge>
                             <span className="text-[10px] text-slate-500 font-mono">Confidence: {anomaly.confidence}</span>
                           </div>
-                          
+
                           <p className="text-xs text-slate-300 leading-relaxed font-sans font-medium">
                             Akumulasi limbah <strong className="text-white">{anomaly.type}</strong> sebesar <strong className="text-white">{anomaly.volume} {anomaly.unit}</strong> telah melampaui regulasi ambang batas aman yang disetujui ({anomaly.limit}).
                           </p>
-                          
+
                           <div className="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-2 flex items-start gap-2 font-medium">
                             <Sparkles size={12} className="mt-0.5 shrink-0" />
                             <span><strong>Rekomendasi AI:</strong> {anomaly.suggestion}</span>
@@ -262,25 +277,25 @@ export default function WasteMonitoring() {
                         </div>
 
                         <div className="flex flex-wrap gap-2 shrink-0 w-full lg:w-auto border-t lg:border-t-0 pt-4 lg:pt-0 border-white/5">
-                          <Button 
+                          <Button
                             disabled={isWarned}
                             onClick={() => handleSendWarning(anomaly.companyId, anomaly.companyName, anomaly.type, `${anomaly.volume} ${anomaly.unit}`, anomaly.id)}
                             className={cn(
                               "flex-1 lg:flex-none rounded-xl text-[10px] font-black tracking-wider uppercase h-10 px-4 transition-all gap-1.5",
-                              isWarned 
-                                ? "bg-white/5 text-slate-500 border border-white/5 cursor-not-allowed" 
+                              isWarned
+                                ? "bg-white/5 text-slate-500 border border-white/5 cursor-not-allowed"
                                 : "bg-white/10 hover:bg-white/20 text-white border border-white/10 hover:scale-[1.02]"
                             )}
                           >
                             <Send size={12} /> {isWarned ? "Teguran Terkirim" : "Surat Teguran"}
                           </Button>
-                          <Button 
+                          <Button
                             disabled={isScheduled}
                             onClick={() => handleTriggerInspection(anomaly.companyId, anomaly.companyName, anomaly.id)}
                             className={cn(
                               "flex-1 lg:flex-none rounded-xl text-[10px] font-black tracking-wider uppercase h-10 px-5 transition-all gap-1.5",
-                              isScheduled 
-                                ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 cursor-not-allowed" 
+                              isScheduled
+                                ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 cursor-not-allowed"
                                 : "bg-emerald-600 hover:bg-emerald-700 text-white hover:scale-[1.02] shadow-lg shadow-emerald-900/30"
                             )}
                           >
@@ -302,8 +317,8 @@ export default function WasteMonitoring() {
           <div className="flex flex-col lg:flex-row gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <Input 
-                placeholder="Cari nama perusahaan atau jenis limbah..." 
+              <Input
+                placeholder="Cari nama perusahaan atau jenis limbah..."
                 className="h-12 pl-12 rounded-2xl bg-slate-50 border-none focus-visible:ring-emerald-500"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -311,27 +326,27 @@ export default function WasteMonitoring() {
             </div>
             <div className="flex flex-wrap gap-2">
               <div className="flex gap-2">
-                <SelectFilter 
-                  placeholder="Kategori" 
-                  value={categoryFilter} 
+                <SelectFilter
+                  placeholder="Kategori"
+                  value={categoryFilter}
                   onChange={setCategoryFilter}
                   options={[
                     { label: "Semua Kategori", value: "ALL" },
                     { label: "Limbah B3", value: "B3" },
                     { label: "Limbah Cair", value: "CAIR" },
                     { label: "Limbah Domestik", value: "DOMESTIK" }
-                  ]} 
+                  ]}
                 />
-                <SelectFilter 
-                  placeholder="Status EWS" 
-                  value={statusFilter} 
+                <SelectFilter
+                  placeholder="Status EWS"
+                  value={statusFilter}
                   onChange={setStatusFilter}
                   options={[
                     { label: "Semua Status", value: "ALL" },
                     { label: "EWS Danger", value: "DANGER" },
                     { label: "EWS Warning", value: "WARNING" },
                     { label: "EWS Safe", value: "SAFE" }
-                  ]} 
+                  ]}
                 />
               </div>
             </div>
@@ -363,7 +378,7 @@ export default function WasteMonitoring() {
                   const ews = getEwsStatus(item.type, item.volume);
                   const limit = getLimit(item.type);
                   const trend = item.id.charCodeAt(item.id.length - 1) % 2 === 0 ? "up" : "down";
-                  
+
                   return (
                     <TableRow key={item.id} className="border-slate-50 hover:bg-slate-50/50 transition-colors h-20">
                       <TableCell className="pl-8">
@@ -390,9 +405,9 @@ export default function WasteMonitoring() {
                         <EWSBadge status={ews} />
                       </TableCell>
                       <TableCell className="pr-8 text-right">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           className="font-black text-[10px] text-emerald-600 hover:bg-emerald-50 tracking-widest"
                           onClick={() => toast.info(`Logbook Detail: Limbah ${item.type} dilaporkan pada ${item.date} via metode ${item.method}.`)}
                         >
@@ -468,7 +483,7 @@ function SelectFilter({ placeholder, value, onChange, options }: any) {
 
   return (
     <div className="relative font-sans text-left">
-      <div 
+      <div
         onClick={() => setIsOpen(!isOpen)}
         className="h-12 px-4 bg-slate-50 rounded-2xl border-none flex items-center justify-between gap-2 text-slate-600 font-bold text-xs cursor-pointer hover:bg-slate-100 transition-all min-w-[160px]"
       >

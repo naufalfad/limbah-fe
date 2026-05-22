@@ -37,7 +37,7 @@ export interface Company {
   lat: string;
   lng: string;
   address: string;
-  docType: "SPPL" | "UKL-UPL";
+  docType: "SPPL" | "UKL-UPL" | "UKL_UPL" | "AMDAL";
   status: "PENDING" | "REVIEW" | "APPROVED" | "REJECTED";
   score?: number;
   wasteInfo?: string;
@@ -138,8 +138,18 @@ interface SijagaState {
 
   // Actions
   setSelectedCompanyId: (id: string | null) => void;
-  login: (email: string, role: UserRole) => Promise<boolean>;
+  login: (email: string, password: string, role?: UserRole) => Promise<User | null>;
   logout: () => Promise<void>;
+  
+  // API Fetchers
+  fetchCompanies: () => Promise<void>;
+  fetchWasteLogs: (companyId?: string) => Promise<void>;
+  fetchPickupRequests: (companyId?: string) => Promise<void>;
+  fetchInvoices: (companyId?: string) => Promise<void>;
+  fetchInspections: () => Promise<void>;
+  fetchNotifications: () => Promise<void>;
+  readNotification: (id: string) => Promise<void>;
+
   addCompany: (company: Omit<Company, "id" | "status" | "score">) => Promise<void>;
   updateCompanyStatus: (id: string, status: Company["status"]) => Promise<void>;
   addWasteLog: (log: Omit<WasteLog, "id" | "companyName" | "status">) => Promise<void>;
@@ -148,7 +158,7 @@ interface SijagaState {
   setPickupPrice: (id: string, cost: number, driverName: string, plateNo: string) => Promise<void>;
   payInvoice: (id: string) => Promise<void>;
   updatePickupStatus: (id: string, status: PickupRequest["status"], evidencePhoto?: string) => Promise<void>;
-  scheduleInspection: (inspection: Omit<Inspection, "id" | "status" | "score" | "bapSigned">) => Promise<void>;
+  scheduleInspection: (inspection: Omit<Inspection, "id" | "status" | "score" | "bapSigned">) => Promise<Inspection | undefined>;
   submitInspectionResult: (id: string, score: number, notes: string, checklist: Inspection["checklist"]) => Promise<void>;
   addNotification: (title: string, message: string, type: SystemNotification["type"]) => void;
   readAllNotifications: () => void;
@@ -386,10 +396,34 @@ const initialAuditLogs: AuditLog[] = [
   { id: "LOG-002", timestamp: "2026-05-20T09:12:00Z", user: "admin@dlh.go.id", role: "ADMIN_DLH", action: "Menyetujui dokumen UKL-UPL PT. Tekstil Sejahtera." }
 ];
 
+const getInitialAuthState = () => {
+  try {
+    const savedUser = localStorage.getItem("sijaga_user");
+    if (savedUser) {
+      const user = JSON.parse(savedUser);
+      const companiesList = user.companies || [];
+      return {
+        currentUser: user,
+        companies: companiesList.length > 0 ? companiesList : initialCompanies,
+        selectedCompanyId: user.companyId || (companiesList.length > 0 ? companiesList[0].id : null),
+      };
+    }
+  } catch (e) {
+    console.error("Failed to parse saved sijaga_user from localStorage", e);
+  }
+  return {
+    currentUser: null,
+    companies: initialCompanies,
+    selectedCompanyId: null,
+  };
+};
+
+const initialAuth = getInitialAuthState();
+
 export const useSijagaStore = create<SijagaState>((set, get) => ({
-  currentUser: null,
-  selectedCompanyId: null,
-  companies: initialCompanies,
+  currentUser: initialAuth.currentUser,
+  selectedCompanyId: initialAuth.selectedCompanyId,
+  companies: initialAuth.companies,
   wasteLogs: initialWasteLogs,
   pickupRequests: initialPickupRequests,
   invoices: initialInvoices,
@@ -401,47 +435,50 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
     set({ selectedCompanyId: id });
   },
 
-  login: async (email, password) => {
+  login: async (email, password, role) => {
     try {
       /**
        * 1. Eksekusi API Login
        * Mengirim email dan password ke backend.
        * Backend akan memvalidasi kredensial dan mengembalikan data User + Role + Token.
        */
-      const data = await apiService.auth.login(email, password);
+      const data = await apiService.auth.login(email, password, role);
 
       if (data && data.success) {
-        // 2. Persistensi Token
+        // 2. Persistensi Token & Profil
         const token = data.token;
         localStorage.setItem("sijaga_token", token);
 
         // 3. Mapping Data User dari Backend
         // Data user sekarang mengandung 'role' asli dari database.
         const apiUser = data.user;
+        const apiCompanies = apiUser.companies || [];
+
+        localStorage.setItem("sijaga_user", JSON.stringify(apiUser));
 
         // 4. Update State Global
         set({
           currentUser: apiUser,
+          companies: apiCompanies,
           // Set default company ID jika user adalah role PERUSAHAAN
-          selectedCompanyId: apiUser.companyId || (apiUser.companies && apiUser.companies.length > 0 ? apiUser.companies[0].id : null),
+          selectedCompanyId: apiUser.companyId || (apiCompanies.length > 0 ? apiCompanies[0].id : null),
         });
 
         // 5. Audit Log Real-time
         // Kita menggunakan apiUser.role yang didapat dari database, bukan inputan manual.
         get().addAuditLog(apiUser.email, apiUser.role, "Melakukan login ke sistem (Autentikasi Terintegrasi).");
 
-        return true;
+        return apiUser;
       }
 
-      return false;
+      return null;
     } catch (error: any) {
       /**
        * Error Handling:
-       * Jika gagal (401, 500, dll), kita kembalikan false.
-       * Pesan error spesifik akan ditangani oleh LoginPage melalui toast.
+       * Jika gagal (401, 500, dll), kita lempar error agar LoginPage dapat memproses toast pesan.
        */
       console.error("Login Failure:", error.response?.data?.message || error.message);
-      return false;
+      throw error;
     }
   },
 
@@ -458,7 +495,106 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
 
     localStorage.removeItem("sijaga_token");
     localStorage.removeItem("token");
+    localStorage.removeItem("sijaga_user");
     set({ currentUser: null, selectedCompanyId: null });
+  },
+
+  fetchCompanies: async () => {
+    try {
+      const response = await apiService.companies.getAll();
+      if (response && response.success) {
+        const list = response.companies || [];
+        set({ companies: list });
+      }
+    } catch (e) {
+      console.warn("fetchCompanies failed", e);
+    }
+  },
+
+  fetchWasteLogs: async (companyId) => {
+    try {
+      const response = await apiService.waste.getAll(companyId);
+      if (response && response.success) {
+        const rawLogs = response.logs || response.wasteLogs || [];
+        const logs = rawLogs.map((item: any) => ({
+          ...item,
+          companyName: item.companyName || item.company?.companyName || "Unknown Company"
+        }));
+        set({ wasteLogs: logs });
+      }
+    } catch (e) {
+      console.warn("fetchWasteLogs failed", e);
+    }
+  },
+
+  fetchPickupRequests: async (companyId) => {
+    try {
+      const response = await apiService.pickups.getAll(companyId);
+      if (response && response.success) {
+        const rawPickups = response.pickups || response.pickupRequests || [];
+        const pickups = rawPickups.map((item: any) => ({
+          ...item,
+          companyName: item.companyName || item.company?.companyName || "Unknown Company"
+        }));
+        set({ pickupRequests: pickups });
+      }
+    } catch (e) {
+      console.warn("fetchPickupRequests failed", e);
+    }
+  },
+
+  fetchInvoices: async (companyId) => {
+    try {
+      const response = await apiService.invoices.getAll(companyId);
+      if (response && response.success) {
+        const rawInvoices = response.invoices || [];
+        const invoices = rawInvoices.map((item: any) => ({
+          ...item,
+          companyName: item.companyName || item.company?.companyName || "Unknown Company"
+        }));
+        set({ invoices });
+      }
+    } catch (e) {
+      console.warn("fetchInvoices failed", e);
+    }
+  },
+
+  fetchInspections: async () => {
+    try {
+      const response = await apiService.inspections.getAll();
+      if (response && response.success) {
+        set({ inspections: response.inspections || [] });
+      }
+    } catch (e) {
+      console.warn("fetchInspections failed", e);
+    }
+  },
+
+  fetchNotifications: async () => {
+    try {
+      const response = await apiService.notifications.getAll();
+      if (response && response.success) {
+        set({ notifications: response.notifications || [] });
+      }
+    } catch (e) {
+      console.warn("fetchNotifications failed", e);
+    }
+  },
+
+  readNotification: async (id) => {
+    try {
+      const response = await apiService.notifications.read(id);
+      if (response && response.success) {
+        set((state) => ({
+          notifications: state.notifications.map((n) => n.id === id ? { ...n, read: true } : n)
+        }));
+      }
+    } catch (e) {
+      console.warn("readNotification failed, using offline fallback", e);
+      set((state) => ({
+        notifications: state.notifications.map((n) => n.id === id ? { ...n, read: true } : n)
+      }));
+    }
   },
 
   addCompany: async (companyData) => {
@@ -472,6 +608,10 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
             ...state.currentUser,
             companies: [...(state.currentUser.companies || []), newComp]
           } : null;
+
+          if (updatedUser) {
+            localStorage.setItem("sijaga_user", JSON.stringify(updatedUser));
+          }
 
           return {
             companies: updatedCompanies,
@@ -488,7 +628,10 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
         );
         return;
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (error.response) {
+        throw error;
+      }
       console.warn("Registrasi perusahaan gagal/offline. Menggunakan fallback offline.", error);
     }
 
@@ -506,6 +649,10 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
         ...state.currentUser,
         companies: [...(state.currentUser.companies || []), newCompany]
       } : null;
+
+      if (updatedUser) {
+        localStorage.setItem("sijaga_user", JSON.stringify(updatedUser));
+      }
 
       return {
         companies: updatedCompanies,
@@ -560,12 +707,18 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
       if (response && response.success) {
         const newLog: WasteLog = response.log;
         set((state) => ({
-          wasteLogs: [...state.wasteLogs, newLog]
+          wasteLogs: [...state.wasteLogs, {
+            ...newLog,
+            companyName: newLog.companyName || state.companies.find(c => c.id === newLog.companyId)?.companyName || "Unknown Company"
+          }]
         }));
         toast.success("Limbah berhasil dilaporkan ke dinas!");
         return;
       }
-    } catch (e) {
+    } catch (e: any) {
+      if (e.response) {
+        throw e;
+      }
       console.warn("Pelaporan limbah API gagal, fallback offline.", e);
     }
 
@@ -629,12 +782,18 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
       if (response && response.success) {
         const newPickup: PickupRequest = response.pickup;
         set((state) => ({
-          pickupRequests: [...state.pickupRequests, newPickup]
+          pickupRequests: [...state.pickupRequests, {
+            ...newPickup,
+            companyName: newPickup.companyName || state.companies.find(c => c.id === newPickup.companyId)?.companyName || "Unknown Company"
+          }]
         }));
         toast.success("Permintaan pengangkutan limbah telah diajukan.");
         return;
       }
-    } catch (e) {
+    } catch (e: any) {
+      if (e.response) {
+        throw e;
+      }
       console.warn("Pengajuan pickup API gagal, fallback offline.", e);
     }
 
@@ -717,7 +876,10 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
       if (response && response.success) {
         const updatedInvoice: Invoice = response.invoice;
         set((state) => ({
-          invoices: state.invoices.map((inv) => (inv.id === id ? updatedInvoice : inv)),
+          invoices: state.invoices.map((inv) => (inv.id === id ? {
+            ...updatedInvoice,
+            companyName: updatedInvoice.companyName || state.companies.find(c => c.id === updatedInvoice.companyId)?.companyName || "Unknown Company"
+          } : inv)),
           pickupRequests: state.pickupRequests.map((r) =>
             r.invoiceId === id ? { ...r, status: "PAID" } : r
           )
@@ -725,7 +887,10 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
         toast.success("Pembayaran tagihan sukses! Dana disetor ke Kas Daerah Pemda.");
         return;
       }
-    } catch (e) {
+    } catch (e: any) {
+      if (e.response) {
+        throw e;
+      }
       console.warn("Pembayaran tagihan API gagal, fallback offline.", e);
     }
 
@@ -812,7 +977,7 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
           inspections: [...state.inspections, newInsp]
         }));
         toast.success("Jadwal inspeksi berhasil disimpan di server.");
-        return;
+        return newInsp;
       }
     } catch (e) {
       console.warn("Penjadwalan inspeksi API gagal, fallback offline.", e);
@@ -840,6 +1005,7 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
       `Petugas ${inspectionData.inspectorName} dijadwalkan menginspeksi ${inspectionData.companyName} pada ${inspectionData.date}.`,
       "INFO"
     );
+    return newInspection;
   },
 
   submitInspectionResult: async (id, score, notes, checklist) => {

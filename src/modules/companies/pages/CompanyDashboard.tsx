@@ -1,91 +1,90 @@
 import React, { useEffect, useState, useMemo } from "react";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import { useSijagaStore } from "@/store/useSijagaStore";
-import { apiService } from "@/lib/api";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Building2, Trash2, CreditCard, ShieldCheck,
-  Clock, AlertTriangle, ArrowUpRight, Plus,
+  Clock, ArrowUpRight, Plus,
   MapPin, CheckCircle2, Sparkles, ChevronRight, Loader2
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function CompanyDashboard() {
   const navigate = useNavigate();
-  const { currentUser, setSelectedCompanyId } = useSijagaStore();
+  const {
+    currentUser,
+    selectedCompanyId,
+    setSelectedCompanyId,
+    companies,
+    wasteLogs,
+    pickupRequests,
+    invoices,
+    fetchCompanies,
+    fetchWasteLogs,
+    fetchPickupRequests,
+    fetchInvoices
+  } = useSijagaStore();
 
-  // Local States untuk Data API
   const [loading, setLoading] = useState(true);
-  const [dashboardData, setDashboardData] = useState<{
-    company: any | null;
-    wasteLogs: any[];
-    pickups: any[];
-    invoices: any[];
-  }>({
-    company: null,
-    wasteLogs: [],
-    pickups: [],
-    invoices: [],
-  });
 
-  // Fetch Semua Data secara Paralel (Efficiency Boost)
-  const fetchAllData = async () => {
-    try {
-      setLoading(true);
-      const [compRes, wasteRes, pickupRes, invoiceRes] = await Promise.all([
-        apiService.companies.getAll(),
-        apiService.waste.getAll(),
-        apiService.pickups.getAll(),
-        apiService.invoices.getAll(),
-      ]);
-
-      // Ambil perusahaan pertama (atau sesuaikan dengan selectedCompanyId jika ada)
-      const companies = compRes.companies || [];
-      const myCompany = compRes.companies?.[0] || null;
-
-      if (myCompany) {
-        // 1. Update Zustand Store agar halaman lain tahu perusahaan yang aktif
-        setSelectedCompanyId(myCompany.id);
-
-        // 2. Update Local State untuk Dashboard
-        setDashboardData({
-          company: myCompany,
-          wasteLogs: wasteRes.wasteLogs || [],
-          pickups: pickupRes.pickupRequests || [],
-          invoices: invoiceRes.invoices || [],
-        });
-      } else {
-        // Jika array kosong, pastikan dashboard tahu (untuk tampilkan onboarding)
-        setDashboardData(prev => ({ ...prev, company: null }));
-      }
-    } catch (error) {
-      console.error("Dashboard Fetch Error:", error);
-      toast.error("Gagal memuat data dashboard terbaru.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Fetch list of companies initially
   useEffect(() => {
-    fetchAllData();
-  }, []);
+    const loadCompanies = async () => {
+      setLoading(true);
+      try {
+        await fetchCompanies();
+      } catch (error) {
+        console.error("Gagal mengambil data perusahaan:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadCompanies();
+  }, [fetchCompanies]);
 
-  // Logic Derivation (Calculated with Precision)
+  // Set default selectedCompanyId if none selected
+  useEffect(() => {
+    if (companies.length > 0 && !selectedCompanyId) {
+      setSelectedCompanyId(companies[0].id);
+    }
+  }, [companies, selectedCompanyId, setSelectedCompanyId]);
+
+  // Fetch detailed data whenever selectedCompanyId changes
+  useEffect(() => {
+    if (selectedCompanyId) {
+      const loadCompanyDetails = async () => {
+        try {
+          await Promise.all([
+            fetchWasteLogs(selectedCompanyId),
+            fetchPickupRequests(selectedCompanyId),
+            fetchInvoices(selectedCompanyId)
+          ]);
+        } catch (error) {
+          console.error("Gagal menyinkronkan data perusahaan:", error);
+        }
+      };
+      loadCompanyDetails();
+    }
+  }, [selectedCompanyId, fetchWasteLogs, fetchPickupRequests, fetchInvoices]);
+
+  const activeCompany = useMemo(() => {
+    return companies.find(c => c.id === selectedCompanyId) || companies[0] || null;
+  }, [companies, selectedCompanyId]);
+
+  // Logic Derivation
   const stats = useMemo(() => {
-    const { wasteLogs, pickups, invoices } = dashboardData;
-
     return {
       totalWaste: wasteLogs.reduce((acc, curr) => acc + (Number(curr.volume) || 0), 0),
-      activePickups: pickups.filter(p => p.status !== "COMPLETED").length,
+      activePickups: pickupRequests.filter(p => p.status !== "COMPLETED").length,
       unpaidAmount: invoices
         .filter(i => i.status === "UNPAID")
         .reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0),
       unpaidCount: invoices.filter(i => i.status === "UNPAID").length,
     };
-  }, [dashboardData]);
+  }, [wasteLogs, pickupRequests, invoices]);
 
   // UI Handlers
   const getPickupStatusBadge = (status: string) => {
@@ -112,7 +111,7 @@ export default function CompanyDashboard() {
   }
 
   // State: Jika Belum Punya Perusahaan (Onboarding)
-  if (!dashboardData.company) {
+  if (!activeCompany) {
     return (
       <DashboardLayout role="PERUSAHAAN">
         <div className="max-w-6xl mx-auto py-4 text-left font-sans space-y-8 animate-in fade-in duration-500">
@@ -138,13 +137,10 @@ export default function CompanyDashboard() {
               </div>
             </div>
           </div>
-          {/* Steps Preview dihilangkan untuk efisiensi ruang */}
         </div>
       </DashboardLayout>
     );
   }
-
-  const { company } = dashboardData;
 
   return (
     <DashboardLayout role="PERUSAHAAN">
@@ -157,22 +153,40 @@ export default function CompanyDashboard() {
               <Building2 size={28} />
             </div>
             <div>
-              <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-none">{company.companyName}</h1>
+              {companies.length > 1 ? (
+                <div className="space-y-1">
+                  <Select value={selectedCompanyId || ""} onValueChange={(value) => setSelectedCompanyId(value)}>
+                    <SelectTrigger className="h-10 px-4 rounded-xl border-slate-200 bg-slate-50 focus:ring-emerald-500 font-bold transition-all text-slate-800 text-lg w-[280px] md:w-[350px]">
+                      <SelectValue placeholder="Pilih Perusahaan" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border border-slate-150 rounded-xl shadow-lg text-slate-900 font-bold z-50">
+                      {companies.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.companyName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Pilih perusahaan aktif</p>
+                </div>
+              ) : (
+                <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-none">{activeCompany.companyName}</h1>
+              )}
               <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mt-2 flex items-center gap-1.5">
-                <MapPin size={12} className="text-slate-400" /> {company.address}
+                <MapPin size={12} className="text-slate-400" /> {activeCompany.address}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
             <Badge className="bg-slate-900 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider border-none h-10 flex items-center">
-              NIB: {company.nib}
+              NIB: {activeCompany.nib}
             </Badge>
             <Badge className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider border-none h-10 flex items-center">
-              Kewajiban: {company.docType}
+              Kewajiban: {activeCompany.docType}
             </Badge>
             <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider h-10 flex items-center">
-              Status: {company.status}
+              Status: {activeCompany.status}
             </Badge>
           </div>
         </div>
@@ -205,11 +219,11 @@ export default function CompanyDashboard() {
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Kepatuhan ESG</p>
               <div>
                 <h2 className="text-4xl font-black text-slate-900 tracking-tighter italic leading-none">
-                  {company.score || "N/A"}<span className="text-lg">/100</span>
+                  {activeCompany.score || "N/A"}<span className="text-lg">/100</span>
                 </h2>
-                <span className={`inline-flex px-2 py-0.5 mt-2 rounded border text-[8px] font-bold ${Number(company.score) >= 80 ? "text-emerald-700 border-emerald-200 bg-emerald-50" : "text-amber-700 border-amber-200 bg-amber-50"
+                <span className={`inline-flex px-2 py-0.5 mt-2 rounded border text-[8px] font-bold ${Number(activeCompany.score) >= 80 ? "text-emerald-700 border-emerald-200 bg-emerald-50" : "text-amber-700 border-amber-200 bg-amber-50"
                   }`}>
-                  {company.score ? (Number(company.score) >= 80 ? "EXCELLENT COMPLIANCE" : "FAIR COMPLIANCE") : "WAITING FOR AUDIT"}
+                  {activeCompany.score ? (Number(activeCompany.score) >= 80 ? "EXCELLENT COMPLIANCE" : "FAIR COMPLIANCE") : "WAITING FOR AUDIT"}
                 </span>
               </div>
             </div>
@@ -233,14 +247,14 @@ export default function CompanyDashboard() {
               </Button>
             </div>
 
-            {dashboardData.pickups.length === 0 ? (
+            {pickupRequests.length === 0 ? (
               <div className="py-16 text-center text-slate-400 border-2 border-dashed border-slate-100 rounded-[2rem]">
                 <Clock className="mx-auto text-slate-200 mb-2" size={48} />
                 <p className="text-sm font-bold">Belum ada riwayat pengangkutan limbah.</p>
               </div>
             ) : (
               <div className="space-y-4">
-                {dashboardData.pickups.slice(0, 5).map((pick) => (
+                {pickupRequests.slice(0, 5).map((pick) => (
                   <div key={pick.id} className="p-5 border border-slate-100 rounded-2xl hover:bg-slate-50/50 transition-all flex flex-col md:flex-row justify-between items-center gap-4">
                     <div className="flex items-center gap-4 w-full">
                       <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 shrink-0">
@@ -251,7 +265,7 @@ export default function CompanyDashboard() {
                           <span className="font-black text-slate-800 text-xs">{pick.id}</span>
                           {getPickupStatusBadge(pick.status)}
                         </div>
-                        <p className="text-xs font-bold text-slate-500">{pick.wasteType} â€¢ {pick.volume}</p>
+                        <p className="text-xs font-bold text-slate-500">{pick.wasteType} • {pick.volume}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-4 w-full md:w-auto justify-end">
@@ -295,7 +309,7 @@ export default function CompanyDashboard() {
                 <CheckCircle2 className="text-emerald-500 shrink-0" size={18} />
                 <div>
                   <h5 className="text-xs font-black text-emerald-900 leading-none">Sistem Stabil</h5>
-                  <p className="text-[9px] text-emerald-700 leading-tight mt-1">Tidak ada anomali limbah terdeteksi oleh AI SIJAGA.</p>
+                  <p className="text-[9px] text-emerald-700 leading-tight mt-1">Tidak ada anomali limbah terdeteksi oleh AI PANTAU LIMBAH.</p>
                 </div>
               </div>
             </div>

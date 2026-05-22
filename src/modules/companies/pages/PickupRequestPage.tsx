@@ -20,9 +20,16 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
 export default function PickupRequestPage() {
-  const { currentUser, companies, pickupRequests, createPickupRequest, selectedCompanyId } = useSijagaStore();
+  const { currentUser, companies, pickupRequests, createPickupRequest, selectedCompanyId, fetchPickupRequests } = useSijagaStore();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const navigate = useNavigate();
+
+  // Sync data with backend API
+  React.useEffect(() => {
+    if (selectedCompanyId) {
+      fetchPickupRequests(selectedCompanyId);
+    }
+  }, [selectedCompanyId, fetchPickupRequests]);
 
   // Form states
   const [wasteType, setWasteType] = useState("Oli Bekas");
@@ -78,7 +85,7 @@ export default function PickupRequestPage() {
   const volumeNumber = parseFloat(volume) || 0;
   const estimatedCost = volumeNumber * 10000; // Rp 10.000 per unit
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!company) {
       toast.error("Anda harus mendaftarkan perusahaan terlebih dahulu.");
@@ -97,21 +104,26 @@ export default function PickupRequestPage() {
       return;
     }
 
-    createPickupRequest({
-      companyId: company.id,
-      companyName: company.companyName,
-      wasteType,
-      volume: `${volume} ${unit}`,
-      date,
-      address,
-      transporterId: "TRANS-001"
-    });
+    try {
+      await createPickupRequest({
+        companyId: company.id,
+        companyName: company.companyName,
+        wasteType,
+        volume: `${volume} ${unit}`,
+        date,
+        address,
+        transporterId: "TRANS-001"
+      });
 
-    toast.success("Permintaan penjemputan berhasil diajukan. Menunggu kalkulasi biaya transporter.");
-    setIsDialogOpen(false);
-    // Reset Form
-    setVolume("");
-    setDate("");
+      setIsDialogOpen(false);
+      // Reset Form
+      setVolume("");
+      setDate("");
+    } catch (error: any) {
+      const serverMsg = error.response?.data?.error || error.response?.data?.message || "Gagal mengajukan permintaan penjemputan.";
+      toast.error(serverMsg);
+      console.error("API Error:", error);
+    }
   };
 
   const getStatusBadge = (status: string) => {

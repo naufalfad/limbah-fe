@@ -15,8 +15,8 @@ import { toast } from 'sonner';
 
 // Import Partisi
 import { LocationPicker } from './LocationPicker';
-import { UKLUPLFormFields } from './UKLUPLFormFields'; 
-import { SPPLFormFields } from './SPPLFormFields'; 
+import { UKLUPLFormFields } from './UKLUPLFormFields';
+import { SPPLFormFields } from './SPPLFormFields';
 import { FileUploadWithPreview } from './FileUploadWithPreview';
 import { useFormPersist } from '@/hooks/useFormPersist';
 
@@ -71,13 +71,13 @@ export const EnvironmentalRegistration = () => {
   };
 
   const determineType = () => {
-    const isUklUpl = 
-      Number(formValues.luas_lahan_m2) > 10000 || 
-      Number(formValues.jumlah_karyawan) > 100 || 
+    const isUklUpl =
+      Number(formValues.luas_lahan_m2) > 10000 ||
+      Number(formValues.jumlah_karyawan) > 100 ||
       formValues.status_penanaman_modal === 'PMA';
-    
+
     setDocType(isUklUpl ? 'UKL_UPL' : 'SPPL');
-    setStep(4); 
+    setStep(4);
   };
 
   const steps = [
@@ -91,15 +91,14 @@ export const EnvironmentalRegistration = () => {
   return (
     <FormProvider {...methods}>
       <div className="container mx-auto max-w-5xl py-8 px-4">
-        
+
         {/* STEPPER UI - Membuat user nyaman tahu progresnya */}
         <div className="flex items-center justify-between mb-8 px-4">
           {steps.map((s, i) => (
             <React.Fragment key={s.id}>
               <div className="flex flex-col items-center gap-2">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all ${
-                  step >= s.id ? "bg-brand-600 border-brand-600 text-white" : "bg-white border-slate-200 text-slate-400"
-                }`}>
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all ${step >= s.id ? "bg-brand-600 border-brand-600 text-white" : "bg-white border-slate-200 text-slate-400"
+                  }`}>
                   {step > s.id ? <CheckCircle2 className="w-6 h-6" /> : s.id}
                 </div>
                 <span className={`text-xs font-medium ${step >= s.id ? "text-brand-700" : "text-slate-400"}`}>{s.label}</span>
@@ -123,9 +122,9 @@ export const EnvironmentalRegistration = () => {
               {docType && <Badge variant="outline" className="bg-brand-50 text-brand-700 border-brand-200 text-lg py-1 px-4">{docType}</Badge>}
             </div>
           </CardHeader>
-          
+
           <CardContent className="p-8">
-            
+
             {/* STEP 1: IDENTITAS */}
             {step === 1 && (
               <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
@@ -145,7 +144,7 @@ export const EnvironmentalRegistration = () => {
                   </div>
                   <div className="space-y-2">
                     <Label className="text-slate-600">Status Penanaman Modal</Label>
-                    <Select 
+                    <Select
                       value={formValues.status_penanaman_modal} // Perbaikan: Tambahkan value agar Select sinkron
                       onValueChange={(v) => setValue('status_penanaman_modal', v as any)}
                     >
@@ -192,8 +191,8 @@ export const EnvironmentalRegistration = () => {
                       <Input {...register("longitude")} placeholder="Lng" readOnly className="bg-slate-50" />
                     </div>
                     <div className="rounded-xl overflow-hidden border-2 border-slate-100">
-                      <LocationPicker 
-                        lat={formValues.latitude} 
+                      <LocationPicker
+                        lat={formValues.latitude}
                         lng={formValues.longitude}
                         onLocationSelected={(lat: number, lng: number) => {
                           setValue('latitude', lat);
@@ -203,18 +202,18 @@ export const EnvironmentalRegistration = () => {
                     </div>
                   </div>
                   <div className="space-y-4 bg-slate-50 p-6 rounded-xl">
-                     <div className="space-y-2">
+                    <div className="space-y-2">
                       <Label>Luas Lahan (m2)</Label>
                       <Input type="number" {...register("luas_lahan_m2", { valueAsNumber: true })} className="bg-white" />
-                     </div>
-                     <div className="space-y-2">
+                    </div>
+                    <div className="space-y-2">
                       <Label>Luas Bangunan (m2)</Label>
                       <Input type="number" {...register("luas_bangunan_m2", { valueAsNumber: true })} className="bg-white" />
-                     </div>
-                     <div className="space-y-2">
+                    </div>
+                    <div className="space-y-2">
                       <Label>Status Lahan</Label>
                       <Input {...register("status_lahan")} placeholder="Contoh: Milik Sendiri / Sewa" className="bg-white" />
-                     </div>
+                    </div>
                   </div>
                 </div>
                 <div className="flex gap-3">
@@ -276,16 +275,16 @@ export const EnvironmentalRegistration = () => {
             {/* STEP 4 & 5 tetap seperti logika sebelumnya namun dibungkus animasi */}
             {step === 4 && (
               <div className="animate-in fade-in zoom-in-95 duration-500">
-                 {/* Header penentu tipe yang lebih mencolok */}
-                 <div className="text-center mb-8 bg-brand-50 p-8 rounded-2xl border-2 border-dashed border-brand-200">
-                    <Badge className="mb-2 bg-brand-600">Sistem SIJAGA Berhasil Menganalisis</Badge>
-                    <h2 className="text-4xl font-black text-brand-900 tracking-tight">WAJIB {docType}</h2>
-                    <p className="text-slate-600 mt-2">Silakan lengkapi rincian teknis pengelolaan lingkungan di bawah ini.</p>
-                 </div>
-                 
-                 {docType === 'SPPL' ? <SPPLFormFields /> : <UKLUPLFormFields />}
-                 
-                 <div className="flex gap-3 mt-10 pt-6 border-t">
+                {/* Header penentu tipe yang lebih mencolok */}
+                <div className="text-center mb-8 bg-brand-50 p-8 rounded-2xl border-2 border-dashed border-brand-200">
+                  <Badge className="mb-2 bg-brand-600">Sistem PANTAU LIMBAH Berhasil Menganalisis</Badge>
+                  <h2 className="text-4xl font-black text-brand-900 tracking-tight">WAJIB {docType}</h2>
+                  <p className="text-slate-600 mt-2">Silakan lengkapi rincian teknis pengelolaan lingkungan di bawah ini.</p>
+                </div>
+
+                {docType === 'SPPL' ? <SPPLFormFields /> : <UKLUPLFormFields />}
+
+                <div className="flex gap-3 mt-10 pt-6 border-t">
                   <Button variant="outline" onClick={() => setStep(1)} className="h-12">Ubah Data Identitas</Button>
                   <Button onClick={() => setStep(5)} className="flex-1 bg-brand-600 h-12 text-lg">
                     Lanjut ke Lampiran Dokumen <ChevronRight className="ml-2 w-5 h-5" />
@@ -304,7 +303,7 @@ export const EnvironmentalRegistration = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <FileUploadWithPreview label="File NIB (Nomor Induk Berusaha)" accept=".pdf" onChange={(f) => setValue('file_nib', f)} />
                   <FileUploadWithPreview label="File NPWP Perusahaan" accept=".pdf,.jpg" onChange={(f) => setValue('file_npwp', f)} />
-                  
+
                   {/* Partisi Lampiran Khusus UKL-UPL */}
                   {docType === 'UKL_UPL' && (
                     <>
@@ -312,18 +311,18 @@ export const EnvironmentalRegistration = () => {
                       <FileUploadWithPreview label="Layout Mesin & Siteplan" accept=".pdf,.jpg" onChange={(f) => setValue('file_siteplan', f)} />
                     </>
                   )}
-                  
+
                   <FileUploadWithPreview label="Foto Lokasi Usaha" accept="image/*" onChange={(f) => setValue('foto_lokasi', f)} />
                 </div>
 
                 <div className="bg-gray-50 p-6 rounded-lg border-2 border-dashed">
-                    <h3 className="font-bold mb-4">Pernyataan Pertanggungjawaban</h3>
-                    <label className="flex items-start gap-3 cursor-pointer">
-                        <input type="checkbox" required className="mt-1 w-5 h-5" />
-                        <span className="text-sm text-gray-600 leading-relaxed">
-                            Saya penanggung jawab usaha menyatakan bahwa seluruh data yang diisikan benar dan saya bersedia melakukan pengelolaan lingkungan sesuai dokumen yang diajukan.
-                        </span>
-                    </label>
+                  <h3 className="font-bold mb-4">Pernyataan Pertanggungjawaban</h3>
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input type="checkbox" required className="mt-1 w-5 h-5" />
+                    <span className="text-sm text-gray-600 leading-relaxed">
+                      Saya penanggung jawab usaha menyatakan bahwa seluruh data yang diisikan benar dan saya bersedia melakukan pengelolaan lingkungan sesuai dokumen yang diajukan.
+                    </span>
+                  </label>
                 </div>
 
                 <div className="flex gap-4">
