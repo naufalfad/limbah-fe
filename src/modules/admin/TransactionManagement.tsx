@@ -45,9 +45,8 @@ export default function TransactionManagement() {
       calculatedStatus = "REFUNDED";
     }
 
-    const transporter = matchedPickup ? matchedPickup.transporterName : "Kas Daerah Pemda";
+    const transporter = matchedPickup ? (matchedPickup.transporterName ?? "PT. Transport Limbah Indonesia") : "Kas Daerah Pemda";
     const type = inv.type || (matchedPickup ? `${matchedPickup.wasteType} Transport` : "Retribusi SPPL");
-
     return {
       id: inv.id,
       company: inv.companyName,

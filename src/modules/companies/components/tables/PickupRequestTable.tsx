@@ -1,6 +1,6 @@
 // src/modules/companies/components/tables/PickupRequestTable.tsx
 import React, { useState, useMemo } from "react";
-import { useSijagaStore } from "@/store/useSijagaStore";
+import { useSijagaStore, PickupRequest } from "@/store/useSijagaStore";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,16 +11,16 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { Truck, Eye, ShieldCheck, MapPin } from "lucide-react";
+import { Truck, Eye, ShieldCheck } from "lucide-react";
 
 export default function PickupRequestTable() {
     const navigate = useNavigate();
     const { pickupRequests, selectedCompanyId } = useSijagaStore();
 
-    // State Bukti Serah Terima Dialog
-    const [selectedProofUrl, setSelectedProofUrl] = useState<string | null>(null);
+    // FIX ERROR: Ubah state tracking dari string URL menjadi utuh objek PickupRequest (GRASP Information Expert) [3]
+    const [selectedPick, setSelectedPick] = useState<PickupRequest | null>(null);
 
-    // Filter pickup berdasarkan perusahaan aktif (Information Expert) [3]
+    // Filter pickup berdasarkan perusahaan aktif [3]
     const companyPickups = useMemo(() => {
         return pickupRequests.filter((p) => p.companyId === selectedCompanyId);
     }, [pickupRequests, selectedCompanyId]);
@@ -136,7 +136,8 @@ export default function PickupRequestTable() {
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
-                                                onClick={() => setSelectedProofUrl(pick.evidencePhoto || null)}
+                                                // FIX ERROR: Set state selectedPick dengan seluruh objek data 'pick' yang aman [3]
+                                                onClick={() => setSelectedPick(pick)}
                                                 className="text-emerald-600 hover:text-emerald-700 font-black text-[9px] tracking-widest uppercase rounded-none h-8 px-2"
                                             >
                                                 <Eye size={12} className="mr-1 inline-block" /> Bukti
@@ -154,9 +155,9 @@ export default function PickupRequestTable() {
             </div>
 
             {/* DIALOG POPUP PREVIEW BUKTI SERAH TERIMA MANIFEST */}
-            {selectedProofUrl && (
-                <Dialog open={!!selectedProofUrl} onOpenChange={() => setSelectedProofUrl(null)}>
-                    <DialogContent className="sm:max-w-[400px] rounded-none bg-white border border-slate-200 text-left p-6 z-[9999]">
+            {selectedPick && (
+                <Dialog open={!!selectedPick} onOpenChange={() => setSelectedPick(null)}>
+                    <DialogContent className="sm:max-w-[480px] rounded-none bg-white border border-slate-200 text-left p-6 z-[9999]">
                         <DialogHeader className="border-b pb-3">
                             <DialogTitle className="text-xs font-black tracking-widest text-slate-800 uppercase flex items-center gap-2">
                                 <Truck size={14} className="text-emerald-600" /> BAP Serah Terima Limbah B3
@@ -164,26 +165,39 @@ export default function PickupRequestTable() {
                             <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1">Dokumentasi fisik muatan divalidasi oleh driver</p>
                         </DialogHeader>
 
-                        <div className="py-4">
-                            <div className="border border-slate-200 p-1 bg-slate-50 rounded-none max-h-[260px] overflow-hidden flex items-center justify-center">
-                                <img
-                                    src={selectedProofUrl}
-                                    alt="Bukti Serah Terima"
-                                    className="w-full h-full object-cover rounded-none"
-                                />
+                        <div className="py-4 text-left">
+                            <div className="flex gap-2 overflow-x-auto pb-4 max-h-[160px] custom-scrollbar">
+                                {(() => {
+                                    let photos = [];
+                                    try {
+                                        // FIX ERROR: Akses evidencePhoto aman dari state seleksi 'selectedPick' [3]
+                                        photos = JSON.parse(selectedPick.evidencePhoto || "[]");
+                                        if (!Array.isArray(photos)) photos = [selectedPick.evidencePhoto];
+                                    } catch (e) {
+                                        photos = [selectedPick.evidencePhoto || ""];
+                                    }
+                                    return photos.map((p, i) => (
+                                        <img key={i} src={p} alt={`Bukti ${i}`} className="max-h-[150px] rounded-none border border-slate-200 shrink-0" />
+                                    ));
+                                })()}
                             </div>
 
-                            <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-none flex items-start gap-2 text-emerald-900 mt-4">
-                                <ShieldCheck className="text-emerald-600 shrink-0 mt-0.5" size={14} />
-                                <p className="text-[9px] font-semibold leading-relaxed text-emerald-700">
-                                    Data manifest pengangkutan telah diverifikasi secara elektronik oleh petugas transporter dan disinkronkan dengan peta patroli DLH [3].
-                                </p>
+                            {/* FIX ERROR: Tampilan aman diakses dari objek status state 'selectedPick' [3] */}
+                            <div className="space-y-2.5 bg-slate-50 p-3 border border-slate-200 rounded-none text-xs">
+                                <div>
+                                    <p className="text-[8px] font-black uppercase text-slate-400 tracking-widest leading-none">Volume Aktual Terangkut</p>
+                                    <p className="font-bold text-slate-800 mt-1 leading-none">{selectedPick.actualVolume || "Tidak ada laporan volume"}</p>
+                                </div>
+                                <div className="border-t pt-2">
+                                    <p className="text-[8px] font-black uppercase text-slate-400 tracking-widest leading-none">Catatan Lapangan Transporter</p>
+                                    <p className="font-bold text-slate-800 text-xs italic mt-1 leading-normal">"{selectedPick.transportReport || "-"}"</p>
+                                </div>
                             </div>
                         </div>
 
                         <div className="flex gap-2">
                             <Button
-                                onClick={() => setSelectedProofUrl(null)}
+                                onClick={() => setSelectedPick(null)}
                                 className="w-full h-10 bg-slate-900 hover:bg-slate-800 text-white font-black text-[9px] tracking-widest uppercase rounded-none"
                             >
                                 Tutup Dokumen
