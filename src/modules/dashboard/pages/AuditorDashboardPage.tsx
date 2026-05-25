@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import { useSijagaStore } from "@/store/useSijagaStore";
@@ -15,8 +15,20 @@ import {
   Download, Leaf, FileText, CheckCircle2, Map as MapIcon, BarChart4, ClipboardList, Database
 } from "lucide-react";
 import { toast } from "sonner";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+
+// Map size invalidator helper
+function ResizeMap() {
+  const map = useMap();
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [map]);
+  return null;
+}
 
 export default function AuditorDashboardPage() {
   const { tab } = useParams();
@@ -283,6 +295,7 @@ export default function AuditorDashboardPage() {
                       </Marker>
                     );
                   })}
+                  <ResizeMap />
                 </MapContainer>
               </div>
             </Card>

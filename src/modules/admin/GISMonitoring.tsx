@@ -1,9 +1,21 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   MapContainer, TileLayer, Polygon, Popup, LayersControl,
-  ZoomControl, FeatureGroup,
+  ZoomControl, FeatureGroup, useMap,
 } from 'react-leaflet';
 import L from 'leaflet';
+
+// Map invalidator helper to handle screen size changes, tab switches, and fullscreen mode transitions
+function ResizeMap({ isFullscreen }: { isFullscreen: boolean }) {
+  const map = useMap();
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [map, isFullscreen]);
+  return null;
+}
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { useSijagaStore } from '@/store/useSijagaStore';
 import { Badge } from "@/components/ui/badge";
@@ -124,8 +136,6 @@ export default function GISMonitoring() {
 
   // ── Panel visibility states ───────────────────────────────────────────────
   const [showLeftPanel, setShowLeftPanel] = useState(true);
-  const [showLegend, setShowLegend] = useState(true);
-  const [showStatsBar, setShowStatsBar] = useState(true);
 
   // Left panel collapse
   const [leftCollapsed, setLeftCollapsed] = useState(false);
@@ -248,17 +258,14 @@ export default function GISMonitoring() {
             label={showLeftPanel ? 'Tutup Panel' : 'Buka Panel'}
             onClick={() => setShowLeftPanel(v => !v)}
           />
-          {/* Toggle legend */}
-          <ControlBtn
-            icon={showLegend ? <EyeOff size={15} /> : <Eye size={15} />}
-            label="Legenda"
-            onClick={() => setShowLegend(v => !v)}
-          />
           {/* Refresh */}
           <ControlBtn
             icon={<RefreshCw size={15} />}
             label="Refresh"
-            onClick={() => toast.info('Data GIS disinkronkan.')}
+            onClick={() => {
+              fetchCompanies();
+              toast.info('Data GIS disinkronkan.');
+            }}
           />
           {/* Fullscreen toggle */}
           <ControlBtn
@@ -270,68 +277,50 @@ export default function GISMonitoring() {
         </div>
       </div>
 
-      {/* ── STATS BAR (below top bar) ─────────────────────────────────────── */}
-      {showStatsBar && (
-        <div className="absolute top-[4.5rem] left-1/2 -translate-x-1/2 z-[1000] pointer-events-none">
-          <div className="pointer-events-auto flex items-center gap-2 bg-slate-900/90 backdrop-blur-xl rounded-2xl px-4 py-2.5 shadow-xl border border-white/5">
-            <StatPill icon={<span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block shrink-0" />}
-              label="AMDAL" value={countAmdal} />
-            <div className="w-px h-5 bg-white/10" />
-            <StatPill icon={<span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block shrink-0" />}
-              label="UKL-UPL" value={countUkl} />
-            <div className="w-px h-5 bg-white/10" />
-            <StatPill icon={<span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block shrink-0" />}
-              label="SPPL" value={countSppl} />
-            <div className="w-px h-5 bg-white/10" />
-            <StatPill icon={<Factory size={12} className="text-slate-400" />}
-              label="Total" value={allCompanyPolygons.length} />
-            <button
-              className="ml-1 text-slate-500 hover:text-slate-300 transition-colors"
-              onClick={() => setShowStatsBar(false)}
-            >
-              <X size={12} />
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* ── LEFT PANEL ───────────────────────────────────────────────────── */}
       {showLeftPanel && (
-        <div className="absolute top-[4.5rem] left-4 z-[1000] w-[260px] pointer-events-auto space-y-3">
-
-          {/* Layer Controls */}
+        <div className="absolute top-[4.5rem] left-4 z-[1000] w-[320px] pointer-events-auto flex flex-col gap-3" style={{ maxHeight: 'calc(100vh - 6rem)' }}>
+          
+          {/* Stats & Filter Panel */}
           <PanelCard
-            title="Layer Kewajiban"
+            title="Kewajiban Lingkungan"
             icon={<Layers size={13} />}
-            collapsible
           >
-            <div className="space-y-3 text-xs font-medium">
+            {/* Stats Grid */}
+            <div className="grid grid-cols-3 gap-2 mb-3">
+              <div 
+                className={cn("border rounded-xl p-2 flex flex-col items-center justify-center cursor-pointer transition-all", showAmdal ? "bg-red-500/10 border-red-500/30 hover:bg-red-500/20" : "bg-slate-800/50 border-white/5 opacity-60 hover:opacity-100")} 
+                onClick={() => setShowAmdal(!showAmdal)}
+              >
+                <span className={cn("text-xl font-black leading-none", showAmdal ? "text-red-500" : "text-slate-400")}>{countAmdal}</span>
+                <span className={cn("text-[9px] font-bold mt-1 uppercase", showAmdal ? "text-red-600" : "text-slate-500")}>AMDAL</span>
+                <div className={cn("w-full h-1 mt-1.5 rounded-full transition-all", showAmdal ? "bg-red-500" : "bg-slate-700")} />
+              </div>
+              <div 
+                className={cn("border rounded-xl p-2 flex flex-col items-center justify-center cursor-pointer transition-all", showUklUpl ? "bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20" : "bg-slate-800/50 border-white/5 opacity-60 hover:opacity-100")} 
+                onClick={() => setShowUklUpl(!showUklUpl)}
+              >
+                <span className={cn("text-xl font-black leading-none", showUklUpl ? "text-amber-500" : "text-slate-400")}>{countUkl}</span>
+                <span className={cn("text-[9px] font-bold mt-1 uppercase", showUklUpl ? "text-amber-600" : "text-slate-500")}>UKL-UPL</span>
+                <div className={cn("w-full h-1 mt-1.5 rounded-full transition-all", showUklUpl ? "bg-amber-500" : "bg-slate-700")} />
+              </div>
+              <div 
+                className={cn("border rounded-xl p-2 flex flex-col items-center justify-center cursor-pointer transition-all", showSppl ? "bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/20" : "bg-slate-800/50 border-white/5 opacity-60 hover:opacity-100")} 
+                onClick={() => setShowSppl(!showSppl)}
+              >
+                <span className={cn("text-xl font-black leading-none", showSppl ? "text-emerald-500" : "text-slate-400")}>{countSppl}</span>
+                <span className={cn("text-[9px] font-bold mt-1 uppercase", showSppl ? "text-emerald-600" : "text-slate-500")}>SPPL</span>
+                <div className={cn("w-full h-1 mt-1.5 rounded-full transition-all", showSppl ? "bg-emerald-500" : "bg-slate-700")} />
+              </div>
+            </div>
 
-              {/* Obligation toggles */}
-              <LayerToggle
-                color="bg-red-500"
-                label="AMDAL (Risiko Tinggi)"
-                sublabel="Dampak lingkungan besar"
-                checked={showAmdal}
-                onChange={setShowAmdal}
-              />
-              <LayerToggle
-                color="bg-amber-500"
-                label="UKL-UPL (Menengah)"
-                sublabel="Dampak sedang terkendali"
-                checked={showUklUpl}
-                onChange={setShowUklUpl}
-              />
-              <LayerToggle
-                color="bg-emerald-500"
-                label="SPPL (Rendah)"
-                sublabel="Dampak minimal"
-                checked={showSppl}
-                onChange={setShowSppl}
-              />
-
-              <div className="border-t border-white/10 pt-3 space-y-3">
-                <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Overlay Lingkungan</p>
+            {/* Other Layers Collapsible */}
+            <details className="group">
+              <summary className="text-[10px] font-bold text-slate-400 cursor-pointer hover:text-emerald-400 transition-colors list-none flex items-center justify-between bg-slate-800/50 px-3 py-2 rounded-lg">
+                <span>Overlay Lingkungan Tambahan</span>
+                <ChevronDown size={12} className="group-open:rotate-180 transition-transform" />
+              </summary>
+              <div className="pt-3 pb-1 px-1 space-y-2">
                 <LayerToggle
                   color="bg-blue-500"
                   label="DAS Aliran Sungai"
@@ -345,41 +334,54 @@ export default function GISMonitoring() {
                   onChange={setIndustrialLayer}
                 />
               </div>
-            </div>
+            </details>
           </PanelCard>
 
           {/* Company list */}
-          <PanelCard
-            title="Daftar Perusahaan"
-            icon={<Building2 size={13} />}
-            collapsible
-          >
-            <div className="max-h-56 overflow-y-auto space-y-1.5 pr-0.5">
-              {allCompanyPolygons.map(c => {
-                const style = OBLIGATION_STYLES[c.obligation];
-                return (
-                  <button
-                    key={c.id}
-                    onClick={() => setSelected(c)}
-                    className={cn(
-                      "w-full text-left px-3 py-2.5 rounded-xl transition-all border",
-                      selected?.id === c.id
-                        ? "bg-white/10 border-white/20"
-                        : "bg-white/5 border-white/5 hover:bg-white/10"
-                    )}
-                  >
-                    <div className="flex items-start gap-2">
-                      <span className={cn("w-2 h-2 rounded-full shrink-0 mt-1", style.tailwind)} />
-                      <div>
-                        <p className="text-[11px] font-bold text-white leading-tight">{c.name}</p>
-                        <p className="text-[9px] text-slate-400 mt-0.5">{c.sector}</p>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
+          <div className="flex-1 bg-slate-900/95 backdrop-blur-xl rounded-2xl border border-white/5 shadow-2xl flex flex-col min-h-0">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 shrink-0">
+              <div className="flex items-center gap-2 text-emerald-400">
+                <Building2 size={13} />
+                <span className="text-[10px] font-black uppercase tracking-widest text-white">Daftar Perusahaan</span>
+              </div>
+              <Badge variant="secondary" className="bg-white/10 hover:bg-white/20 text-[9px] text-slate-300 font-bold border-none">
+                {visibleCompanies.length} Data
+              </Badge>
             </div>
-          </PanelCard>
+            <div className="flex-1 overflow-y-auto p-2 space-y-1.5 custom-scrollbar">
+              {visibleCompanies.length === 0 ? (
+                <div className="p-4 text-center text-slate-500 text-xs font-semibold">
+                  Tidak ada data yang ditampilkan.
+                </div>
+              ) : (
+                visibleCompanies.map(c => {
+                  const style = OBLIGATION_STYLES[c.obligation];
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => setSelected(c)}
+                      className={cn(
+                        "w-full text-left px-3 py-2.5 rounded-xl transition-all border",
+                        selected?.id === c.id
+                          ? "bg-white/10 border-white/20"
+                          : "bg-white/5 border-white/5 hover:bg-white/10"
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0 pr-2">
+                          <p className="text-[11px] font-bold text-white leading-tight truncate mb-1" title={c.name}>{c.name}</p>
+                          <p className="text-[9px] text-slate-400 truncate" title={c.sector}>{c.sector}</p>
+                        </div>
+                        <span className={cn("text-[8px] font-black px-1.5 py-0.5 rounded shrink-0 text-white shadow-sm", style.tailwind)}>
+                          {c.obligation}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
 
         </div>
       )}
@@ -427,33 +429,6 @@ export default function GISMonitoring() {
         </div>
       )}
 
-      {/* ── LEGEND (BOTTOM LEFT) ─────────────────────────────────────────── */}
-      {showLegend && (
-        <div className="absolute bottom-6 left-4 z-[1000] pointer-events-auto">
-          <div className="bg-white/95 backdrop-blur-xl rounded-2xl px-4 py-3 shadow-xl border border-slate-100">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Legenda Kewajiban</p>
-              <button onClick={() => setShowLegend(false)} className="text-slate-400 hover:text-slate-600">
-                <X size={11} />
-              </button>
-            </div>
-            <div className="space-y-1.5">
-              <LegendRow color="bg-red-500" label="AMDAL" sub="Risiko Tinggi – Wajib AMDAL" />
-              <LegendRow color="bg-amber-500" label="UKL-UPL" sub="Risiko Sedang – Wajib UKL-UPL" />
-              <LegendRow color="bg-emerald-500" label="SPPL" sub="Risiko Rendah – Wajib SPPL" />
-            </div>
-            {!showStatsBar && (
-              <button
-                onClick={() => setShowStatsBar(true)}
-                className="mt-2 w-full text-[9px] font-bold text-emerald-600 hover:underline"
-              >
-                Tampilkan Statistik
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* ── THE MAP ──────────────────────────────────────────────────────── */}
       <div className="w-full h-full z-0">
         <MapContainer
@@ -463,6 +438,7 @@ export default function GISMonitoring() {
           style={{ height: '100%', width: '100%' }}
         >
           <ZoomControl position="bottomright" />
+          <ResizeMap isFullscreen={isFullscreen} />
 
           <LayersControl position="bottomright">
             <LayersControl.BaseLayer checked name="Voyager (Default)">
@@ -707,29 +683,7 @@ function LayerToggle({
   );
 }
 
-function StatPill({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
-  return (
-    <div className="flex items-center gap-1.5">
-      {icon}
-      <div>
-        <span className="text-base font-black text-white leading-none">{value}</span>
-        <span className="text-[9px] font-bold text-slate-400 ml-1">{label}</span>
-      </div>
-    </div>
-  );
-}
 
-function LegendRow({ color, label, sub }: { color: string; label: string; sub: string }) {
-  return (
-    <div className="flex items-center gap-2">
-      <span className={cn("w-3 h-3 rounded-sm shrink-0", color)} />
-      <div>
-        <span className="text-[10px] font-black uppercase tracking-widest text-slate-700">{label}</span>
-        <span className="text-[9px] text-slate-400 ml-1.5">{sub}</span>
-      </div>
-    </div>
-  );
-}
 
 function ObligationInfoBox({ obligation, compact = false }: { obligation: DocObligation; compact?: boolean }) {
   const info: Record<DocObligation, { icon: React.ReactNode; text: string; bg: string; text_color: string }> = {

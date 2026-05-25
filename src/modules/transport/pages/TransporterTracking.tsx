@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import { useSijagaStore } from "@/store/useSijagaStore";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,6 +25,18 @@ let DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
+// Map size invalidator helper
+function ResizeMap() {
+  const map = useMap();
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [map]);
+  return null;
+}
+
 // Custom truck icon representation
 const truckSvg = `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#059669" width="32" height="32" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -43,24 +55,40 @@ const TruckIcon = L.divIcon({
 });
 
 export default function TransporterTracking() {
-  const { pickupRequests } = useSijagaStore();
-  const activeOrders = pickupRequests.filter(p => p.status === "ON_THE_ROAD" || p.status === "LOADED" || p.status === "PAID");
+  const { pickupRequests, currentUser, companies, fetchPickupRequests, fetchCompanies } = useSijagaStore();
+
+  useEffect(() => {
+    fetchPickupRequests();
+    fetchCompanies();
+  }, [fetchPickupRequests, fetchCompanies]);
+
+  const transporterDbId = currentUser?.id;
+  const myRequests = pickupRequests.filter(p => p.transporterId === transporterDbId);
+  const activeOrders = myRequests.filter(p => p.status === "ON_THE_ROAD" || p.status === "LOADED" || p.status === "PAID");
 
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   
-  // Simulation Coordinates (From Coblong to Rancaekek)
-  const routePoints: L.LatLngTuple[] = [
-    [-6.9034, 107.6189], // Coblong
-    [-6.9100, 107.6250],
-    [-6.9150, 107.6350],
-    [-6.9200, 107.6450],
-    [-6.9250, 107.6550],
-    [-6.9300, 107.6650],
-    [-6.9350, 107.6750],
-    [-6.9300, 107.6850],
-    [-6.9250, 107.6950],
-    [-6.9147, 107.6098], // Destination (Cicadas Facility)
+  // Find associated company for actual coordinates
+  const selectedCompany = companies.find(c => c.id === selectedOrder?.companyId);
+  
+  const startPos: [number, number] = [
+    selectedCompany?.lat ? parseFloat(selectedCompany.lat) : -6.9034,
+    selectedCompany?.lng ? parseFloat(selectedCompany.lng) : 107.6189
   ];
+  const destPos: [number, number] = [-6.9147, 107.6098]; // Destination (Cicadas Facility)
+
+  // Dynamically calculate route steps
+  const routePoints: L.LatLngTuple[] = useMemo(() => {
+    const points: L.LatLngTuple[] = [];
+    const steps = 10;
+    for (let i = 0; i <= steps; i++) {
+      points.push([
+        startPos[0] + (destPos[0] - startPos[0]) * (i / steps),
+        startPos[1] + (destPos[1] - startPos[1]) * (i / steps)
+      ]);
+    }
+    return points;
+  }, [startPos[0], startPos[1]]);
 
   const [truckPos, setTruckPos] = useState<[number, number]>([-6.9034, 107.6189]);
   const [routeIndex, setRouteIndex] = useState(0);
@@ -77,6 +105,13 @@ export default function TransporterTracking() {
       setSelectedOrder(activeOrders[0]);
     }
   }, [activeOrders, selectedOrder]);
+
+  // Update truck pos when route changes
+  useEffect(() => {
+    setTruckPos([routePoints[0][0], routePoints[0][1]]);
+    setRouteIndex(0);
+    setDistanceLeft(12.5); // Mock init distance
+  }, [routePoints]);
 
   const startSimulation = () => {
     if (isSimulating) return;
@@ -259,10 +294,9 @@ export default function TransporterTracking() {
           </div>
         </div>
 
-        {/* MAP PANEL */}
-        <div className="flex-1 h-full bg-slate-100 relative">
+        <div className="flex-1 h-full bg-slate-100 relative z-0">
           <MapContainer 
-            center={[-6.9034, 107.6189]} 
+            center={startPos} 
             zoom={13} 
             style={{ height: "100%", width: "100%" }}
             className="z-0"
@@ -287,7 +321,7 @@ export default function TransporterTracking() {
             </Marker>
 
             {/* Start Marker */}
-            <Marker position={[-6.9034, 107.6189]}>
+            <Marker position={startPos}>
               <Popup>
                 <div className="text-left">
                   <h4 className="font-bold text-slate-800">Titik Muat Limbah</h4>
@@ -297,7 +331,7 @@ export default function TransporterTracking() {
             </Marker>
 
             {/* End Marker */}
-            <Marker position={[-6.9147, 107.6098]}>
+            <Marker position={destPos}>
               <Popup>
                 <div className="text-left">
                   <h4 className="font-bold text-slate-800">Pusat Pengolahan Limbah</h4>
@@ -307,6 +341,7 @@ export default function TransporterTracking() {
             </Marker>
 
             <MapCenterUpdater pos={truckPos} />
+            <ResizeMap />
           </MapContainer>
         </div>
 
@@ -314,7 +349,6 @@ export default function TransporterTracking() {
     </DashboardLayout>
   );
 }
-
 // Map helper to center on truck position
 function MapCenterUpdater({ pos }: { pos: [number, number] }) {
   const map = useMap();

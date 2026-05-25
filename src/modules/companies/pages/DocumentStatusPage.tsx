@@ -16,13 +16,26 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
 export default function DocumentStatusPage() {
-  const { currentUser, companies, selectedCompanyId } = useSijagaStore();
+  const { currentUser, companies, selectedCompanyId, downloadCompanyCertificate } = useSijagaStore();
   const navigate = useNavigate();
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [showQRVerify, setShowQRVerify] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   // Find company
   const company = companies.find(c => c.id === selectedCompanyId) || companies.find(c => c.id === currentUser?.companyId) || companies[0];
+
+  const handleDownloadPdf = async () => {
+    if (!company) return;
+    setIsDownloading(true);
+    try {
+      await downloadCompanyCertificate(company.id, company.companyName);
+    } catch (error) {
+      console.error("Download failed", error);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   if (!company) {
     return (
@@ -157,11 +170,12 @@ export default function DocumentStatusPage() {
         {/* Certificate Dialog Preview */}
         {isPreviewOpen && (
           <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-            <DialogContent className="max-w-[700px] w-full bg-stone-50 border border-stone-200 rounded-[2.5rem] p-8 md:p-12 text-stone-900 shadow-2xl relative">
-              {/* Certificate Border decoration */}
-              <div className="absolute inset-4 border-2 border-dashed border-stone-300 rounded-[2rem] pointer-events-none" />
+            <DialogContent className="max-w-[700px] w-[95vw] md:w-full bg-stone-50 border border-stone-200 rounded-[2.5rem] p-0 text-stone-900 shadow-2xl overflow-hidden">
+              <div className="max-h-[85vh] overflow-y-auto p-6 md:p-12 relative w-full">
+                {/* Certificate Border decoration */}
+                <div className="absolute inset-4 border-2 border-dashed border-stone-300 rounded-[2rem] pointer-events-none" />
 
-              <div className="space-y-8 text-center relative z-10">
+                <div className="space-y-8 text-center relative z-10">
                 {/* Government Header */}
                 <div className="flex flex-col items-center border-b-4 border-double border-stone-800 pb-6">
                   <div className="w-14 h-14 bg-stone-200 rounded-full flex items-center justify-center text-stone-700 shadow-inner mb-3">
@@ -184,18 +198,18 @@ export default function DocumentStatusPage() {
                     Berdasarkan Undang-Undang Perlindungan dan Pengelolaan Lingkungan Hidup, Dinas Lingkungan Hidup menyatakan bahwa pelaku usaha di bawah ini:
                   </p>
 
-                  <div className="grid grid-cols-3 gap-y-2 border-y border-stone-200 py-4 font-bold text-left">
+                  <div className="flex flex-col md:grid md:grid-cols-3 gap-y-1 md:gap-y-2 border-y border-stone-200 py-4 font-bold text-left text-[10px] md:text-xs">
                     <span className="text-stone-500">Nama Perusahaan</span>
-                    <span className="col-span-2 text-stone-900">: {company.companyName}</span>
+                    <span className="md:col-span-2 text-stone-900 break-words"><span className="hidden md:inline">:</span> {company.companyName}</span>
 
-                    <span className="text-stone-500">Nomor Induk Berusaha</span>
-                    <span className="col-span-2 text-stone-900">: {company.nib}</span>
+                    <span className="text-stone-500 mt-2 md:mt-0">Nomor Induk Berusaha</span>
+                    <span className="md:col-span-2 text-stone-900 break-words"><span className="hidden md:inline">:</span> {company.nib}</span>
 
-                    <span className="text-stone-500">Alamat Usaha</span>
-                    <span className="col-span-2 text-stone-900">: {company.address}</span>
+                    <span className="text-stone-500 mt-2 md:mt-0">Alamat Usaha</span>
+                    <span className="md:col-span-2 text-stone-900 break-words"><span className="hidden md:inline">:</span> {company.address}</span>
 
-                    <span className="text-stone-500">Dokumen Lingkungan</span>
-                    <span className="col-span-2 text-stone-900">: {company.docType} (Rekomendasi Penapisan Otomatis)</span>
+                    <span className="text-stone-500 mt-2 md:mt-0">Dokumen Lingkungan</span>
+                    <span className="md:col-span-2 text-stone-900 break-words"><span className="hidden md:inline">:</span> {company.docType} (Rekomendasi Penapisan Otomatis)</span>
                   </div>
 
                   <p className="text-justify font-medium">
@@ -260,14 +274,16 @@ export default function DocumentStatusPage() {
 
                 {/* Print button */}
                 <div className="pt-4 flex gap-3">
-                  <Button variant="outline" className="flex-1 rounded-xl h-11 border-stone-300 text-stone-700 font-bold gap-2">
-                    <Download size={16} /> Unduh PDF
+                  <Button disabled={isDownloading} onClick={handleDownloadPdf} variant="outline" className="flex-1 rounded-xl h-11 border-stone-300 text-stone-700 font-bold gap-2 disabled:opacity-70">
+                    {isDownloading ? <Sparkles className="animate-pulse" size={16} /> : <Download size={16} />} 
+                    {isDownloading ? "Mengunduh..." : "Unduh PDF"}
                   </Button>
-                  <Button onClick={() => setIsPreviewOpen(false)} className="flex-1 rounded-xl h-11 bg-stone-900 hover:bg-stone-800 text-stone-100 font-bold">
+                  <Button disabled={isDownloading} onClick={() => setIsPreviewOpen(false)} className="flex-1 rounded-xl h-11 bg-stone-900 hover:bg-stone-800 text-stone-100 font-bold">
                     Tutup Preview
                   </Button>
                 </div>
 
+              </div>
               </div>
             </DialogContent>
           </Dialog>

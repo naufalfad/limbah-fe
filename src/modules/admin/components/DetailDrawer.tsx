@@ -1,27 +1,64 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Dialog, DialogContent, DialogHeader, DialogTitle 
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Building2, MapPin, FileText, User, 
   CheckCircle2, AlertTriangle, XCircle, 
-  Download, ExternalLink, Factory, Phone, X, Award, Info
+  Download, ExternalLink, Factory, Phone, X, 
+  Eye, Loader2, MessageSquare, ClipboardList
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSijagaStore } from '@/store/useSijagaStore';
+import { toast } from 'sonner';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+
+// Map invalidator helper to ensure correct dimensions inside dynamically rendered tabs/modals
+function ResizeMap() {
+  const map = useMap();
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [map]);
+  return null;
+}
+
+const BACKEND_URL = "http://localhost:5000";
 
 export function DetailDrawer({ isOpen, onClose, data }: any) {
   const { updateCompanyStatus } = useSijagaStore();
   const [decision, setDecision] = useState<string>("");
+  const [catatanRevisi, setCatatanRevisi] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [previewDoc, setPreviewDoc] = useState<string | null>(null);
+
+  // Reset keputusan setiap kali modal dibuka dengan data baru
+  useEffect(() => {
+    if (isOpen) {
+      setDecision("");
+      setCatatanRevisi("");
+      setPreviewDoc(null);
+    }
+  }, [isOpen, data?.id]);
 
   if (!data) return null;
 
   const handleSave = async () => {
+    if (!decision) {
+      toast.error("Silakan pilih keputusan terlebih dahulu.");
+      return;
+    }
+    if ((decision === "REVISION" || decision === "REJECT") && !catatanRevisi.trim()) {
+      toast.error("Catatan alasan wajib diisi untuk keputusan Revisi atau Tolak.");
+      return;
+    }
+
     let mappedStatus: "APPROVED" | "REVIEW" | "REJECTED" = "APPROVED";
     if (decision === "APPROVE") mappedStatus = "APPROVED";
     if (decision === "REVISION") mappedStatus = "REVIEW";
@@ -30,273 +67,481 @@ export function DetailDrawer({ isOpen, onClose, data }: any) {
     setIsSaving(true);
     try {
       await updateCompanyStatus(data.id, mappedStatus);
+      toast.success(
+        mappedStatus === "APPROVED"
+          ? `✅ ${data.companyName} berhasil DISETUJUI!`
+          : mappedStatus === "REVIEW"
+          ? `📋 ${data.companyName} dikembalikan untuk REVISI.`
+          : `❌ ${data.companyName} DITOLAK.`
+      );
       onClose();
     } catch (err) {
+      toast.error("Gagal menyimpan keputusan. Periksa koneksi server.");
       console.error(err);
     } finally {
       setIsSaving(false);
     }
   };
 
+  const docUrl = (path: string | null | undefined) => {
+    if (!path) return null;
+    // Already a full URL or relative path from backend
+    return path.startsWith("http") ? path : `${BACKEND_URL}${path}`;
+  };
+
+  const nibUrl = docUrl(data.docNibUrl);
+  const npwpUrl = docUrl(data.docNpwpUrl);
+  const siteplanUrl = docUrl(data.docSiteplanUrl);
+
+  const docLabel = data.docType === "UKL_UPL" ? "UKL-UPL" : (data.docType || "SPPL");
+
+  const currentStatusColor: Record<string, string> = {
+    PENDING: "bg-blue-100 text-blue-700",
+    REVIEW: "bg-amber-100 text-amber-700",
+    APPROVED: "bg-emerald-100 text-emerald-700",
+    REJECTED: "bg-red-100 text-red-700",
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-[90vw] lg:max-w-6xl p-0 overflow-hidden rounded-3xl border-none shadow-2xl bg-white text-left">
-        
-        {/* --- HEADER --- */}
-        <div className="bg-slate-900 text-white p-6 flex justify-between items-center shrink-0">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center shadow-lg">
-              <Building2 size={24} />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <Badge className="bg-emerald-600/20 text-emerald-400 border-emerald-500/50 text-[10px] uppercase font-black">
-                  {data.docType}
-                </Badge>
-                <span className="text-slate-500 font-mono text-[10px] tracking-widest">{data.id}</span>
-              </div>
-              <DialogTitle className="text-2xl font-black tracking-tight leading-none text-white">
-                {data.companyName}
-              </DialogTitle>
-            </div>
-          </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400">
-            <X size={24} />
-          </button>
-        </div>
-
-        {/* --- BODY (Dua Kolom) --- */}
-        <div className="flex h-[75vh] flex-col md:flex-row bg-slate-50 overflow-hidden">
+    <>
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-[95vw] lg:max-w-7xl p-0 overflow-hidden rounded-3xl border-none shadow-2xl bg-white text-left">
           
-          {/* KOLOM KIRI: Dokumentasi & Detail Teknis */}
-          <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-            <div className="max-w-3xl mx-auto space-y-10">
-              
-              {/* Seksi Identitas */}
-              <section className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
-                <InfoBlock icon={<User size={18}/>} label="Penanggung Jawab" value={`${data.picName} (${data.picRole || 'PIC'})`} />
-                <InfoBlock icon={<Phone size={18}/>} label="Kontak / WhatsApp" value={data.picPhone || "-"} />
-                <div className="col-span-full">
-                  <InfoBlock icon={<MapPin size={18}/>} label="Alamat Usaha" value={data.address} />
+          {/* --- HEADER --- */}
+          <div className="bg-slate-900 text-white px-8 py-6 flex justify-between items-center shrink-0">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                <Building2 size={24} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <Badge className="bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 text-[10px] uppercase font-black tracking-widest">
+                    {docLabel}
+                  </Badge>
+                  <Badge className={`${currentStatusColor[data.status] || "bg-slate-100 text-slate-500"} border-none text-[10px] uppercase font-black`}>
+                    {data.status}
+                  </Badge>
+                  <span className="text-slate-500 font-mono text-[10px] tracking-widest hidden md:block">{data.id}</span>
                 </div>
-              </section>
+                <DialogTitle className="text-2xl font-black tracking-tight leading-none text-white">
+                  {data.companyName}
+                </DialogTitle>
+              </div>
+            </div>
+            <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400">
+              <X size={24} />
+            </button>
+          </div>
 
-              <Separator />
+          {/* --- BODY (Dua Kolom) --- */}
+          <div className="flex h-[78vh] flex-col md:flex-row bg-slate-50 overflow-hidden">
 
-              {/* Seksi Teknis Dokumen */}
-              <section className="space-y-4 text-left">
-                <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
-                  <Factory size={18} className="text-emerald-500" /> Rincian Teknis & Operasional
-                </h4>
-                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase mb-1">NIB</p>
-                      <p className="text-sm font-bold text-slate-800">{data.nib}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase mb-1">NPWP</p>
-                      <p className="text-sm font-bold text-slate-800">{data.npwp}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase mb-1">KBLI</p>
-                      <p className="text-sm font-bold text-slate-800">{data.kbli || "-"}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Tahun Berdiri</p>
-                      <p className="text-sm font-bold text-slate-800">{data.yearBuilt}</p>
+            {/* KOLOM KIRI: Tabs konten */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar">
+              <Tabs defaultValue="identitas" className="h-full flex flex-col">
+                <div className="bg-white border-b border-slate-100 px-8 pt-4 shrink-0">
+                  <TabsList className="bg-slate-100 rounded-xl h-10">
+                    <TabsTrigger value="identitas" className="rounded-lg text-xs font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                      <User size={13} className="mr-1.5" /> Identitas
+                    </TabsTrigger>
+                    <TabsTrigger value="teknis" className="rounded-lg text-xs font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                      <Factory size={13} className="mr-1.5" /> Teknis & Operasional
+                    </TabsTrigger>
+                    <TabsTrigger value="dokumen" className="rounded-lg text-xs font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                      <FileText size={13} className="mr-1.5" /> Lampiran Dokumen
+                    </TabsTrigger>
+                    <TabsTrigger value="gis" className="rounded-lg text-xs font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                      <MapPin size={13} className="mr-1.5" /> GIS & Lokasi
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
+
+                {/* TAB: IDENTITAS */}
+                <TabsContent value="identitas" className="flex-1 p-8 space-y-6 mt-0">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <InfoCard label="Nama Perusahaan" value={data.companyName} icon={<Building2 size={16} />} />
+                    <InfoCard label="Status Modal" value={data.investmentType || "-"} icon={<ClipboardList size={16} />} />
+                    <InfoCard label="Penanggung Jawab" value={`${data.picName} — ${data.picRole || "PIC"}`} icon={<User size={16} />} />
+                    <InfoCard label="Kontak / WhatsApp" value={data.picPhone || "-"} icon={<Phone size={16} />} />
+                    <InfoCard label="NIB" value={data.nib} icon={<ClipboardList size={16} />} />
+                    <InfoCard label="NPWP Perusahaan" value={data.npwp} icon={<ClipboardList size={16} />} />
+                    <InfoCard label="KBLI (Bidang Usaha)" value={data.kbli || "-"} icon={<Factory size={16} />} />
+                    <InfoCard label="Tahun Berdiri" value={data.yearBuilt || "-"} icon={<ClipboardList size={16} />} />
+                    <div className="col-span-full">
+                      <InfoCard label="Alamat Usaha" value={data.address} icon={<MapPin size={16} />} />
                     </div>
                   </div>
-                  <Separator />
-                  <div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Bahan Baku Utama</p>
-                    <p className="text-sm text-slate-600 leading-relaxed font-semibold">{data.rawMaterials || "Tidak ada data bahan baku"}</p>
-                  </div>
+                </TabsContent>
+
+                {/* TAB: TEKNIS */}
+                <TabsContent value="teknis" className="flex-1 p-8 space-y-6 mt-0">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Luas Bangunan</p>
-                      <p className="text-sm font-bold text-slate-800">{data.buildingArea?.toLocaleString()} m²</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Luas Tanah</p>
-                      <p className="text-sm font-bold text-slate-800">{data.landArea?.toLocaleString()} m²</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Investasi</p>
-                      <p className="text-sm font-bold text-slate-800">Rp {data.investment?.toLocaleString()}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Tenaga Kerja</p>
-                      <p className="text-sm font-bold text-slate-800">{data.employees} Orang</p>
-                    </div>
+                    <MetricCard label="Luas Bangunan" value={`${data.buildingArea?.toLocaleString() || 0} m²`} color="bg-blue-50 text-blue-700" />
+                    <MetricCard label="Luas Tanah" value={`${data.landArea?.toLocaleString() || 0} m²`} color="bg-indigo-50 text-indigo-700" />
+                    <MetricCard label="Modal Investasi" value={`Rp ${data.investment?.toLocaleString() || 0}`} color="bg-emerald-50 text-emerald-700" />
+                    <MetricCard label="Tenaga Kerja" value={`${data.employees || 0} Orang`} color="bg-amber-50 text-amber-700" />
                   </div>
-                  <Separator />
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Sumber Air</p>
-                      <p className="text-sm font-bold text-slate-800">{data.waterSource || "-"}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Sumber Energi</p>
-                      <p className="text-sm font-bold text-slate-800">{data.powerSource || "-"}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Jam Operasional</p>
-                      <p className="text-sm font-bold text-slate-800">{data.operationalHours || "-"}</p>
-                    </div>
+                    <InfoCard label="Sumber Air" value={data.waterSource || "-"} icon={<Factory size={16} />} />
+                    <InfoCard label="Sumber Energi" value={data.powerSource || "-"} icon={<Factory size={16} />} />
+                    <InfoCard label="Jam Operasional" value={data.operationalHours || "-"} icon={<ClipboardList size={16} />} />
                   </div>
-                </div>
-              </section>
+                  <div className="bg-white p-6 rounded-2xl border border-slate-200">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Bahan Baku Utama</p>
+                    <p className="text-sm font-semibold text-slate-700 leading-relaxed">{data.rawMaterials || "Tidak ada data."}</p>
+                  </div>
+                  {data.wasteInfo && (
+                    <div className="bg-white p-6 rounded-2xl border border-slate-200">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Informasi Limbah</p>
+                      <p className="text-sm font-semibold text-slate-700 leading-relaxed">{data.wasteInfo}</p>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-3 p-4 rounded-2xl border border-slate-200 bg-white">
+                    <div className={cn("w-5 h-5 rounded-full flex items-center justify-center shrink-0", data.hasTps ? "bg-emerald-500" : "bg-slate-300")}>
+                      <CheckCircle2 size={12} className="text-white" />
+                    </div>
+                    <span className="text-sm font-bold text-slate-700">
+                      {data.hasTps ? "Memiliki TPS Limbah" : "Belum memiliki TPS Limbah"}
+                    </span>
+                  </div>
+                </TabsContent>
 
-              {/* Seksi GIS */}
-              <section className="space-y-4 text-left">
-                <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
-                  <MapPin size={18} className="text-emerald-500" /> Pemetaan Geospasial & Koordinat
-                </h4>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  <div className="lg:col-span-2 aspect-video bg-slate-200 rounded-3xl border-4 border-white shadow-lg relative overflow-hidden group">
-                    <div 
-                      className="absolute inset-0 bg-cover bg-center"
-                      style={{
-                        backgroundImage: `url('https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/pin-s-l+e11d08(${data.lng},${data.lat})/${data.lng},${data.lat},14/800x450?access_token=mock')`,
-                        backgroundColor: '#f1f5f9'
-                      }}
-                    />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-12 h-12 bg-rose-500/20 flex items-center justify-center rounded-full animate-ping" />
-                      <MapPin className="text-rose-600 absolute animate-bounce" size={32} />
+                {/* TAB: LAMPIRAN DOKUMEN */}
+                <TabsContent value="dokumen" className="flex-1 p-8 mt-0">
+                  <div className="space-y-4">
+                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Berkas yang Diunggah Perusahaan</h3>
+                    <div className="space-y-3">
+                      <DocPreviewRow
+                        label="Scan NIB (Nomor Induk Berusaha)"
+                        url={nibUrl}
+                        required
+                        onPreview={() => nibUrl && setPreviewDoc(nibUrl)}
+                      />
+                      <DocPreviewRow
+                        label="Scan NPWP Perusahaan"
+                        url={npwpUrl}
+                        required
+                        onPreview={() => npwpUrl && setPreviewDoc(npwpUrl)}
+                      />
+                      <DocPreviewRow
+                        label="Siteplan / Layout Lokasi"
+                        url={siteplanUrl}
+                        required={false}
+                        onPreview={() => siteplanUrl && setPreviewDoc(siteplanUrl)}
+                      />
                     </div>
+
                   </div>
-                  <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-center gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center font-bold">L</div>
+                </TabsContent>
+
+                {/* TAB: GIS */}
+                <TabsContent value="gis" className="flex-1 p-8 mt-0">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-2 aspect-video bg-slate-200 rounded-3xl border-4 border-white shadow-lg relative overflow-hidden z-10">
+                      {isOpen && data?.lat && data?.lng ? (
+                        <MapContainer
+                          center={[parseFloat(data.lat) || -6.9175, parseFloat(data.lng) || 107.6191]}
+                          zoom={15}
+                          style={{ height: "100%", width: "100%" }}
+                        >
+                          <TileLayer
+                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                          />
+                          <Marker position={[parseFloat(data.lat) || -6.9175, parseFloat(data.lng) || 107.6191]}>
+                            <Popup>
+                              <div className="p-2 text-slate-800 text-xs font-sans text-left space-y-1">
+                                <h4 className="font-black text-slate-900">{data.companyName}</h4>
+                                <p className="text-[10px] text-slate-500 font-medium leading-tight">{data.address}</p>
+                                <p className="text-[9px] text-emerald-600 font-bold uppercase">Koordinat: {data.lat}, {data.lng}</p>
+                              </div>
+                            </Popup>
+                          </Marker>
+                          <ResizeMap />
+                        </MapContainer>
+                      ) : (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-100 gap-2">
+                          <MapPin className="text-slate-400 animate-bounce" size={32} />
+                          <p className="text-slate-400 text-xs font-bold">Koordinat GPS tidak valid atau belum ditentukan</p>
+                        </div>
+                      )}
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${data.lat},${data.lng}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="absolute bottom-4 right-4 z-[999] flex items-center gap-1.5 bg-white/90 backdrop-blur-sm text-slate-700 text-xs font-bold px-3 py-2 rounded-xl hover:bg-white shadow-md transition-all border border-slate-200"
+                      >
+                        <ExternalLink size={12} /> Buka di Google Maps
+                      </a>
+                    </div>
+                    <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col gap-5">
                       <div>
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Latitude</p>
-                        <p className="text-sm font-black text-slate-800 font-mono">{data.lat}</p>
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Latitude</p>
+                        <p className="text-lg font-black text-slate-800 font-mono">{data.lat || "-"}</p>
+                      </div>
+                      <Separator />
+                      <div>
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Longitude</p>
+                        <p className="text-lg font-black text-slate-800 font-mono">{data.lng || "-"}</p>
+                      </div>
+                      <Separator />
+                      <div>
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Alamat</p>
+                        <p className="text-xs font-semibold text-slate-600 leading-relaxed">{data.address || "-"}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center font-bold">G</div>
-                      <div>
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Longitude</p>
-                        <p className="text-sm font-black text-slate-800 font-mono">{data.lng}</p>
-                      </div>
-                    </div>
-                    <Badge className="bg-slate-100 text-slate-700 font-mono text-[9px] py-1 border-none self-start font-black">
-                      GEO-STATUS: ACCURATE
-                    </Badge>
                   </div>
+                </TabsContent>
+              </Tabs>
+            </div>
+
+            {/* KOLOM KANAN: Keputusan Verifikasi */}
+            <div className="w-full md:w-[340px] bg-white border-l border-slate-200 p-8 flex flex-col gap-6 shrink-0 text-left overflow-y-auto custom-scrollbar">
+
+              {/* Status saat ini */}
+              <div className="p-4 bg-slate-50 rounded-2xl space-y-1">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status Saat Ini</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <Badge className={`${currentStatusColor[data.status] || "bg-slate-100 text-slate-500"} border-none px-3 py-1.5 text-[11px] font-black`}>
+                    {data.status}
+                  </Badge>
                 </div>
-              </section>
-            </div>
-          </div>
+              </div>
 
-          {/* KOLOM KANAN: Lampiran & Aksi (Sidebar di dalam Modal) */}
-          <div className="w-full md:w-[350px] bg-white border-l border-slate-200 p-8 flex flex-col gap-8 shrink-0 text-left">
-            
-            {/* Lampiran Berkas */}
-            <div className="space-y-4">
-              <h4 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Lampiran Dokumen</h4>
-              <div className="space-y-2">
-                <FileItem title={`Scan_${data.docType}_Original.pdf`} />
-                <FileItem title="Scan_NIB_Perusahaan.pdf" />
-                <FileItem title="NPWP_Perusahaan.jpg" />
-                <FileItem title="Siteplan_Layout.pdf" />
+              {/* Aksi Keputusan */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Keputusan Petugas DLH</h4>
+                <div className="space-y-2">
+                  <DecisionCard 
+                    active={decision === "APPROVE"}
+                    onClick={() => setDecision("APPROVE")}
+                    icon={<CheckCircle2 size={18} className="text-emerald-500"/>}
+                    label="Setujui Pendaftaran"
+                    sublabel="Perusahaan mendapat status APPROVED"
+                    color="bg-emerald-50 border-emerald-400"
+                  />
+                  <DecisionCard 
+                    active={decision === "REVISION"}
+                    onClick={() => setDecision("REVISION")}
+                    icon={<AlertTriangle size={18} className="text-amber-500"/>}
+                    label="Minta Revisi Berkas"
+                    sublabel="Kembalikan untuk perbaikan dokumen"
+                    color="bg-amber-50 border-amber-400"
+                  />
+                  <DecisionCard 
+                    active={decision === "REJECT"}
+                    onClick={() => setDecision("REJECT")}
+                    icon={<XCircle size={18} className="text-rose-500"/>}
+                    label="Tolak Pendaftaran"
+                    sublabel="Berkas tidak memenuhi persyaratan"
+                    color="bg-rose-50 border-rose-400"
+                  />
+                </div>
+              </div>
+
+              {/* Catatan Alasan — hanya muncul jika Revisi atau Tolak */}
+              {(decision === "REVISION" || decision === "REJECT") && (
+                <div className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                  <label className="flex items-center gap-1.5 text-xs font-black text-slate-500 uppercase tracking-widest">
+                    <MessageSquare size={12} />
+                    Catatan / Alasan <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    value={catatanRevisi}
+                    onChange={(e) => setCatatanRevisi(e.target.value)}
+                    rows={4}
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none transition-all"
+                    placeholder={
+                      decision === "REVISION"
+                        ? "Sebutkan dokumen mana yang perlu diperbaiki..."
+                        : "Jelaskan alasan penolakan secara spesifik..."
+                    }
+                  />
+                </div>
+              )}
+
+              {/* Tombol Simpan */}
+              <div className="mt-auto pt-4 border-t border-slate-100 space-y-2">
+                <Button 
+                  disabled={!decision || isSaving}
+                  onClick={handleSave}
+                  className={cn(
+                    "w-full h-14 rounded-2xl font-black text-base transition-all shadow-lg disabled:opacity-30 disabled:cursor-not-allowed",
+                    decision === "APPROVE" && "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200",
+                    decision === "REVISION" && "bg-amber-500 hover:bg-amber-600 text-white shadow-amber-200",
+                    decision === "REJECT" && "bg-rose-600 hover:bg-rose-700 text-white shadow-rose-200",
+                    !decision && "bg-slate-900 text-white"
+                  )}
+                >
+                  {isSaving ? (
+                    <span className="flex items-center gap-2 justify-center">
+                      <Loader2 size={18} className="animate-spin" /> MEMPROSES...
+                    </span>
+                  ) : (
+                    !decision ? "PILIH KEPUTUSAN" :
+                    decision === "APPROVE" ? "✅ SETUJUI SEKARANG" :
+                    decision === "REVISION" ? "📋 KIRIM PERMINTAAN REVISI" :
+                    "❌ TOLAK PENDAFTARAN"
+                  )}
+                </Button>
+                <p className="text-center text-[10px] text-slate-400 font-bold">
+                  Keputusan akan langsung tersinkron ke database & notifikasi perusahaan
+                </p>
               </div>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-            {/* Aksi Validasi (Radio Style) */}
-            <div className="space-y-4">
-              <h4 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Hasil Pemeriksaan</h4>
-              <div className="space-y-2">
-                <DecisionCard 
-                  active={decision === "APPROVE"}
-                  onClick={() => setDecision("APPROVE")}
-                  icon={<CheckCircle2 size={18} className="text-emerald-500"/>}
-                  label="Setujui"
-                  color="bg-emerald-50 border-emerald-500"
-                />
-                <DecisionCard 
-                  active={decision === "REVISION"}
-                  onClick={() => setDecision("REVISION")}
-                  icon={<AlertTriangle size={18} className="text-amber-500"/>}
-                  label="Revisi Berkas"
-                  color="bg-amber-50 border-amber-500"
-                />
-                <DecisionCard 
-                  active={decision === "REJECT"}
-                  onClick={() => setDecision("REJECT")}
-                  icon={<XCircle size={18} className="text-rose-500"/>}
-                  label="Tolak"
-                  color="bg-rose-50 border-rose-500"
-                />
+      {/* Full-screen document preview overlay */}
+      {previewDoc && (
+        <Dialog open={!!previewDoc} onOpenChange={() => setPreviewDoc(null)}>
+          <DialogContent className="max-w-5xl w-[95vw] h-[90vh] p-0 rounded-3xl overflow-hidden flex flex-col bg-slate-950 border border-slate-800 shadow-2xl">
+            <div className="bg-slate-900 text-white px-6 py-4 flex justify-between items-center shrink-0 border-b border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                  <FileText size={16} />
+                </div>
+                <div>
+                  <p className="text-sm font-black tracking-wide text-slate-100">Pratinjau Dokumen Lampiran</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{data.companyName}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <a 
+                  href={previewDoc} 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  className="flex items-center gap-1.5 bg-slate-800 hover:bg-emerald-600 text-slate-300 hover:text-white px-3 py-2 rounded-xl text-xs font-bold transition-all border border-slate-700 hover:border-emerald-500 shadow-sm"
+                >
+                  <Download size={14} /> Unduh Berkas
+                </a>
+                <div className="w-px h-6 bg-slate-700 mx-1" />
+                <button 
+                  onClick={() => setPreviewDoc(null)} 
+                  className="p-2 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 rounded-xl transition-all"
+                >
+                  <X size={20} />
+                </button>
               </div>
             </div>
-
-            {/* Tombol Simpan di kanan bawah */}
-            <div className="mt-auto pt-6">
-              <Button 
-                disabled={!decision || isSaving}
-                onClick={handleSave}
-                className="w-full h-14 rounded-2xl bg-slate-900 hover:bg-emerald-600 text-white font-black text-lg transition-all shadow-xl disabled:opacity-20"
-              >
-                {isSaving ? "MENYIMPAN..." : "SIMPAN DATA"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+            {previewDoc.match(/\.(jpg|jpeg|png|webp)$/i) ? (
+              <div className="flex-1 overflow-hidden p-6 bg-slate-950/50 flex items-center justify-center relative backdrop-blur-md">
+                <img 
+                  src={previewDoc} 
+                  alt="Preview" 
+                  className="max-w-full max-h-full object-contain rounded-xl shadow-2xl ring-1 ring-white/10" 
+                />
+              </div>
+            ) : (
+              <iframe 
+                src={previewDoc} 
+                title="PDF" 
+                className="w-full flex-1 border-none bg-slate-100" 
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
   );
 }
 
-// --- SMALL COMPONENTS ---
+// ─── Sub-components ─────────────────────────────────────────────────────────
 
-function InfoBlock({ icon, label, value }: any) {
+function InfoCard({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) {
   return (
-    <div className="flex gap-4 items-start text-left">
-      <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
+    <div className="bg-white rounded-2xl border border-slate-200 p-5 flex items-start gap-4">
+      <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
         {icon}
       </div>
-      <div>
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
-        <p className="text-sm font-bold text-slate-900">{value}</p>
+      <div className="min-w-0">
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{label}</p>
+        <p className="text-sm font-bold text-slate-900 break-words leading-snug">{value || "-"}</p>
       </div>
     </div>
   );
 }
 
-function FileItem({ title }: { title: string }) {
+function MetricCard({ label, value, color }: { label: string; value: string; color: string }) {
   return (
-    <div className="group flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl hover:border-emerald-500 hover:bg-white transition-all cursor-pointer">
-      <div className="flex items-center gap-2 overflow-hidden">
-        <FileText size={14} className="text-slate-400 group-hover:text-emerald-500" />
-        <span className="text-[11px] font-bold text-slate-600 truncate">{title}</span>
-      </div>
-      <Download size={14} className="text-slate-400 group-hover:text-emerald-500" />
+    <div className={`${color} rounded-2xl p-5 space-y-1`}>
+      <p className="text-[10px] font-black uppercase tracking-widest opacity-70">{label}</p>
+      <p className="text-base font-black leading-tight">{value}</p>
     </div>
   );
 }
 
-function DecisionCard({ active, onClick, icon, label, color }: any) {
+function DocPreviewRow({ label, url, required, onPreview }: {
+  label: string;
+  url: string | null;
+  required: boolean;
+  onPreview: () => void;
+}) {
+  return (
+    <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:border-emerald-300 transition-all group">
+      <div className="flex items-center gap-3 min-w-0">
+        <div className={cn(
+          "w-9 h-9 rounded-xl flex items-center justify-center shrink-0",
+          url ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-400"
+        )}>
+          <FileText size={16} />
+        </div>
+        <div className="min-w-0">
+          <p className="text-[11px] font-black text-slate-700 truncate">{label}</p>
+          {url ? (
+            <p className="text-[10px] text-emerald-600 font-bold">✓ File tersedia</p>
+          ) : (
+            <p className={cn("text-[10px] font-bold", required ? "text-red-500" : "text-slate-400 italic")}>
+              {required ? "⚠ Belum diunggah (Wajib)" : "Tidak diunggah (Opsional)"}
+            </p>
+          )}
+        </div>
+      </div>
+      {url && (
+        <div className="flex items-center gap-1.5 ml-3 shrink-0">
+          <button
+            onClick={onPreview}
+            className="flex items-center gap-1 text-[10px] font-black text-slate-400 hover:text-emerald-600 bg-slate-100 hover:bg-emerald-50 px-2.5 py-1.5 rounded-lg transition-all"
+          >
+            <Eye size={11} /> Preview
+          </button>
+          <a
+            href={url}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1 text-[10px] font-black text-slate-400 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg transition-all"
+          >
+            <Download size={11} /> Unduh
+          </a>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DecisionCard({ active, onClick, icon, label, sublabel, color }: any) {
   return (
     <div 
       onClick={onClick}
       className={cn(
-        "p-4 rounded-2xl border-2 cursor-pointer transition-all flex items-center justify-between",
-        active ? color : "bg-white border-slate-100 hover:border-slate-200"
+        "p-4 rounded-2xl border-2 cursor-pointer transition-all",
+        active ? color : "bg-slate-50 border-slate-200 hover:border-slate-300 hover:bg-white"
       )}
     >
-      <div className="flex items-center gap-3">
-        {icon}
-        <span className="text-sm font-black text-slate-800 tracking-tight">{label}</span>
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-2.5">
+          {icon}
+          <span className="text-sm font-black text-slate-800 tracking-tight">{label}</span>
+        </div>
+        <div className={cn(
+          "w-4.5 h-4.5 rounded-full border-2 flex items-center justify-center shrink-0",
+          active ? "border-slate-900 bg-slate-900" : "border-slate-300"
+        )}>
+          {active && <div className="w-2 h-2 bg-white rounded-full" />}
+        </div>
       </div>
-      <div className={cn(
-        "w-5 h-5 rounded-full border-2 flex items-center justify-center",
-        active ? "border-slate-900 bg-slate-900" : "border-slate-200"
-      )}>
-        {active && <div className="w-2 h-2 bg-white rounded-full" />}
-      </div>
+      <p className="text-[10px] text-slate-400 font-bold ml-7 leading-snug">{sublabel}</p>
     </div>
   );
 }

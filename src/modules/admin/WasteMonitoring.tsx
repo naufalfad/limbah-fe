@@ -10,7 +10,8 @@ import {
   Trash2, Waves, AlertTriangle, TrendingUp,
   Search, Filter, Download, Activity,
   ArrowUpRight, ArrowDownRight, Map as MapIcon,
-  Brain, Sparkles, ShieldAlert, CheckCircle, Calendar, Send
+  Brain, Sparkles, ShieldAlert, CheckCircle, Calendar, Send,
+  X, Check, FileText
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -32,6 +33,11 @@ export default function WasteMonitoring() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [scheduledAnomalies, setScheduledAnomalies] = useState<string[]>([]);
   const [warnedAnomalies, setWarnedAnomalies] = useState<string[]>([]);
+  
+  // Selected Log for detail and verification
+  const [selectedLog, setSelectedLog] = useState<any>(null);
+
+  const { verifyWasteLog } = useSijagaStore();
 
   useEffect(() => {
     fetchCompanies();
@@ -363,6 +369,7 @@ export default function WasteMonitoring() {
                 <TableHead className="font-black text-slate-400 uppercase text-[10px] tracking-widest text-center">Volume Saat Ini</TableHead>
                 <TableHead className="font-black text-slate-400 uppercase text-[10px] tracking-widest text-center">Ambang Batas</TableHead>
                 <TableHead className="font-black text-slate-400 uppercase text-[10px] tracking-widest text-center">Status EWS</TableHead>
+                <TableHead className="font-black text-slate-400 uppercase text-[10px] tracking-widest text-center">Verifikasi</TableHead>
                 <TableHead className="pr-8 text-right font-black text-slate-400 uppercase text-[10px] tracking-widest">Aksi</TableHead>
               </TableRow>
             </TableHeader>
@@ -404,12 +411,23 @@ export default function WasteMonitoring() {
                       <TableCell className="text-center">
                         <EWSBadge status={ews} />
                       </TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant="outline" className={cn(
+                          "rounded-lg font-bold text-[9px] uppercase",
+                          item.status === 'Terverifikasi' ? "border-emerald-200 text-emerald-600 bg-emerald-50" :
+                          item.status === 'Ditolak' ? "border-rose-200 text-rose-600 bg-rose-50" :
+                          item.status === 'Proses_Verifikasi' ? "border-amber-200 text-amber-600 bg-amber-50" :
+                          "border-slate-200 text-slate-600 bg-slate-50"
+                        )}>
+                          {item.status.replace('_', ' ')}
+                        </Badge>
+                      </TableCell>
                       <TableCell className="pr-8 text-right">
                         <Button
                           variant="ghost"
                           size="sm"
                           className="font-black text-[10px] text-emerald-600 hover:bg-emerald-50 tracking-widest"
-                          onClick={() => toast.info(`Logbook Detail: Limbah ${item.type} dilaporkan pada ${item.date} via metode ${item.method}.`)}
+                          onClick={() => setSelectedLog(item)}
                         >
                           DETAIL LOGBOOK
                         </Button>
@@ -421,6 +439,112 @@ export default function WasteMonitoring() {
             </TableBody>
           </Table>
         </div>
+
+        {/* --- LOGBOOK DETAIL MODAL --- */}
+        {selectedLog && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+            <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl overflow-hidden border border-slate-100 flex flex-col">
+              <div className="flex items-center justify-between px-8 py-6 border-b border-slate-100 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600">
+                    <FileText size={20} />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-slate-800 text-lg">Detail Laporan Logbook</h3>
+                    <p className="text-slate-500 text-xs font-medium">ID Referensi: {selectedLog.id}</p>
+                  </div>
+                </div>
+                <button onClick={() => setSelectedLog(null)} className="p-2 rounded-full hover:bg-slate-200 text-slate-500 transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="p-8 space-y-6 overflow-y-auto max-h-[60vh] custom-scrollbar text-left">
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Nama Perusahaan</p>
+                    <p className="font-bold text-slate-800">{selectedLog.companyName}</p>
+                    <p className="text-xs text-slate-500 font-mono">ID: {selectedLog.companyId}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tanggal Pelaporan</p>
+                    <p className="font-bold text-slate-800">{new Date(selectedLog.date).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                  </div>
+                </div>
+
+                <div className="border-t border-slate-100 pt-6 grid grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Jenis Limbah</p>
+                    <Badge variant="secondary" className="rounded-lg font-bold bg-slate-100 text-slate-700">{selectedLog.type}</Badge>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total Volume</p>
+                    <p className="font-black text-slate-800 text-lg">{selectedLog.volume} <span className="text-sm font-bold text-slate-500">{selectedLog.unit}</span></p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Metode Angkut</p>
+                    <p className="font-bold text-slate-700">{selectedLog.method}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Status EWS</p>
+                    <EWSBadge status={getEwsStatus(selectedLog.type, selectedLog.volume)} />
+                  </div>
+                </div>
+
+                <div className="border-t border-slate-100 pt-6 space-y-2">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Catatan Pelapor</p>
+                  <p className="text-sm text-slate-600 bg-slate-50 p-4 rounded-2xl italic">
+                    {selectedLog.note || "Tidak ada catatan tambahan yang dilampirkan oleh pelapor."}
+                  </p>
+                </div>
+              </div>
+
+              <div className="px-8 py-5 border-t border-slate-100 bg-slate-50/50 flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Status Laporan:</p>
+                  <Badge variant="outline" className={cn(
+                    "rounded-lg font-bold text-[10px] uppercase",
+                    selectedLog.status === 'Terverifikasi' ? "border-emerald-200 text-emerald-600 bg-emerald-50" :
+                    selectedLog.status === 'Ditolak' ? "border-rose-200 text-rose-600 bg-rose-50" :
+                    selectedLog.status === 'Proses_Verifikasi' ? "border-amber-200 text-amber-600 bg-amber-50" :
+                    "border-slate-200 text-slate-600 bg-slate-50"
+                  )}>
+                    {selectedLog.status.replace('_', ' ')}
+                  </Badge>
+                </div>
+                
+                {selectedLog.status === 'Proses_Verifikasi' && (
+                  <div className="flex gap-3">
+                    <Button
+                      variant="outline"
+                      className="rounded-xl font-bold border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                      onClick={() => {
+                        verifyWasteLog(selectedLog.id, "Ditolak");
+                        setSelectedLog({ ...selectedLog, status: "Ditolak" });
+                      }}
+                    >
+                      <X size={16} className="mr-2" /> Tolak Laporan
+                    </Button>
+                    <Button
+                      className="rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20"
+                      onClick={() => {
+                        verifyWasteLog(selectedLog.id, "Terverifikasi");
+                        setSelectedLog({ ...selectedLog, status: "Terverifikasi" });
+                      }}
+                    >
+                      <Check size={16} className="mr-2" /> Verifikasi Laporan
+                    </Button>
+                  </div>
+                )}
+                {selectedLog.status !== 'Proses_Verifikasi' && (
+                  <Button variant="ghost" className="rounded-xl font-bold text-slate-500" onClick={() => setSelectedLog(null)}>
+                    Tutup Keluar
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
       </div>
     </DashboardLayout>

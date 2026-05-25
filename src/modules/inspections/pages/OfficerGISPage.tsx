@@ -1,14 +1,26 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import { useSijagaStore } from "@/store/useSijagaStore";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Building2, ShieldCheck, MapPin, Eye, Star } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+
+// Map size invalidator helper
+function ResizeMap() {
+  const map = useMap();
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [map]);
+  return null;
+}
 
 export default function OfficerGISPage() {
   const { companies } = useSijagaStore();
@@ -110,6 +122,7 @@ export default function OfficerGISPage() {
                 </Popup>
               </Marker>
             ))}
+            <ResizeMap />
           </MapContainer>
         </div>
 

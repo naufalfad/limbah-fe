@@ -35,17 +35,32 @@ export const apiService = {
       return response.data;
     }
   },
+  admin: {
+    getTransporters: async () => {
+      const response = await api.get("/api/admin/transporters");
+      return response.data;
+    }
+  },
   companies: {
     getAll: async () => {
       const response = await api.get("/api/companies");
       return response.data;
     },
-    create: async (payload: any) => {
-      const response = await api.post("/api/companies", payload);
+    create: async (formData: FormData) => {
+      // Send as multipart/form-data so Multer on the backend can parse uploaded files
+      const response = await api.post("/api/companies", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
       return response.data;
     },
     updateStatus: async (id: string, status: string) => {
       const response = await api.patch(`/api/companies/${id}/status`, { status });
+      return response.data;
+    },
+    downloadCertificatePdf: async (id: string) => {
+      const response = await api.get(`/api/companies/${id}/certificate/pdf`, {
+        responseType: "blob"
+      });
       return response.data;
     }
   },
@@ -76,8 +91,12 @@ export const apiService = {
       const response = await api.post(`/api/pickups/${id}/price`, { cost, driverName, plateNo });
       return response.data;
     },
-    updateStatus: async (id: string, status: string, evidencePhoto?: string) => {
-      const response = await api.patch(`/api/pickups/${id}/status`, { status, evidencePhoto });
+    assignTransporter: async (id: string, transporterId: string, transporterName: string) => {
+      const response = await api.patch(`/api/pickups/${id}/assign`, { transporterId, transporterName });
+      return response.data;
+    },
+    updateStatus: async (id: string, status: string, payload?: any) => {
+      const response = await api.patch(`/api/pickups/${id}/status`, { status, ...payload });
       return response.data;
     }
   },
@@ -117,11 +136,19 @@ export const apiService = {
     readAll: async () => {
       const response = await api.post("/api/notifications/read");
       return response.data;
+    },
+    create: async (payload: { title: string, message: string, type: string }) => {
+      const response = await api.post("/api/notifications", payload);
+      return response.data;
     }
   },
   auditLogs: {
     getAll: async () => {
       const response = await api.get("/api/audit-logs");
+      return response.data;
+    },
+    create: async (payload: { user: string, role: string, action: string }) => {
+      const response = await api.post("/api/audit-logs", payload);
       return response.data;
     }
   }

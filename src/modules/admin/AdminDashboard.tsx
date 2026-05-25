@@ -10,6 +10,18 @@ import {
   Users, ShieldAlert, BarChart3, TrendingUp, Building2,
   Map as MapIcon, ArrowUpRight, Clock, CheckCircle2, XCircle
 } from "lucide-react";
+import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
+
+function ResizeMap() {
+  const map = useMap();
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [map]);
+  return null;
+}
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -89,15 +101,34 @@ export default function AdminDashboard() {
               </Button>
             </div>
             <div 
-              className="h-[400px] bg-slate-100 relative group cursor-pointer overflow-hidden"
-              onClick={() => navigate('/admin/gis')}
+              className="h-[400px] bg-slate-100 relative group overflow-hidden"
             >
+              <MapContainer 
+                center={[-6.9147, 107.6098]} 
+                zoom={10} 
+                className="w-full h-full"
+                zoomControl={false}
+                scrollWheelZoom={false}
+                dragging={false}
+                doubleClickZoom={false}
+              >
+                <ResizeMap />
+                <TileLayer
+                  url="https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}.png"
+                  attribution='&copy; <a href="https://wikimediafoundation.org/wiki/Maps_Terms_of_Use">Wikimedia</a>'
+                />
+                {companies
+                  .filter(c => c.status === "APPROVED" && c.lat && c.lng)
+                  .map(c => (
+                    <Marker key={c.id} position={[Number(c.lat), Number(c.lng)]} />
+                  ))}
+              </MapContainer>
               <div 
-                className="absolute inset-0 bg-cover opacity-80 group-hover:scale-105 transition-transform duration-1000" 
-                style={{ backgroundImage: "url('https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}.png')" }}
+                className="absolute inset-0 bg-transparent cursor-pointer z-[1000] group-hover:bg-slate-900/10 transition-colors"
+                onClick={() => navigate('/admin/gis')}
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent" />
-              <div className="absolute top-10 left-10 p-4 bg-white/90 backdrop-blur rounded-2xl border border-white shadow-xl z-10">
+              <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-slate-900/40 to-transparent pointer-events-none z-[1000]" />
+              <div className="absolute top-10 left-10 p-4 bg-white/90 backdrop-blur rounded-2xl border border-white shadow-xl z-[1010] pointer-events-none">
                 <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Titik Aktif</p>
                 <p className="text-2xl font-black text-slate-800 italic">{titikAktif} Lokasi</p>
               </div>

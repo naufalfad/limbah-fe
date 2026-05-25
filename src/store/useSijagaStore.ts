@@ -53,7 +53,7 @@ export interface WasteLog {
   unit: "L" | "kg" | "m³";
   date: string;
   method: "Dinas" | "Mandiri";
-  status: "Terverifikasi" | "Proses Verifikasi" | "Terjadwal Pickup" | "Ditolak";
+  status: "Terverifikasi" | "Proses_Verifikasi" | "Terjadwal_Pickup" | "Ditolak";
   note?: string;
 }
 
@@ -65,8 +65,10 @@ export interface PickupRequest {
   volume: string;
   date: string;
   status: "PENDING" | "PRICED" | "PAID" | "ON_THE_ROAD" | "LOADED" | "COMPLETED";
-  transporterId: string;
-  transporterName: string;
+  transporterId?: string;
+  transporterName?: string;
+  actualVolume?: string;
+  transportReport?: string;
   cost?: number;
   plateNo?: string;
   driverName?: string;
@@ -135,6 +137,7 @@ interface SijagaState {
   inspections: Inspection[];
   notifications: SystemNotification[];
   auditLogs: AuditLog[];
+  transporters: User[];
 
   // Actions
   setSelectedCompanyId: (id: string | null) => void;
@@ -150,19 +153,22 @@ interface SijagaState {
   fetchNotifications: () => Promise<void>;
   readNotification: (id: string) => Promise<void>;
 
-  addCompany: (company: Omit<Company, "id" | "status" | "score">) => Promise<void>;
+  addCompany: (formData: FormData) => Promise<void>;
   updateCompanyStatus: (id: string, status: Company["status"]) => Promise<void>;
+  downloadCompanyCertificate: (id: string, companyName: string) => Promise<void>;
   addWasteLog: (log: Omit<WasteLog, "id" | "companyName" | "status">) => Promise<void>;
   verifyWasteLog: (id: string, status: WasteLog["status"]) => Promise<void>;
-  createPickupRequest: (request: Omit<PickupRequest, "id" | "status" | "transporterName">) => Promise<void>;
+  createPickupRequest: (request: Omit<PickupRequest, "id" | "status">) => Promise<void>;
   setPickupPrice: (id: string, cost: number, driverName: string, plateNo: string) => Promise<void>;
   payInvoice: (id: string) => Promise<void>;
-  updatePickupStatus: (id: string, status: PickupRequest["status"], evidencePhoto?: string) => Promise<void>;
+  updatePickupStatus: (id: string, status: PickupRequest["status"], payload?: any) => Promise<void>;
+  fetchTransporters: () => Promise<void>;
+  assignPickupTransporter: (id: string, transporterId: string, transporterName: string) => Promise<void>;
   scheduleInspection: (inspection: Omit<Inspection, "id" | "status" | "score" | "bapSigned">) => Promise<Inspection | undefined>;
   submitInspectionResult: (id: string, score: number, notes: string, checklist: Inspection["checklist"]) => Promise<void>;
-  addNotification: (title: string, message: string, type: SystemNotification["type"]) => void;
-  readAllNotifications: () => void;
-  addAuditLog: (user: string, role: string, action: string) => void;
+  addNotification: (title: string, message: string, type: SystemNotification["type"]) => Promise<void>;
+  readAllNotifications: () => Promise<void>;
+  addAuditLog: (user: string, role: string, action: string) => Promise<void>;
 }
 
 // Initial Mock Data (used as offline fallbacks)
@@ -274,8 +280,8 @@ const initialCompanies: Company[] = [
 
 const initialWasteLogs: WasteLog[] = [
   { id: "W-001", companyId: "COM-002", companyName: "Bengkel Jaya Motor", type: "Oli Bekas", volume: 45, unit: "L", date: "2026-05-15", method: "Dinas", status: "Terverifikasi" },
-  { id: "W-002", companyId: "COM-001", companyName: "PT. Tekstil Sejahtera", type: "Limbah Cair Kimia", volume: 120, unit: "m³", date: "2026-05-18", method: "Mandiri", status: "Proses Verifikasi" },
-  { id: "W-003", companyId: "COM-003", companyName: "Restoran Sunda Nikmat", type: "Minyak Jelantah", volume: 15, unit: "L", date: "2026-05-19", method: "Dinas", status: "Terjadwal Pickup" },
+  { id: "LOG-006", companyId: "COM-002", companyName: "PT. Tekstil Sejahtera", type: "Limbah Cair", volume: 150, unit: "m³", date: "2026-05-18", method: "Dinas", status: "Proses_Verifikasi" },
+  { id: "LOG-007", companyId: "COM-001", companyName: "PT. Eco Industri", type: "Limbah Domestik", volume: 300, unit: "kg", date: "2026-05-19", method: "Mandiri", status: "Terjadwal_Pickup" },
   { id: "W-004", companyId: "COM-004", companyName: "Pabrik Kimia Farma", type: "Limbah Padat B3", volume: 85, unit: "kg", date: "2026-05-17", method: "Mandiri", status: "Terverifikasi" }
 ];
 
@@ -430,6 +436,7 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
   inspections: initialInspections,
   notifications: initialNotifications,
   auditLogs: initialAuditLogs,
+  transporters: [],
 
   setSelectedCompanyId: (id) => {
     set({ selectedCompanyId: id });
@@ -597,9 +604,14 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
     }
   },
 
-  addCompany: async (companyData) => {
+  addCompany: async (formData: FormData) => {
+    // Extract display values from FormData for notifications/audit logs
+    const companyName = formData.get("companyName") as string || "Unknown Company";
+    const picPhone = formData.get("picPhone") as string || "";
+    const docType = formData.get("docType") as string || "SPPL";
+
     try {
-      const response = await apiService.companies.create(companyData);
+      const response = await apiService.companies.create(formData);
       if (response && response.success) {
         const newComp: Company = response.company;
         set((state) => {
@@ -620,10 +632,10 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
           };
         });
         toast.success("Perusahaan baru berhasil terdaftar di database!");
-        get().addAuditLog(companyData.picPhone, "PERUSAHAAN", `Registrasi perusahaan baru (API): ${companyData.companyName}`);
+        get().addAuditLog(picPhone, "PERUSAHAAN", `Registrasi perusahaan baru (API): ${companyName}`);
         get().addNotification(
           "Registrasi Perusahaan Baru",
-          `${companyData.companyName} telah mendaftarkan dokumen ${companyData.docType}. Perlu verifikasi.`,
+          `${companyName} telah mendaftarkan dokumen ${docType}. Perlu verifikasi.`,
           "INFO"
         );
         return;
@@ -635,12 +647,32 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
       console.warn("Registrasi perusahaan gagal/offline. Menggunakan fallback offline.", error);
     }
 
-    // --- FALLBACK OFFLINE ---
+    // --- FALLBACK OFFLINE (tanpa file upload) ---
     const newId = `COM-${String(get().companies.length + 1).padStart(3, "0")}`;
     const newCompany: Company = {
-      ...companyData,
       id: newId,
-      status: "PENDING"
+      companyName,
+      nib: formData.get("nib") as string || "",
+      npwp: formData.get("npwp") as string || "",
+      picName: formData.get("picName") as string || "",
+      picPhone,
+      picRole: formData.get("picRole") as string || "",
+      investmentType: (formData.get("investmentType") as "PMDN" | "PMA") || "PMDN",
+      yearBuilt: formData.get("yearBuilt") as string || "",
+      buildingArea: parseFloat(formData.get("buildingArea") as string) || 0,
+      operationalHours: formData.get("operationalHours") as string || "",
+      rawMaterials: formData.get("rawMaterials") as string || "",
+      waterSource: formData.get("waterSource") as string || "",
+      powerSource: formData.get("powerSource") as string || "",
+      kbli: formData.get("kbli") as string || "",
+      investment: parseFloat(formData.get("investment") as string) || 0,
+      landArea: parseFloat(formData.get("landArea") as string) || 0,
+      employees: parseInt(formData.get("employees") as string) || 0,
+      lat: formData.get("lat") as string || "-6.9147",
+      lng: formData.get("lng") as string || "107.6098",
+      address: formData.get("address") as string || "",
+      docType: docType as "SPPL" | "UKL-UPL",
+      status: "PENDING",
     };
 
     set((state) => {
@@ -662,10 +694,10 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
     });
 
     toast.success("Registrasi berhasil disimpan (Simulasi Offline)!");
-    get().addAuditLog(companyData.picPhone, "PERUSAHAAN", `Registrasi perusahaan baru (Offline): ${companyData.companyName}`);
+    get().addAuditLog(picPhone, "PERUSAHAAN", `Registrasi perusahaan baru (Offline): ${companyName}`);
     get().addNotification(
       "Registrasi Perusahaan Baru",
-      `${companyData.companyName} telah mendaftarkan dokumen ${companyData.docType}. Perlu verifikasi.`,
+      `${companyName} telah mendaftarkan dokumen ${docType}. Perlu verifikasi.`,
       "INFO"
     );
   },
@@ -701,6 +733,31 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
     }
   },
 
+  downloadCompanyCertificate: async (id, companyName) => {
+    try {
+      const blob = await apiService.companies.downloadCertificatePdf(id);
+      
+      // Buat URL Object sementara di memori browser
+      const url = window.URL.createObjectURL(new Blob([blob]));
+      const link = document.createElement('a');
+      link.href = url;
+      // Beri nama file yang aman (hapus karakter aneh)
+      link.setAttribute('download', `Sertifikat_${companyName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
+      document.body.appendChild(link);
+      
+      // Paksa browser memicu download
+      link.click();
+      
+      // Bersihkan memori
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error("Failed to download certificate", e);
+      toast.error("Gagal mengunduh sertifikat PDF dari server.");
+      throw e;
+    }
+  },
+
   addWasteLog: async (logData) => {
     try {
       const response = await apiService.waste.create(logData);
@@ -724,14 +781,15 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
 
     // --- FALLBACK OFFLINE ---
     const newId = `W-${String(get().wasteLogs.length + 1).padStart(3, "0")}`;
+    const user = get().currentUser;
+    const { companyId, ...log } = logData;
     const comp = get().companies.find((c) => c.id === logData.companyId);
-    let status: WasteLog["status"] = logData.method === "Dinas" ? "Terjadwal Pickup" : "Proses Verifikasi";
 
     const newLog: WasteLog = {
       ...logData,
       id: newId,
-      companyName: comp?.companyName || "Unknown Company",
-      status
+      companyName: comp?.companyName || "PT. Demo Company",
+      status: logData.method === "Dinas" ? "Terjadwal_Pickup" : "Proses_Verifikasi"
     };
 
     set((state) => ({
@@ -755,25 +813,20 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
       const response = await apiService.waste.verify(id, status);
       if (response && response.success) {
         set((state) => ({
-          wasteLogs: state.wasteLogs.map((w) => (w.id === id ? { ...w, status } : w))
+          wasteLogs: state.wasteLogs.map(log => log.id === id ? { ...log, status } : log)
         }));
-        toast.success(`Log limbah berhasil diverifikasi: ${status}`);
+        toast.success(`Logbook berhasil di-${status.toLowerCase()}.`);
         return;
       }
     } catch (e) {
-      console.warn("Verifikasi limbah gagal via API, fallback offline.", e);
+      console.warn("API verifyWasteLog failed, fallback to local state", e);
     }
-
-    // --- FALLBACK OFFLINE ---
+    
+    // Fallback offline
     set((state) => ({
-      wasteLogs: state.wasteLogs.map((w) => (w.id === id ? { ...w, status } : w))
+      wasteLogs: state.wasteLogs.map(log => log.id === id ? { ...log, status } : log)
     }));
-
-    const log = get().wasteLogs.find((w) => w.id === id);
-    if (log) {
-      const user = get().currentUser;
-      get().addAuditLog(user?.email || "SYSTEM", user?.role || "ADMIN_DLH", `Verifikasi laporan limbah ${log.id} (${log.companyName}) -> ${status}`);
-    }
+    toast.success(`[Offline] Logbook berhasil di-${status.toLowerCase()}.`);
   },
 
   createPickupRequest: async (requestData) => {
@@ -800,17 +853,32 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
     // --- FALLBACK OFFLINE ---
     const newId = `PICK-${String(get().pickupRequests.length + 1).padStart(3, "0")}`;
     const newInvId = `INV-${String(get().invoices.length + 1).padStart(3, "0")}`;
+    
+    // Auto-calculate for offline fallback
+    const parsedVol = parseFloat(requestData.volume.replace(/[^0-9.]/g, '')) || 0;
+    const calcCost = parsedVol > 0 ? parsedVol * 10000 : 50000;
 
     const newRequest: PickupRequest = {
       ...requestData,
       id: newId,
-      status: "PENDING",
-      transporterName: "PT. Transport Limbah Indonesia",
+      status: "PRICED",
+      cost: calcCost,
       invoiceId: newInvId
     };
 
+    const newInvoice: Invoice = {
+      id: newInvId,
+      companyId: requestData.companyId,
+      companyName: requestData.companyName,
+      type: "Pengangkutan",
+      amount: calcCost,
+      date: new Date().toISOString().split("T")[0],
+      status: "UNPAID"
+    };
+
     set((state) => ({
-      pickupRequests: [...state.pickupRequests, newRequest]
+      pickupRequests: [...state.pickupRequests, newRequest],
+      invoices: [...state.invoices, newInvoice]
     }));
 
     toast.success("Permintaan pengangkutan diajukan (Offline)!");
@@ -917,9 +985,9 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
     }
   },
 
-  updatePickupStatus: async (id, status, evidencePhoto) => {
+  updatePickupStatus: async (id, status, payload) => {
     try {
-      const response = await apiService.pickups.updateStatus(id, status, evidencePhoto);
+      const response = await apiService.pickups.updateStatus(id, status, payload);
       if (response && response.success) {
         const updatedPickup: PickupRequest = response.pickup;
         set((state) => ({
@@ -942,7 +1010,7 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
     // --- FALLBACK OFFLINE ---
     set((state) => ({
       pickupRequests: state.pickupRequests.map((r) =>
-        r.id === id ? { ...r, status, ...(evidencePhoto ? { evidencePhoto } : {}) } : r
+        r.id === id ? { ...r, status, ...(payload || {}) } : r
       )
     }));
 
@@ -966,6 +1034,43 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
         "SUCCESS"
       );
     }
+  },
+
+  fetchTransporters: async () => {
+    try {
+      const response = await apiService.admin.getTransporters();
+      if (response && response.success) {
+        set({ transporters: response.transporters });
+      }
+    } catch (e) {
+      console.warn("API fetchTransporters failed, using mock data", e);
+      // Fallback mock
+      set({ transporters: [{ id: "TRANS-1", name: "PT. Maju Transport", email: "t1@mail.com", role: "PENGANGKUT" }] as any });
+    }
+  },
+
+  assignPickupTransporter: async (id, transporterId, transporterName) => {
+    try {
+      const response = await apiService.pickups.assignTransporter(id, transporterId, transporterName);
+      if (response && response.success) {
+        const updatedPickup = response.pickup;
+        set((state) => ({
+          pickupRequests: state.pickupRequests.map((r) => r.id === id ? updatedPickup : r)
+        }));
+        toast.success("Transporter berhasil ditugaskan!");
+        return;
+      }
+    } catch (e) {
+      console.warn("API assignTransporter failed, fallback to local state", e);
+    }
+
+    // Fallback offline
+    set((state) => ({
+      pickupRequests: state.pickupRequests.map((r) =>
+        r.id === id ? { ...r, transporterId, transporterName } : r
+      )
+    }));
+    toast.success("Transporter berhasil ditugaskan (Offline)!");
   },
 
   scheduleInspection: async (inspectionData) => {
@@ -1057,7 +1162,19 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
     }
   },
 
-  addNotification: (title, message, type) => {
+  addNotification: async (title, message, type) => {
+    try {
+      const response = await apiService.notifications.create({ title, message, type });
+      if (response && response.success) {
+        set((state) => ({
+          notifications: [response.notification, ...state.notifications]
+        }));
+        return;
+      }
+    } catch (e) {
+      console.warn("API addNotification failed, fallback to local state", e);
+    }
+
     const newId = `NTF-${String(get().notifications.length + 1).padStart(3, "0")}`;
     const newNtf: SystemNotification = {
       id: newId,
@@ -1072,13 +1189,30 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
     }));
   },
 
-  readAllNotifications: () => {
+  readAllNotifications: async () => {
+    try {
+      await apiService.notifications.readAll();
+    } catch (e) {
+      console.warn("API readAllNotifications failed", e);
+    }
     set((state) => ({
       notifications: state.notifications.map((n) => ({ ...n, read: true }))
     }));
   },
 
-  addAuditLog: (user, role, action) => {
+  addAuditLog: async (user, role, action) => {
+    try {
+      const response = await apiService.auditLogs.create({ user, role, action });
+      if (response && response.success) {
+        set((state) => ({
+          auditLogs: [response.auditLog, ...state.auditLogs]
+        }));
+        return;
+      }
+    } catch (e) {
+      console.warn("API addAuditLog failed, fallback to local state", e);
+    }
+
     const newId = `LOG-${String(get().auditLogs.length + 1).padStart(3, "0")}`;
     const newLog: AuditLog = {
       id: newId,

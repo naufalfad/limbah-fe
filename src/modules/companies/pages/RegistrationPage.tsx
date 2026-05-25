@@ -1,30 +1,38 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import {
   Building2, MapPin, Factory, FileStack,
-  CheckCircle2, ChevronRight, ChevronLeft,
-  Search, ShieldAlert, UploadCloud, Map as MapIcon,
-  User, Mail, Lock, ArrowRight, Sparkles
+  CheckCircle2, ChevronRight,
+  Search, ShieldAlert, Map as MapIcon,
+  Loader2, UploadCloud, FileText, X, AlertCircle
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useFormContext } from "react-hook-form";
-import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
 import { useSijagaStore } from "@/store/useSijagaStore";
 import { useNavigate } from "react-router-dom";
-
-import { apiService } from "@/lib/api";
-import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import "leaflet/dist/leaflet.css";
+
+// Map size invalidator helper
+function ResizeMap() {
+  const map = useMap();
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [map]);
+  return null;
+}
 
 // --- SCHEMA VALIDASI (ZOD) ---
 const registrationSchema = z.object({
@@ -38,7 +46,6 @@ const registrationSchema = z.object({
 
   // Step 2
   kbli: z.string().min(1, "KBLI wajib dipilih"),
-  // Gunakan z.coerce.number() agar input text otomatis jadi angka saat dikirim ke API
   investment: z.coerce.number().min(1, "Modal investasi wajib diisi"),
   landArea: z.coerce.number().min(1, "Luas lahan wajib diisi"),
   employees: z.coerce.number().int().min(1, "Jumlah tenaga kerja wajib"),
@@ -66,6 +73,12 @@ export default function RegistrationPage() {
 
   const [currentStep, setCurrentStep] = useState(1);
   const [docType, setDocType] = useState<"SPPL" | "UKL-UPL" | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  // --- File Upload State ---
+  const [nibFile, setNibFile] = useState<File | null>(null);
+  const [npwpFile, setNpwpFile] = useState<File | null>(null);
+  const [siteplanFile, setSiteplanFile] = useState<File | null>(null);
 
   const methods = useForm<RegistrationFormValues>({
     resolver: zodResolver(registrationSchema) as any,
@@ -79,7 +92,6 @@ export default function RegistrationPage() {
     const modal = watch("investment");
     const luas = watch("landArea");
 
-    // Logika Penapisan: Jika modal > 5 Miliar atau Luas > 5000m2 masuk UKL-UPL
     if (modal >= 5000000000 || luas >= 5000) {
       setDocType("UKL-UPL");
     } else {
@@ -89,20 +101,48 @@ export default function RegistrationPage() {
   };
 
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
 
   const onSubmit = async (data: RegistrationFormValues) => {
+    // Validate required document uploads
+    if (!nibFile) {
+      toast.error("Dokumen NIB wajib diunggah.");
+      setCurrentStep(1);
+      return;
+    }
+    if (!npwpFile) {
+      toast.error("Dokumen NPWP wajib diunggah.");
+      setCurrentStep(1);
+      return;
+    }
+
     setLoading(true);
     try {
-      // Memanggil store action addCompany
-      await addCompany({
-        ...data,
-        docType: docType || "SPPL"
+      // Build FormData — text fields + file blobs
+      const formData = new FormData();
+
+      // Append all text fields from react-hook-form
+      Object.entries(data).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          formData.append(key, String(value));
+        }
       });
+      // Append docType determined by Smart Assessment
+      formData.append("docType", docType || "SPPL");
+
+      // Append file blobs
+      formData.append("nibDoc", nibFile);
+      formData.append("npwpDoc", npwpFile);
+      if (siteplanFile) {
+        formData.append("siteplanDoc", siteplanFile);
+      }
+
+      await addCompany(formData);
       navigate("/company");
     } catch (error: any) {
-      // Menangkap error dari backend (misal: NIB duplikat atau error validasi)
-      const serverMsg = error.response?.data?.error || error.response?.data?.message || "Terjadi kesalahan saat menghubungi server.";
+      const serverMsg =
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        "Terjadi kesalahan saat menghubungi server.";
       toast.error(serverMsg);
       console.error("API Error:", error);
     } finally {
@@ -164,11 +204,13 @@ export default function RegistrationPage() {
           <FormProvider {...methods}>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
 
-              {/* STEP 1: IDENTITAS */}
+              {/* STEP 1: IDENTITAS & UPLOAD DOKUMEN */}
               {currentStep === 1 && (
                 <Card className="bg-white border border-slate-200 rounded-[2rem] shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-4">
-                  <CardHeaderLayout title="Identitas & Legalitas" desc="Masukkan data resmi perusahaan sesuai NIB." />
-                  <CardContent className="space-y-6 p-8">
+                  <CardHeaderLayout title="Identitas & Legalitas" desc="Masukkan data resmi perusahaan dan unggah dokumen pendukung." />
+                  <CardContent className="space-y-8 p-8">
+
+                    {/* Data Identitas */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <FormGroup label="Nama Perusahaan" name="companyName" placeholder="Contoh: PT. Sumber Alam" />
                       <FormGroup label="NIB (Nomor Induk Berusaha)" name="nib" placeholder="13 Digit Angka" />
@@ -192,6 +234,55 @@ export default function RegistrationPage() {
                       </div>
                       <FormGroup label="Tahun Berdiri" name="yearBuilt" placeholder="Contoh: 2024" type="number" />
                     </div>
+
+                    {/* ─── Dokumen Legalitas Upload ─────────────────────────────── */}
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                        <FileText size={18} className="text-emerald-600" />
+                        <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">Upload Dokumen Legalitas</h3>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {/* NIB */}
+                        <FileUploadBox
+                          label="Scan NIB"
+                          required
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          file={nibFile}
+                          onFileChange={setNibFile}
+                          hint="PDF / JPG / PNG, maks 5 MB"
+                        />
+
+                        {/* NPWP */}
+                        <FileUploadBox
+                          label="Scan NPWP"
+                          required
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          file={npwpFile}
+                          onFileChange={setNpwpFile}
+                          hint="PDF / JPG / PNG, maks 5 MB"
+                        />
+
+                        {/* Siteplan */}
+                        <FileUploadBox
+                          label="Siteplan / Layout"
+                          required={false}
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          file={siteplanFile}
+                          onFileChange={setSiteplanFile}
+                          hint="Opsional — denah lokasi usaha"
+                        />
+                      </div>
+
+                      {/* Upload warning hint */}
+                      <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-100 rounded-xl">
+                        <AlertCircle size={14} className="text-amber-500 shrink-0 mt-0.5" />
+                        <p className="text-[11px] font-bold text-amber-700 leading-snug">
+                          NIB dan NPWP <span className="underline">wajib</span> diunggah. Dokumen yang tidak lengkap akan menghambat proses verifikasi oleh petugas DLH.
+                        </p>
+                      </div>
+                    </div>
+
                     <div className="flex justify-end pt-4">
                       <Button type="button" onClick={nextStep} className="bg-emerald-600 hover:bg-emerald-700 h-12 px-8 rounded-xl font-bold gap-2 text-white ml-auto">Lanjut ke Penapisan <ChevronRight size={18} /></Button>
                     </div>
@@ -296,6 +387,7 @@ export default function RegistrationPage() {
                           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                         />
                         <InteractiveMap />
+                        <ResizeMap />
                       </MapContainer>
                     </div>
 
@@ -307,11 +399,24 @@ export default function RegistrationPage() {
                       <Label className="font-bold">Alamat Detail Usaha / Lokasi Penjemputan</Label>
                       <textarea {...methods.register("address")} className="w-full min-h-[100px] rounded-2xl border p-4 text-sm focus-visible:outline-emerald-600" placeholder="Contoh: Jl. Merdeka No. 10 (Depan Kantor Pos)" />
                     </div>
+
+                    {/* File upload summary before final submit */}
+                    <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                        <FileText size={13} /> Ringkasan Dokumen yang Akan Dikirim
+                      </h4>
+                      <div className="space-y-2">
+                        <FileStatusRow label="NIB" file={nibFile} required />
+                        <FileStatusRow label="NPWP" file={npwpFile} required />
+                        <FileStatusRow label="Siteplan / Layout" file={siteplanFile} required={false} />
+                      </div>
+                    </div>
+
                     <div className="flex justify-between pt-4">
                       <Button type="button" variant="outline" onClick={prevStep} className="h-12 px-8 rounded-xl font-bold border-slate-200 text-slate-500">Kembali</Button>
                       <Button
                         type="submit"
-                        disabled={loading} // Disable saat loading agar tidak double submit
+                        disabled={loading}
                         className="bg-emerald-600 hover:bg-emerald-700 h-14 px-12 rounded-2xl font-black text-lg text-white shadow-xl shadow-emerald-100"
                       >
                         {loading ? (
@@ -338,7 +443,121 @@ export default function RegistrationPage() {
   );
 }
 
-// --- SUB-COMPONENTS & HELPERS ---
+// ─── FileUploadBox ─────────────────────────────────────────────────────────────
+
+interface FileUploadBoxProps {
+  label: string;
+  required: boolean;
+  accept: string;
+  file: File | null;
+  onFileChange: (f: File | null) => void;
+  hint?: string;
+}
+
+function FileUploadBox({ label, required, accept, file, onFileChange, hint }: FileUploadBoxProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleClick = () => inputRef.current?.click();
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = e.target.files?.[0] || null;
+    if (selected && selected.size > 5 * 1024 * 1024) {
+      toast.error(`File ${label} melebihi batas ukuran 5 MB.`);
+      return;
+    }
+    onFileChange(selected);
+  };
+
+  const isImage = file && file.type.startsWith("image/");
+
+  return (
+    <div className="space-y-2">
+      <Label className="text-[11px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1">
+        {label}
+        {required && <span className="text-red-500 ml-0.5">*</span>}
+      </Label>
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept={accept}
+        className="hidden"
+        onChange={handleChange}
+      />
+
+      {file ? (
+        /* Filled state */
+        <div
+          className="relative rounded-2xl border-2 border-emerald-400 bg-emerald-50 p-4 flex items-center gap-3 cursor-pointer hover:bg-emerald-100 transition-all group"
+          onClick={handleClick}
+        >
+          {isImage ? (
+            <img
+              src={URL.createObjectURL(file)}
+              alt="preview"
+              className="w-10 h-10 rounded-lg object-cover border border-emerald-200 shrink-0"
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-lg bg-emerald-600 flex items-center justify-center shrink-0">
+              <FileText size={18} className="text-white" />
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-black text-emerald-800 truncate">{file.name}</p>
+            <p className="text-[10px] text-emerald-600 font-bold">{(file.size / 1024).toFixed(0)} KB</p>
+          </div>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onFileChange(null); if (inputRef.current) inputRef.current.value = ""; }}
+            className="p-1 rounded-lg hover:bg-red-100 text-emerald-400 hover:text-red-500 transition-colors shrink-0"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      ) : (
+        /* Empty state */
+        <div
+          onClick={handleClick}
+          className={cn(
+            "rounded-2xl border-2 border-dashed p-5 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all group min-h-[110px]",
+            "border-slate-200 bg-slate-50 hover:border-emerald-400 hover:bg-emerald-50/50"
+          )}
+        >
+          <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-300 group-hover:text-emerald-500 group-hover:border-emerald-300 transition-all">
+            <UploadCloud size={20} />
+          </div>
+          <div className="text-center">
+            <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest group-hover:text-emerald-600 transition-colors">Klik untuk upload</p>
+            {hint && <p className="text-[10px] text-slate-300 font-bold italic mt-0.5">{hint}</p>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── FileStatusRow (for the Step 5 summary) ───────────────────────────────────
+
+function FileStatusRow({ label, file, required }: { label: string; file: File | null; required: boolean }) {
+  return (
+    <div className="flex items-center justify-between text-xs font-bold">
+      <span className="text-slate-500">
+        {label}{required && <span className="text-red-400 ml-1">*</span>}
+      </span>
+      {file ? (
+        <span className="flex items-center gap-1 text-emerald-600">
+          <CheckCircle2 size={12} /> {file.name}
+        </span>
+      ) : (
+        <span className={cn("text-[11px]", required ? "text-red-500" : "text-slate-400 italic")}>
+          {required ? "Belum diunggah (Wajib)" : "Tidak diunggah (Opsional)"}
+        </span>
+      )}
+    </div>
+  );
+}
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
 function InteractiveMap() {
   const { setValue, watch } = useFormContext();
@@ -487,25 +706,6 @@ function UKLUPTemplate() {
           <Label className="font-bold text-slate-900 text-lg tracking-tight">4. Dampak Sosial & Masyarakat</Label>
           <textarea className="w-full min-h-[80px] rounded-2xl border p-4 text-sm focus-visible:outline-emerald-600" placeholder="Upaya komunikasi dengan warga sekitar..." />
         </div>
-      </div>
-    </div>
-  );
-}
-
-function SuccessState() {
-  return (
-    <div className="flex flex-col items-center justify-center min-h-[70vh] animate-in zoom-in duration-500 font-sans">
-      <div className="w-32 h-32 bg-emerald-100 rounded-[2.5rem] flex items-center justify-center text-emerald-600 shadow-xl shadow-emerald-100 mb-8 rotate-12">
-        <CheckCircle2 size={64} />
-      </div>
-      <h2 className="text-4xl font-black text-slate-900 tracking-tighter">Registrasi Dikirim!</h2>
-      <p className="text-slate-500 mt-4 max-w-md text-center font-medium px-6 leading-relaxed">
-        Terima kasih. Data perusahaan dan pengajuan dokumen lingkungan Anda berhasil masuk ke database <span className="text-emerald-600 font-bold underline">PANTAU LIMBAH</span>.
-        Petugas DLH akan melakukan verifikasi data dan GIS dalam waktu 1-3 hari kerja.
-      </p>
-      <div className="mt-10 flex gap-4">
-        <Button onClick={() => window.location.href = "/company"} className="bg-slate-900 h-12 rounded-xl px-10 font-bold text-white">Ke Dashboard</Button>
-        <Button variant="outline" onClick={() => window.print()} className="h-12 rounded-xl px-10 font-bold border-slate-300 text-slate-700">Cetak Draft</Button>
       </div>
     </div>
   );

@@ -112,7 +112,6 @@ export default function PickupRequestPage() {
         volume: `${volume} ${unit}`,
         date,
         address,
-        transporterId: "TRANS-001"
       });
 
       setIsDialogOpen(false);
@@ -166,7 +165,7 @@ export default function PickupRequestPage() {
             <DialogContent className="sm:max-w-[500px] rounded-[2.5rem] bg-white border border-slate-200 text-left p-8">
               <DialogHeader>
                 <DialogTitle className="text-2xl font-black tracking-tight text-slate-800">Ajukan Pickup Limbah</DialogTitle>
-                <p className="text-xs text-slate-400 font-bold uppercase mt-1">Transporter berlisensi akan memverifikasi muatan & jarak</p>
+                <p className="text-xs text-slate-400 font-bold uppercase mt-1">Biaya dihitung otomatis, harap segera lunasi tagihan</p>
               </DialogHeader>
 
               <form onSubmit={handleSubmit} className="space-y-4 py-4">
@@ -331,13 +330,35 @@ export default function PickupRequestPage() {
                               LIHAT BUKTI
                             </Button>
                           </DialogTrigger>
-                          <DialogContent className="bg-white border text-center p-6 rounded-3xl">
+                          <DialogContent className="bg-white border text-center p-6 rounded-3xl max-w-[600px]">
                             <DialogHeader>
                               <DialogTitle className="text-slate-800 font-bold">Bukti Serah Terima Limbah</DialogTitle>
                             </DialogHeader>
-                            <div className="py-4">
-                              <img src={pick.evidencePhoto} alt="Bukti Serah Terima" className="max-h-[300px] mx-auto rounded-2xl border" />
-                              <p className="text-xs text-slate-500 mt-3 font-bold">Manifest pengangkutan selesai divalidasi oleh driver.</p>
+                            <div className="py-4 text-left">
+                              <div className="flex gap-4 overflow-x-auto pb-4">
+                                {(() => {
+                                  let photos = [];
+                                  try {
+                                    photos = JSON.parse(pick.evidencePhoto);
+                                    if (!Array.isArray(photos)) photos = [pick.evidencePhoto];
+                                  } catch (e) {
+                                    photos = [pick.evidencePhoto];
+                                  }
+                                  return photos.map((p, i) => (
+                                    <img key={i} src={p} alt={`Bukti ${i}`} className="max-h-[200px] rounded-2xl border shrink-0" />
+                                  ));
+                                })()}
+                              </div>
+                              <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                <div>
+                                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Volume Aktual yang Diangkut</p>
+                                  <p className="font-bold text-slate-800">{pick.actualVolume || "Tidak ada laporan volume"}</p>
+                                </div>
+                                <div>
+                                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Catatan Pengangkutan</p>
+                                  <p className="font-bold text-slate-800 text-sm italic">{pick.transportReport || "-"}</p>
+                                </div>
+                              </div>
                             </div>
                           </DialogContent>
                         </Dialog>
