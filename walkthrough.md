@@ -1,39 +1,33 @@
-# Walkthrough Perubahan Halaman Login & Otomatisasi Peran
+# Walkthrough: Alur Pengangkutan Terpusat (Admin DLH)
 
-Dokumen ini mendokumentasikan perubahan yang telah berhasil diimplementasikan untuk mengotomatiskan otentikasi peran pengguna dan menghapus pilihan peran manual di halaman login.
+Seluruh instruksi Anda terkait perubahan alur pengangkutan limbah telah berhasil diintegrasikan. Berikut adalah rangkuman dari sistem terbaru:
 
-## Perubahan yang Dilakukan
+## 1. Perubahan Database & Backend
+- Model `PickupRequest` pada Prisma Schema telah diperbarui. Transporter kini bersifat opsional dan ditugaskan secara dinamis.
+- Kami menambahkan dua kolom baru: `actualVolume` dan `transportReport` untuk mengakomodasi pelaporan dari transporter.
+- Endpoint `createPickup` telah diotomatisasi agar langsung mengkalkulasi tarif *flat-rate* (sesuai persetujuan Anda: Rp 10.000 per satuan volume). Hal ini memicu terbitnya Invoice secara langsung (`UNPAID`), dan status request otomatis menjadi `PRICED`.
+- Menambahkan API baru untuk Admin DLH: `GET /api/admin/transporters` dan `PATCH /api/pickups/:id/assign`.
 
-### 1. Backend (`limbah-be`)
-*   **Berkas Terubah**: [authController.ts](file:///d:/Pekerjaan/E-Limbah/limbah-be/src/controllers/authController.ts)
-*   **Detail**:
-    *   Mengubah `loginSchema` (Zod) agar field `role` bernilai opsional (`z.nativeEnum(UserRole).optional()`).
-    *   Menyesuaikan pengecekan `user.role !== role` dalam fungsi `login` agar hanya dieksekusi jika parameter `role` secara eksplisit disediakan. Jika tidak disediakan, backend akan meloloskan login berdasarkan email & password dan mengembalikan role asli dari database (`user.role`).
+> [!TIP]
+> Otomatisasi biaya secara flat ini memungkinkan Perusahaan (Pelaku Usaha) untuk menyelesaikan tagihan (Direct Billing ke Kas Daerah) di saat yang sama ketika mereka melakukan request!
 
-### 2. Frontend API Client (`limbah-fe`)
-*   **Berkas Terubah**: [api.ts](file:///d:/Pekerjaan/E-Limbah/limbah-fe/src/lib/api.ts)
-*   **Detail**:
-    *   Menyesuaikan tipe parameter `role` pada `apiService.auth.login` menjadi opsional (`role?: string`).
+## 2. Pembaruan Modul Admin DLH
+- **Penugasan Armada**: Modul baru `AdminPickupManagement` (`/admin/pickups`) kini tersedia di Sidebar Admin DLH.
+- Admin dapat melihat daftar request pengangkutan dari perusahaan yang sudah berstatus lunas (`PAID`).
+- Melalui halaman ini, Admin menyeleksi transporter terdaftar dan menggunakan tombol "Tugaskan" untuk mendelegasikan order kepada akun pengangkut terkait.
+- Pada halaman yang sama, Admin dapat memantau **Laporan Akhir** (volume aktual dan catatan operasional) jika status order telah `COMPLETED`.
 
-### 3. Frontend Zustand Store (`limbah-fe`)
-*   **Berkas Terubah**: [useSijagaStore.ts](file:///d:/Pekerjaan/E-Limbah/limbah-fe/src/store/useSijagaStore.ts)
-*   **Detail**:
-    *   Mengubah signature `login` pada interface `SijagaState` agar parameter `role` opsional dan mengembalikan `Promise<User | null>`.
-    *   Memperbarui fungsi `login` untuk melakukan satu kali hit API login (mengeliminasi pemanggilan duplikat/redundansi), mensinkronisasikan state global (`currentUser`, `companies`, `selectedCompanyId`), menuliskan audit log menggunakan role dinamis hasil otentikasi database, dan mengembalikan objek `user` terotentikasi.
-    *   Mengembalikan penanganan error agar melempar error Axios asli sehingga dapat dibaca dengan baik oleh pemanggil UI.
+## 3. Pembaruan Modul Transporter
+- **Hanya Order Tertugaskan**: Transporter kini tidak lagi melakukan "bidding". Mereka hanya akan melihat request yang ditugaskan khusus oleh Admin DLH.
+- Tombol **"Terima Tugas & Berangkat"** disediakan agar transporter bisa segera mengubah status menjadi `ON_THE_ROAD`.
+- Pada jendela pop-up **Serah Terima Selesai**, transporter wajib mengisi `Volume Aktual` dan `Catatan Tambahan` selain mengunggah foto. 
 
-### 4. Frontend LoginPage UI (`limbah-fe`)
-*   **Berkas Terubah**: [LoginPage.tsx](file:///d:/Pekerjaan/E-Limbah/limbah-fe/src/modules/auth/pages/LoginPage.tsx)
-*   **Detail**:
-    *   Menghapus state `role` dan dropdown pemilih peran (`Select` component) dari form JSX.
-    *   Menyesuaikan spasi dan tata letak form agar kartu login tetap presisi, minimalis, seimbang, dan mengedepankan estetika glassmorphism modern.
-    *   Memperbarui handler `handleLogin` agar langsung mengeksekusi `loginStore(email, password)` tanpa menyertakan argumen peran.
-    *   Menggunakan data user yang dikembalikan dari store untuk memicu `handleRoleRedirection(user.role)` secara langsung, menjamin pengguna langsung masuk ke dashboard yang sesuai (PIC Perusahaan ke `/company`, Transporter ke `/transporter`, Admin DLH ke `/admin`, dsb).
+## 4. Pembaruan Modul Perusahaan
+- Label dan instruksi pada pop-up pengajuan pickup telah diselaraskan. Sistem menginformasikan bahwa tarif langsung dihitung otomatis.
+- Setelah transporter menyelesaikan tugas (`COMPLETED`), Perusahaan dapat menekan tombol **"LIHAT BUKTI"** untuk memverifikasi foto bukti pengangkutan beserta Laporan Volume Aktual yang diserahkan transporter, memastikan tidak ada manipulasi data berat muatan.
 
----
+> [!IMPORTANT]
+> Sistem pembayaran antar dinas dengan pihak transporter berada sepenuhnya di luar sistem e-Limbah seperti permintaan Anda. Semua transaksi keuangan di dalam sistem e-Limbah ini murni antara Perusahaan ke Rekening Kas Umum Daerah (melalui Admin DLH).
 
-## Hasil Pengujian
-
-1.  **Build Frontend**: Sukses (`tsc -b && vite build` selesai tanpa ada kesalahan kompilasi tipe data).
-2.  **Build Backend**: Sukses (`tsc` selesai tanpa ada kesalahan kompilasi).
-3.  **Hasil Akhir**: Kredensial dibaca secara dinamis. Otentikasi murni berbasis `email` & `password`. Penentuan hak akses dan routing dashboard sepenuhnya dikoordinasikan secara otomatis oleh database!
+## Validasi End-to-End
+Sistem ini telah dimodifikasi langsung pada inti `pickupController.ts` dan global state Zustand (`useSijagaStore.ts`), tanpa celah pada *fallback state* (saat offline mode). Seluruh navigasi rute juga telah tersambung sempurna pada `App.tsx` dan `DashboardLayout.tsx`. 

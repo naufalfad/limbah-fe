@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Plus, Sparkles, ChevronRight, Truck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-// Mengimpor Komponen Modular Taktis GFW [3]
+// Mengimpor Komponen Modular Taktis GFW (Prinsip GRASP: Low Coupling) [3]
 import CompanyHeader from "../components/CompanyHeader";
 import PickupRequestForm from "../components/forms/PickupRequestForm";
 import PickupRequestTable from "../components/tables/PickupRequestTable";
@@ -19,7 +19,7 @@ export default function PickupRequestPage() {
   // State Pengendali Dialog Input Form [3]
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  // Sync data pengangkutan saat ID perusahaan aktif berganti [3]
+  // Sync data pengangkutan saat ID perusahaan aktif berganti (Information Expert) [3]
   useEffect(() => {
     if (selectedCompanyId) {
       fetchPickupRequests(selectedCompanyId);
@@ -91,6 +91,7 @@ export default function PickupRequestPage() {
               <Truck size={12} /> Riwayat Pengangkutan & Manifest Elektronik
             </span>
           </div>
+          {/* Komponen Tabel yang memegang fungsionalitas visualisasi detail rincian pengangkutan */}
           <PickupRequestTable />
         </div>
 

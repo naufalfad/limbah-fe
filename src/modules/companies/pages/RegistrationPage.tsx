@@ -1,12 +1,13 @@
 // src/modules/companies/pages/RegistrationPage.tsx
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import {
   Building2, MapPin, Factory, FileStack,
   CheckCircle2, ChevronRight, ChevronLeft,
-  Search, ShieldAlert, Map as MapIcon, Loader2
+  Search, ShieldAlert, Map as MapIcon,
+  Loader2, UploadCloud, FileText, X, AlertCircle
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -16,14 +17,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useFormContext } from "react-hook-form";
-import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
 import { useSijagaStore } from "@/store/useSijagaStore";
 import { useNavigate } from "react-router-dom";
 import L from "leaflet";
 import { toast } from "sonner";
 import "leaflet/dist/leaflet.css";
 
-// --- Fix Leaflet Default Marker Icons ---
+// --- Fix Leaflet Default Marker Icons (GFW Paradigm Safety) ---
 import icon from "leaflet/dist/images/marker-icon.png";
 import iconShadow from "leaflet/dist/images/marker-shadow.png";
 
@@ -34,6 +35,18 @@ let DefaultIcon = L.icon({
   iconAnchor: [12, 41],
 });
 L.Marker.prototype.options.icon = DefaultIcon;
+
+// Map size invalidator helper (Resolves gray tile bugs on wizard transition)
+function ResizeMap() {
+  const map = useMap();
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [map]);
+  return null;
+}
 
 // --- SCHEMA VALIDASI (ZOD) ---
 const registrationSchema = z.object({
@@ -69,6 +82,12 @@ export default function RegistrationPage() {
 
   const [currentStep, setCurrentStep] = useState(1);
   const [docType, setDocType] = useState<"SPPL" | "UKL-UPL" | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  // --- File Upload State (Multipart Files Handler) ---
+  const [nibFile, setNibFile] = useState<File | null>(null);
+  const [npwpFile, setNpwpFile] = useState<File | null>(null);
+  const [siteplanFile, setSiteplanFile] = useState<File | null>(null);
 
   const methods = useForm<RegistrationFormValues>({
     resolver: zodResolver(registrationSchema) as any,
@@ -91,18 +110,49 @@ export default function RegistrationPage() {
   };
 
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
 
   const onSubmit = async (data: RegistrationFormValues) => {
+    // Validasi berkas legalitas wajib sebelum dikirim ke API [3]
+    if (!nibFile) {
+      toast.error("Dokumen NIB wajib diunggah.");
+      setCurrentStep(1);
+      return;
+    }
+    if (!npwpFile) {
+      toast.error("Dokumen NPWP wajib diunggah.");
+      setCurrentStep(1);
+      return;
+    }
+
     setLoading(true);
     try {
-      await addCompany({
-        ...data,
-        docType: docType || "SPPL"
+      // Konstruksi payload multipat FormData secara dinamis
+      const formData = new FormData();
+
+      // Memasukkan seluruh parameter teks ke FormData
+      Object.entries(data).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          formData.append(key, String(value));
+        }
       });
+
+      // Memasukkan rekomendasi dokumen lingkungan dari assessment
+      formData.append("docType", docType || "SPPL");
+
+      // Memasukkan binary berkas fisik ke FormData
+      formData.append("nibDoc", nibFile);
+      formData.append("npwpDoc", npwpFile);
+      if (siteplanFile) {
+        formData.append("siteplanDoc", siteplanFile);
+      }
+
+      await addCompany(formData);
       navigate("/company");
     } catch (error: any) {
-      const serverMsg = error.response?.data?.error || error.response?.data?.message || "Koneksi ke API error.";
+      const serverMsg =
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        "Terjadi kesalahan saat menghubungi server.";
       toast.error(serverMsg);
     } finally {
       setLoading(false);
@@ -112,7 +162,7 @@ export default function RegistrationPage() {
   const nextStep = () => setCurrentStep((prev) => prev + 1);
   const prevStep = () => setCurrentStep((prev) => prev - 1);
 
-  // Otorisasi Page Security
+  // Otorisasi Keamanan Sesi Page
   React.useEffect(() => {
     if (!currentUser || currentUser.role !== "PERUSAHAAN") {
       toast.error("Masuk sistem diperlukan.");
@@ -156,13 +206,15 @@ export default function RegistrationPage() {
           <FormProvider {...methods}>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
 
-              {/* STEP 1: IDENTITAS */}
+              {/* STEP 1: IDENTITAS & UPLOAD DOKUMEN (GFW HIGH DENSITY) */}
               {currentStep === 1 && (
                 <Card className="bg-white border border-slate-200 rounded-none shadow-none overflow-hidden animate-in fade-in slide-in-from-bottom-4">
-                  <CardHeaderLayout title="Identitas & Legalitas" desc="Masukkan data resmi perusahaan sesuai NIB." />
-                  <CardContent className="space-y-4 p-4 md:p-6">
+                  <CardHeaderLayout title="Identitas & Legalitas" desc="Masukkan data resmi perusahaan dan unggah dokumen pendukung." />
+                  <CardContent className="space-y-6 p-6">
+
+                    {/* Data Identitas */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormGroup label="Nama Perusahaan" name="companyName" placeholder="PT. Sumber Alam" />
+                      <FormGroup label="Nama Perusahaan" name="companyName" placeholder="Contoh: PT. Sumber Alam" />
                       <FormGroup label="NIB (Nomor Induk Berusaha)" name="nib" placeholder="13 Digit Angka" />
                       <FormGroup label="NPWP Perusahaan" name="npwp" placeholder="00.000.000.0-000.000" />
                       <FormGroup label="Nama Penanggung Jawab" name="picName" placeholder="Nama PIC sesuai KTP" />
@@ -180,6 +232,55 @@ export default function RegistrationPage() {
                       </div>
                       <FormGroup label="Tahun Berdiri" name="yearBuilt" placeholder="2026" type="number" />
                     </div>
+
+                    {/* Dokumen Legalitas Upload (Edge-to-Edge Style) */}
+                    <div className="space-y-3 pt-4 border-t border-slate-100 text-left">
+                      <div className="flex items-center gap-2 pb-1 border-b border-slate-100">
+                        <FileText size={14} className="text-emerald-600 shrink-0" />
+                        <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-widest">Upload Dokumen Legalitas</h3>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {/* NIB */}
+                        <FileUploadBox
+                          label="Scan NIB"
+                          required
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          file={nibFile}
+                          onFileChange={setNibFile}
+                          hint="PDF / JPG / PNG, maks 5 MB"
+                        />
+
+                        {/* NPWP */}
+                        <FileUploadBox
+                          label="Scan NPWP"
+                          required
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          file={npwpFile}
+                          onFileChange={setNpwpFile}
+                          hint="PDF / JPG / PNG, maks 5 MB"
+                        />
+
+                        {/* Siteplan */}
+                        <FileUploadBox
+                          label="Siteplan / Layout"
+                          required={false}
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          file={siteplanFile}
+                          onFileChange={setSiteplanFile}
+                          hint="Opsional — denah lokasi usaha"
+                        />
+                      </div>
+
+                      {/* Warning box kaku siku */}
+                      <div className="flex items-start gap-2.5 p-3 bg-amber-50 border border-amber-200 rounded-none">
+                        <AlertCircle size={14} className="text-amber-500 shrink-0 mt-0.5" />
+                        <p className="text-[10px] font-bold text-amber-700 leading-snug">
+                          Dokumen NIB dan NPWP <span className="underline">wajib</span> diunggah. Dokumen tidak lengkap akan menghambat proses verifikasi otomatis [3].
+                        </p>
+                      </div>
+                    </div>
+
                     <div className="flex justify-end pt-3 border-t">
                       <Button type="button" onClick={nextStep} className="bg-slate-900 hover:bg-emerald-600 h-10 px-6 rounded-none font-black text-[10px] uppercase tracking-widest text-white ml-auto">
                         Lanjut ke Penapisan
@@ -293,6 +394,7 @@ export default function RegistrationPage() {
                       >
                         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                         <InteractiveMap />
+                        <ResizeMap />
                       </MapContainer>
                     </div>
 
@@ -308,6 +410,18 @@ export default function RegistrationPage() {
                         className="w-full min-h-[70px] rounded-none border border-slate-300 p-2.5 text-xs font-bold focus:outline-none focus:border-emerald-600 focus:ring-0 bg-white"
                         placeholder="Contoh: Jl. Cisitu Indah No. 2A, Bandung"
                       />
+                    </div>
+
+                    {/* File upload summary before final submit (High-Density) */}
+                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-none space-y-2.5 text-left">
+                      <h4 className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                        <FileText size={12} /> Ringkasan Dokumen yang Akan Dikirim
+                      </h4>
+                      <div className="space-y-1.5">
+                        <FileStatusRow label="NIB" file={nibFile} required />
+                        <FileStatusRow label="NPWP" file={npwpFile} required />
+                        <FileStatusRow label="Siteplan / Layout" file={siteplanFile} required={false} />
+                      </div>
                     </div>
 
                     <div className="flex justify-between pt-4 border-t gap-2">
@@ -341,7 +455,115 @@ export default function RegistrationPage() {
   );
 }
 
-// --- SUB-COMPONENTS & HELPERS ---
+// ─── Sub-Components (GFW Paradigm Compliant & Complete) ─────────────────────────
+
+interface FileUploadBoxProps {
+  label: string;
+  required: boolean;
+  accept: string;
+  file: File | null;
+  onFileChange: (f: File | null) => void;
+  hint?: string;
+}
+
+function FileUploadBox({ label, required, accept, file, onFileChange, hint }: FileUploadBoxProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleClick = () => inputRef.current?.click();
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = e.target.files?.[0] || null;
+    if (selected && selected.size > 5 * 1024 * 1024) {
+      toast.error(`File ${label} melebihi batas ukuran 5 MB.`);
+      return;
+    }
+    onFileChange(selected);
+  };
+
+  const isImage = file && file.type.startsWith("image/");
+
+  return (
+    <div className="space-y-1.5 text-left">
+      <Label className="text-[9px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1 leading-none">
+        {label}
+        {required && <span className="text-red-500 ml-0.5">*</span>}
+      </Label>
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept={accept}
+        className="hidden"
+        onChange={handleChange}
+      />
+
+      {file ? (
+        <div
+          className="relative rounded-none border border-emerald-500 bg-emerald-50/20 p-3 flex items-center gap-2.5 cursor-pointer hover:bg-emerald-50/50 transition-all group"
+          onClick={handleClick}
+        >
+          {isImage ? (
+            <img
+              src={URL.createObjectURL(file)}
+              alt="preview"
+              className="w-10 h-10 rounded-none object-cover border border-emerald-200 shrink-0"
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-none bg-emerald-600 flex items-center justify-center shrink-0">
+              <FileText size={18} className="text-white" />
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-black text-emerald-800 truncate uppercase tracking-tight">{file.name}</p>
+            <p className="text-[9px] text-emerald-600 font-bold">{(file.size / 1024).toFixed(0)} KB</p>
+          </div>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onFileChange(null); if (inputRef.current) inputRef.current.value = ""; }}
+            className="p-1 rounded-none hover:bg-rose-50 text-emerald-600 hover:text-rose-500 transition-colors shrink-0"
+          >
+            <X size={12} />
+          </button>
+        </div>
+      ) : (
+        <div
+          onClick={handleClick}
+          className={cn(
+            "rounded-none border border-dashed p-4 flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all group min-h-[90px]",
+            "border-slate-300 bg-slate-50 hover:border-emerald-500 hover:bg-emerald-50/10"
+          )}
+        >
+          <div className="w-8 h-8 rounded-none bg-white border border-slate-200 flex items-center justify-center text-slate-300 group-hover:text-emerald-500 group-hover:border-emerald-300 transition-all shrink-0">
+            <UploadCloud size={16} />
+          </div>
+          <div className="text-center">
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest group-hover:text-emerald-600 transition-colors">Klik untuk upload</p>
+            {hint && <p className="text-[8px] text-slate-300 font-bold italic mt-0.5">{hint}</p>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FileStatusRow({ label, file, required }: { label: string; file: File | null; required: boolean }) {
+  return (
+    <div className="flex items-center justify-between text-[11px] font-bold">
+      <span className="text-slate-500">
+        {label}{required && <span className="text-red-400 ml-0.5">*</span>}
+      </span>
+      {file ? (
+        <span className="flex items-center gap-1 text-emerald-600 text-[10px]">
+          <CheckCircle2 size={11} /> {file.name}
+        </span>
+      ) : (
+        <span className={cn("text-[10px] font-bold uppercase tracking-wider", required ? "text-rose-500" : "text-slate-400 italic")}>
+          {required ? "BELUM UNGGAH" : "OPSIONAL"}
+        </span>
+      )}
+    </div>
+  );
+}
 
 function InteractiveMap() {
   const { setValue, watch } = useFormContext();
@@ -460,6 +682,36 @@ function UKLUPTemplate() {
           <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">3. Upaya Pemantauan Lingkungan (UPL)</Label>
           <p className="text-[9px] text-slate-400 font-bold uppercase leading-none">Metodologi pengukuran berkala tingkat efektivitas UKL.</p>
           <textarea className="w-full min-h-[60px] rounded-none border border-slate-300 p-2.5 text-xs font-bold focus:outline-none focus:border-emerald-600 bg-white" placeholder="Contoh: Pemeriksaan uji lab pH air limbah setiap 6 bulan..." />
+        </div>
+
+        {/* Informasi Limbah Spesifik GFW Box */}
+        <div className="p-4 bg-slate-950 text-white space-y-4 rounded-none border border-slate-800 col-span-full">
+          <div className="flex items-center gap-2 text-emerald-400">
+            <Factory size={16} />
+            <h4 className="font-black uppercase tracking-widest text-[9px]">Informasi Limbah Spesifik</h4>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-[9px] text-slate-400 uppercase tracking-wider leading-none">Limbah Cair (Debit/Hari)</Label>
+              <Input className="bg-slate-900 border-slate-700 text-white rounded-none h-10 text-xs font-bold focus-visible:ring-0 focus-visible:border-emerald-600" placeholder="Contoh: 5 m3/hari" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[9px] text-slate-400 uppercase tracking-wider leading-none">Limbah B3 (Jenis)</Label>
+              <Input className="bg-slate-900 border-slate-700 text-white rounded-none h-10 text-xs font-bold focus-visible:ring-0 focus-visible:border-emerald-600" placeholder="Oli, Aki, Medis, dll" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[9px] text-slate-400 uppercase tracking-wider leading-none">Emisi Udara</Label>
+              <Input className="bg-slate-900 border-slate-700 text-white rounded-none h-10 text-xs font-bold focus-visible:ring-0 focus-visible:border-emerald-600" placeholder="Genset / Cerobong" />
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-1.5 text-left">
+          <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">4. Dampak Sosial & Masyarakat</Label>
+          <textarea
+            className="w-full min-h-[80px] rounded-none border border-slate-300 p-2.5 text-xs font-bold focus:outline-none focus:border-emerald-600 bg-white"
+            placeholder="Upaya komunikasi dengan warga sekitar..."
+          />
         </div>
       </div>
     </div>

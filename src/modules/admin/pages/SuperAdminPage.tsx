@@ -1,5 +1,5 @@
 // src/modules/admin/pages/SuperAdminPage.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import { useSijagaStore } from "@/store/useSijagaStore";
@@ -14,9 +14,21 @@ import {
   Map as MapIcon, Activity, Lock, Eye, Database, Globe, Search, Download
 } from "lucide-react";
 import { toast } from "sonner";
-import { MapContainer, TileLayer, Circle, FeatureGroup } from "react-leaflet";
+import { MapContainer, TileLayer, Circle, FeatureGroup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { cn } from "@/lib/utils";
+
+// Map size invalidator helper (GFW Paradigm Map Fix)
+function ResizeMap() {
+  const map = useMap();
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [map]);
+  return null;
+}
 
 export default function SuperAdminPage() {
   const { tab } = useParams();
@@ -323,6 +335,7 @@ export default function SuperAdminPage() {
                       <Circle center={[-6.9034, 107.6189]} radius={2500} pathOptions={{ color: "orange", fillColor: "orange", fillOpacity: 0.2 }} />
                     </FeatureGroup>
                   )}
+                  <ResizeMap />
                 </MapContainer>
               </div>
             </Card>

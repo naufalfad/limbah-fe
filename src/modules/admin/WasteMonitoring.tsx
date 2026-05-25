@@ -1,7 +1,8 @@
+// src/modules/admin/WasteMonitoring.tsx
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { useSijagaStore } from '@/store/useSijagaStore';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -10,7 +11,8 @@ import {
   Trash2, Waves, AlertTriangle, TrendingUp,
   Search, Filter, Download, Activity,
   ArrowUpRight, ArrowDownRight, Map as MapIcon,
-  Brain, Sparkles, ShieldAlert, CheckCircle, Calendar, Send
+  Brain, Sparkles, CheckCircle, Calendar, Send,
+  X, Check, FileText
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -19,7 +21,7 @@ export default function WasteMonitoring() {
   const {
     wasteLogs, companies, scheduleInspection,
     addNotification, addAuditLog, currentUser,
-    fetchCompanies, fetchWasteLogs
+    fetchCompanies, fetchWasteLogs, verifyWasteLog
   } = useSijagaStore();
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -28,10 +30,13 @@ export default function WasteMonitoring() {
   const [scheduledAnomalies, setScheduledAnomalies] = useState<string[]>([]);
   const [warnedAnomalies, setWarnedAnomalies] = useState<string[]>([]);
 
+  // Selected Log for detail and verification [3]
+  const [selectedLog, setSelectedLog] = useState<any>(null);
+
   useEffect(() => {
     fetchCompanies();
     fetchWasteLogs();
-  }, []);
+  }, [fetchCompanies, fetchWasteLogs]);
 
   const getEwsStatus = (type: string, volume: number) => {
     const isB3 = type.toLowerCase().includes("b3") || type.toLowerCase().includes("oli") || type.toLowerCase().includes("kimia");
@@ -97,17 +102,17 @@ export default function WasteMonitoring() {
 
   return (
     <DashboardLayout role="ADMIN_DLH">
-      <div className="space-y-4 text-left"> {/* DIET: space-y-8 -> space-y-4 */}
+      <div className="space-y-4 text-left animate-in fade-in duration-300"> {/* DIET: space-y-8 -> space-y-4 */}
 
         {/* --- HEADER --- */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-4 border-slate-200">
           <div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase"> {/* DIET: text-3xl -> 2xl */}
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase leading-none">
               Monitoring <span className="text-emerald-600">Limbah</span>
             </h1>
-            <p className="text-slate-500 text-xs font-medium mt-1">Data akumulasi produksi limbah industri & analisis EWS AI.</p>
+            <p className="text-slate-500 text-xs font-medium mt-1.5">Data akumulasi produksi limbah industri & analisis EWS AI.</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 shrink-0">
             <Button variant="outline" size="sm" className="rounded-none font-bold border-slate-300 text-[10px]" onClick={() => toast.info("Exporting...")}>
               <Download className="mr-1.5" size={14} /> EXPORT
             </Button>
@@ -124,13 +129,13 @@ export default function WasteMonitoring() {
           <StatMiniCard title="Alert EWS Aktif" value={String(activeAlerts).padStart(2, '0')} sub="Over-limit" icon={<AlertTriangle size={16} />} color="red" trend={activeAlerts > 0 ? `+${activeAlerts}` : "Aman"} isDanger={activeAlerts > 0} />
         </div>
 
-        {/* --- AI ANOMALY DETECTION WIDGET (DIET) --- */}
-        <Card className="rounded-none border border-slate-800 bg-slate-900 text-white relative">
+        {/* --- AI ANOMALY DETECTION WIDGET --- */}
+        <Card className="rounded-none border border-slate-800 bg-slate-900 text-white relative shadow-none">
           <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none" />
 
           <div className="p-4 border-b border-white/10 relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400">
+              <div className="p-2 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-none">
                 <Brain size={18} />
               </div>
               <div>
@@ -140,12 +145,12 @@ export default function WasteMonitoring() {
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1 text-[9px] text-slate-300 uppercase tracking-widest font-bold">
+            <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1 text-[9px] text-slate-300 uppercase tracking-widest font-bold rounded-none">
               <Sparkles size={12} className="text-amber-400" /> Conf: 99.4%
             </div>
           </div>
 
-          <div className="p-0 relative z-10"> {/* Flush list approach for anomalies */}
+          <div className="p-0 relative z-10">
             {anomalies.length === 0 ? (
               <div className="p-8 text-center flex flex-col items-center">
                 <CheckCircle size={24} className="text-emerald-400 mb-2" />
@@ -163,12 +168,12 @@ export default function WasteMonitoring() {
                       <div className="space-y-1.5 flex-1">
                         <div className="flex items-center gap-2">
                           <span className="font-black text-sm uppercase">{anomaly.companyName}</span>
-                          <span className={cn("text-[8px] font-black uppercase px-2 py-0.5 border", anomaly.ews === "DANGER" ? "bg-rose-500/10 text-rose-400 border-rose-500/30" : "bg-amber-500/10 text-amber-400 border-amber-500/30")}>
+                          <span className={cn("text-[8px] font-black uppercase px-2 py-0.5 border rounded-none", anomaly.ews === "DANGER" ? "bg-rose-500/10 text-rose-400 border-rose-500/30" : "bg-amber-500/10 text-amber-400 border-amber-500/30")}>
                             {anomaly.ews}
                           </span>
                         </div>
                         <p className="text-[11px] text-slate-300">Volume <span className="font-bold text-white">{anomaly.type} ({anomaly.volume} {anomaly.unit})</span> melampaui limit {anomaly.limit}.</p>
-                        <p className="text-[9px] text-emerald-400 font-bold uppercase tracking-widest mt-1">Rekomendasi: {anomaly.suggestion}</p>
+                        <p className="text-[9px] text-emerald-400 font-bold uppercase tracking-widest mt-1 leading-none">Rekomendasi: {anomaly.suggestion}</p>
                       </div>
 
                       <div className="flex gap-2 w-full lg:w-auto">
@@ -215,7 +220,7 @@ export default function WasteMonitoring() {
           </div>
         </Card>
 
-        {/* --- MONITORING TABLE (DENSE) --- */}
+        {/* --- MONITORING TABLE (GFW DENSE) --- */}
         <div className="bg-white rounded-none border border-slate-200 shadow-sm overflow-hidden text-left">
           <Table>
             <TableHeader className="bg-slate-50">
@@ -225,13 +230,14 @@ export default function WasteMonitoring() {
                 <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest text-center">Volume Saat Ini</TableHead>
                 <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest text-center">Ambang Batas</TableHead>
                 <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest text-center">Status EWS</TableHead>
+                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest text-center">Verifikasi</TableHead>
                 <TableHead className="pr-4 text-right font-black text-slate-500 uppercase text-[9px] tracking-widest">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredLogs.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 font-bold text-slate-400 text-xs">Tidak ada data log limbah.</TableCell>
+                  <TableCell colSpan={7} className="text-center py-8 font-bold text-slate-400 text-xs uppercase tracking-widest">Tidak ada data log limbah.</TableCell>
                 </TableRow>
               ) : (
                 filteredLogs.map((item) => {
@@ -242,9 +248,9 @@ export default function WasteMonitoring() {
                   return (
                     <TableRow key={item.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors h-14">
                       <TableCell className="pl-4">
-                        <div className="flex flex-col">
-                          <span className="font-bold text-slate-800 text-xs">{item.companyName}</span>
-                          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{item.date} • {item.id}</span>
+                        <div className="flex flex-col text-left">
+                          <span className="font-bold text-slate-800 text-xs leading-none">{item.companyName}</span>
+                          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1.5 leading-none">{item.date} • {item.id}</span>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -262,9 +268,28 @@ export default function WasteMonitoring() {
                       <TableCell className="text-center">
                         <EWSBadge status={ews} />
                       </TableCell>
+
+                      {/* Kolom Status Verifikasi Taktis GFW [3] */}
+                      <TableCell className="text-center">
+                        <Badge variant="outline" className={cn(
+                          "rounded-none font-bold text-[8px] border uppercase tracking-widest shadow-none",
+                          item.status === 'Terverifikasi' ? "border-emerald-200 text-emerald-600 bg-emerald-50" :
+                            item.status === 'Ditolak' ? "border-rose-200 text-rose-600 bg-rose-50" :
+                              item.status === 'Proses_Verifikasi' ? "border-amber-200 text-amber-600 bg-amber-50" :
+                                "border-slate-200 text-slate-600 bg-slate-50"
+                        )}>
+                          {item.status.replace('_', ' ')}
+                        </Badge>
+                      </TableCell>
+
                       <TableCell className="pr-4 text-right">
-                        <Button variant="ghost" size="sm" className="font-bold text-[9px] rounded-none text-emerald-600 hover:bg-emerald-50 tracking-widest h-7" onClick={() => toast.info(`Logbook Detail: ${item.method}`)}>
-                          DETAIL
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="font-black text-[9px] text-emerald-600 hover:bg-emerald-50 tracking-widest h-7 rounded-none outline-none"
+                          onClick={() => setSelectedLog(item)}
+                        >
+                          DETAIL LOGBOOK
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -274,6 +299,121 @@ export default function WasteMonitoring() {
             </TableBody>
           </Table>
         </div>
+
+        {/* --- LOGBOOK DETAIL MODAL (GFW TACTICAL LOOK) [3] --- */}
+        {selectedLog && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+            <div className="bg-white rounded-none shadow-none w-full max-w-xl overflow-hidden border border-slate-300 flex flex-col">
+
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-none bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0 border border-emerald-200">
+                    <FileText size={18} />
+                  </div>
+                  <div className="text-left font-sans">
+                    <h3 className="font-black text-slate-800 text-sm uppercase tracking-widest leading-none">Detail Laporan Logbook</h3>
+                    <p className="text-slate-400 text-[9px] font-black uppercase tracking-wider mt-1.5 leading-none">ID Referensi: {selectedLog.id}</p>
+                  </div>
+                </div>
+                <button onClick={() => setSelectedLog(null)} className="p-1 rounded-none hover:bg-slate-200 text-slate-500 transition-colors">
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-6 space-y-5 overflow-y-auto max-h-[60vh] custom-scrollbar text-left font-sans">
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-1 text-left">
+                    <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Nama Perusahaan</p>
+                    <p className="font-bold text-slate-800 text-xs leading-none uppercase">{selectedLog.companyName}</p>
+                    <p className="text-[9px] text-slate-400 font-mono mt-1 leading-none">ID: {selectedLog.companyId}</p>
+                  </div>
+                  <div className="space-y-1 text-left">
+                    <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Tanggal Pelaporan</p>
+                    <p className="font-bold text-slate-850 text-xs leading-none uppercase">
+                      {new Date(selectedLog.date).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="border-t border-slate-200 pt-5 grid grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="space-y-1">
+                    <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Jenis Limbah</p>
+                    <Badge variant="secondary" className="rounded-none font-bold bg-slate-100 text-slate-700 text-[10px] tracking-wider uppercase border-none">{selectedLog.type}</Badge>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Total Volume</p>
+                    <p className="font-black text-slate-850 text-lg leading-none">{selectedLog.volume} <span className="text-xs font-bold text-slate-500">{selectedLog.unit}</span></p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Metode Angkut</p>
+                    <p className="font-bold text-slate-700 text-xs leading-none uppercase">{selectedLog.method}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Status EWS</p>
+                    <EWSBadge status={getEwsStatus(selectedLog.type, selectedLog.volume)} />
+                  </div>
+                </div>
+
+                <div className="border-t border-slate-200 pt-5 space-y-1.5">
+                  <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Catatan Pelapor</p>
+                  <p className="text-xs text-slate-600 bg-slate-50 p-4 border rounded-none italic font-medium leading-relaxed">
+                    {selectedLog.note || "Tidak ada catatan tambahan yang dilampirkan oleh pelapor."}
+                  </p>
+                </div>
+              </div>
+
+              {/* Verification Actions (Only for 'Proses_Verifikasi') [3] */}
+              <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex flex-wrap items-center justify-between gap-4 font-sans">
+                <div className="flex items-center gap-2">
+                  <p className="text-[8px] font-black uppercase tracking-widest text-slate-500">Status Laporan:</p>
+                  <Badge variant="outline" className={cn(
+                    "rounded-none font-bold text-[8px] uppercase tracking-widest border",
+                    selectedLog.status === 'Terverifikasi' ? "border-emerald-200 text-emerald-600 bg-emerald-50" :
+                      selectedLog.status === 'Ditolak' ? "border-rose-200 text-rose-600 bg-rose-50" :
+                        selectedLog.status === 'Proses_Verifikasi' ? "border-amber-200 text-amber-600 bg-amber-50" :
+                          "border-slate-200 text-slate-600 bg-slate-50"
+                  )}>
+                    {selectedLog.status.replace('_', ' ')}
+                  </Badge>
+                </div>
+
+                {selectedLog.status === 'Proses_Verifikasi' && (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      className="rounded-none h-9 px-4 text-[9px] font-black uppercase tracking-widest border-rose-300 text-rose-600 hover:bg-rose-50 shadow-none"
+                      onClick={() => {
+                        verifyWasteLog(selectedLog.id, "Ditolak");
+                        setSelectedLog({ ...selectedLog, status: "Ditolak" });
+                        toast.error(`Laporan ${selectedLog.id} ditolak.`);
+                      }}
+                    >
+                      <X size={12} className="mr-1.5" /> Tolak Laporan
+                    </Button>
+                    <Button
+                      className="rounded-none h-9 px-4 text-[9px] font-black uppercase tracking-widest bg-emerald-600 hover:bg-emerald-700 text-white shadow-none"
+                      onClick={() => {
+                        verifyWasteLog(selectedLog.id, "Terverifikasi");
+                        setSelectedLog({ ...selectedLog, status: "Terverifikasi" });
+                        toast.success(`Laporan ${selectedLog.id} terverifikasi.`);
+                      }}
+                    >
+                      <Check size={12} className="mr-1.5" /> Verifikasi Laporan
+                    </Button>
+                  </div>
+                )}
+                {selectedLog.status !== 'Proses_Verifikasi' && (
+                  <Button variant="ghost" className="rounded-none h-9 text-[9px] font-black uppercase tracking-widest text-slate-500 hover:bg-slate-200" onClick={() => setSelectedLog(null)}>
+                    Tutup Keluar
+                  </Button>
+                )}
+              </div>
+
+            </div>
+          </div>
+        )}
 
       </div>
     </DashboardLayout>
@@ -289,8 +429,8 @@ function StatMiniCard({ title, value, sub, icon, color, isWarning, isDanger }: a
   const iconColor = isDanger ? "text-rose-600" : isWarning ? "text-amber-600" : "text-emerald-600";
 
   return (
-    <div className={cn("border p-4 shadow-sm flex items-start gap-4 transition-colors", bg)}>
-      <div className={cn("w-10 h-10 border bg-white flex items-center justify-center shrink-0", iconColor, isDanger ? "border-rose-200" : "border-slate-100")}>
+    <div className={cn("border p-4 shadow-sm flex items-start gap-4 transition-colors rounded-none", bg)}>
+      <div className={cn("w-10 h-10 border bg-white flex items-center justify-center shrink-0 rounded-none", iconColor, isDanger ? "border-rose-200" : "border-slate-100")}>
         {icon}
       </div>
       <div className="flex-1">
@@ -309,7 +449,7 @@ function EWSBadge({ status }: { status: string }) {
     DANGER: "bg-rose-50 text-rose-700 border-rose-200",
   };
   return (
-    <Badge className={cn("px-2 py-0.5 rounded-none text-[9px] font-bold border uppercase tracking-widest", styles[status])}>
+    <Badge className={cn("px-2 py-0.5 rounded-none text-[9px] font-bold border uppercase tracking-widest shadow-none", styles[status])}>
       {status}
     </Badge>
   );

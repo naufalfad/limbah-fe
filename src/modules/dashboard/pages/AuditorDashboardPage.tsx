@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Download, BarChart4, Map as MapIcon, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
 
-// Mengimpor Sub-Modul Eksekutif yang sudah di-diet & dimodularisasi
+// Mengimpor Sub-Modul Eksekutif yang sudah di-diet & dimodularisasi (Prinsip GRASP: Low Coupling) [3]
 import AnalyticsTab from "../components/auditor/AnalyticsTab";
 import GisTab from "../components/auditor/GisTab";
 import PerformanceTab from "../components/auditor/PerformanceTab";
@@ -16,8 +16,8 @@ import PerformanceTab from "../components/auditor/PerformanceTab";
  * AuditorDashboardPage - The Executive Shell & Orchestrator (Diet UI)
  * Bertindak sebagai kerangka utama halaman pimpinan/auditor:
  * 1. Menampilkan Header Utama dan Tab Navigator yang kaku & rapat.
- * 2. Memicu sinkronisasi data master DLH secara terpusat saat halaman di-load.
- * 3. Memilih & merender komponen tab yang aktif sesuai parameter URL.
+ * 2. Memicu sinkronisasi data master DLH secara terpusat saat halaman di-load [3].
+ * 3. Memilih & merender komponen tab yang aktif sesuai parameter URL [3].
  */
 export default function AuditorDashboardPage() {
   const { tab } = useParams();
@@ -26,19 +26,19 @@ export default function AuditorDashboardPage() {
 
   const activeTab = tab || "analytics";
 
-  // Memicu sinkronisasi data global DLH saat pertama kali masuk halaman Auditor
+  // Memicu sinkronisasi data global DLH saat pertama kali masuk halaman Auditor (Information Expert) [3]
   useEffect(() => {
     fetchCompanies();
     fetchWasteLogs();
     fetchInvoices();
     fetchInspections();
-  }, []);
+  }, [fetchCompanies, fetchWasteLogs, fetchInvoices, fetchInspections]);
 
   const handleExport = () => {
     toast.success("Mengekspor laporan eksekutif kepatuhan ESG (.PDF). Mohon tunggu...");
   };
 
-  // Fungsi merender tab aktif secara dinamis (Modular Rendering)
+  // Fungsi merender tab aktif secara dinamis (Modular Rendering) [3]
   const renderTabContent = () => {
     switch (activeTab) {
       case "gis":
@@ -61,7 +61,7 @@ export default function AuditorDashboardPage() {
             <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase leading-none">
               Command Center Auditor
             </h1>
-            <p className="text-slate-500 text-xs font-medium mt-1">
+            <p className="text-slate-500 text-xs font-medium mt-1.5">
               Pemantauan tingkat kepatuhan industri, kinerja pengawasan DLH, dan analisis ESG daerah secara geospasial.
             </p>
           </div>
@@ -97,7 +97,7 @@ export default function AuditorDashboardPage() {
           />
         </div>
 
-        {/* --- 3. DYNAMIC TAB CONTENT --- */}
+        {/* --- 3. DYNAMIC TAB CONTENT (High Cohesion) --- */}
         <div className="pt-2">
           {renderTabContent()}
         </div>

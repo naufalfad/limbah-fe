@@ -20,17 +20,30 @@ import { useNavigate } from "react-router-dom";
 import CompanyHeader from "../components/CompanyHeader";
 
 export default function DocumentStatusPage() {
-  const { currentUser, companies, selectedCompanyId } = useSijagaStore();
+  const { currentUser, companies, selectedCompanyId, downloadCompanyCertificate } = useSijagaStore();
   const navigate = useNavigate();
 
   // State Pengendali Preview Sertifikat & QR Verifikasi [3]
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [showQRVerify, setShowQRVerify] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   // Mengidentifikasi entitas perusahaan terdaftar
   const company = companies.find(c => c.id === selectedCompanyId) ||
     companies.find(c => c.id === currentUser?.companyId) ||
     companies[0];
+
+  const handleDownloadPdf = async () => {
+    if (!company) return;
+    setIsDownloading(true);
+    try {
+      await downloadCompanyCertificate(company.id, company.companyName);
+    } catch (error) {
+      console.error("Download failed", error);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   if (!company) {
     return (
@@ -166,118 +179,129 @@ export default function DocumentStatusPage() {
         {/* 4. CERTIFICATE PREVIEW DIALOG (GFW OFFICIAL BAP STYLE) */}
         {isPreviewOpen && (
           <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-            <DialogContent className="max-w-[650px] w-full bg-stone-50 border border-stone-300 rounded-none p-6 md:p-10 text-stone-900 shadow-2xl relative z-[9999]">
-              {/* Border Frame Bingkai Dokumen Resmi Kaku Siku */}
-              <div className="absolute inset-3 border border-dashed border-stone-400 rounded-none pointer-events-none" />
+            <DialogContent className="max-w-[650px] w-[95vw] md:w-full bg-stone-50 border border-stone-300 rounded-none p-0 text-stone-900 shadow-2xl overflow-hidden relative z-[9999]">
+              <div className="max-h-[85vh] overflow-y-auto p-6 md:p-10 relative w-full">
+                {/* Border Frame Bingkai Dokumen Resmi Kaku Siku */}
+                <div className="absolute inset-3 border border-dashed border-stone-400 rounded-none pointer-events-none" />
 
-              <div className="space-y-6 text-center relative z-10 font-sans">
-
-                {/* Government Header */}
-                <div className="flex flex-col items-center border-b-2 border-stone-800 pb-4">
-                  <div className="w-10 h-10 bg-stone-200 rounded-none border border-stone-300 flex items-center justify-center text-stone-700 mb-2">
-                    <Leaf size={24} />
-                  </div>
-                  <h2 className="text-xs font-black tracking-wider leading-none uppercase text-stone-800">Pemerintah Kabupaten / Kota</h2>
-                  <h3 className="text-sm font-black tracking-widest leading-none uppercase mt-1 text-stone-900">Dinas Lingkungan Hidup</h3>
-                  <p className="text-[8px] text-stone-500 font-bold tracking-[0.2em] uppercase mt-1.5">Sertifikat Registrasi Lingkungan Digital</p>
-                </div>
-
-                {/* Title */}
-                <div className="space-y-1">
-                  <h4 className="text-xs font-black tracking-widest uppercase underline leading-none text-stone-900">Surat Bukti Registrasi Lingkungan</h4>
-                  <p className="text-[9px] text-stone-500 font-mono font-bold">Nomor: REG/LH/{company.nib}/{new Date().getFullYear()}</p>
-                </div>
-
-                {/* Content */}
-                <div className="space-y-3.5 text-[10px] leading-relaxed max-w-xl mx-auto text-stone-700 text-justify">
-                  <p className="font-medium">
-                    Berdasarkan Undang-Undang Perlindungan dan Pengelolaan Lingkungan Hidup, Dinas Lingkungan Hidup menyatakan bahwa pelaku usaha di bawah ini:
-                  </p>
-
-                  <div className="grid grid-cols-3 gap-y-1.5 border-y border-stone-200 py-3 font-bold text-left bg-stone-100/50 px-3">
-                    <span className="text-stone-500 uppercase tracking-wider text-[8px]">Nama Perusahaan</span>
-                    <span className="col-span-2 text-stone-950 text-[9px]">: {company.companyName}</span>
-
-                    <span className="text-stone-500 uppercase tracking-wider text-[8px]">Nomor Induk Berusaha</span>
-                    <span className="col-span-2 text-stone-950 text-[9px] font-mono">: {company.nib}</span>
-
-                    <span className="text-stone-500 uppercase tracking-wider text-[8px]">Alamat Usaha</span>
-                    <span className="col-span-2 text-stone-950 text-[9px]">: {company.address}</span>
-
-                    <span className="text-stone-500 uppercase tracking-wider text-[8px]">Dokumen Lingkungan</span>
-                    <span className="col-span-2 text-stone-950 text-[9px]">: {company.docType} (Registrasi Elektronik)</span>
+                <div className="space-y-6 text-center relative z-10 font-sans">
+                  {/* Government Header */}
+                  <div className="flex flex-col items-center border-b-2 border-stone-800 pb-4">
+                    <div className="w-10 h-10 bg-stone-200 rounded-none border border-stone-300 flex items-center justify-center text-stone-700 mb-2">
+                      <Leaf size={24} />
+                    </div>
+                    <h2 className="text-xs font-black tracking-wider leading-none uppercase text-stone-800">Pemerintah Kabupaten / Kota</h2>
+                    <h3 className="text-sm font-black tracking-widest leading-none uppercase mt-1 text-stone-900">Dinas Lingkungan Hidup</h3>
+                    <p className="text-[8px] text-stone-500 font-bold tracking-[0.2em] uppercase mt-1.5">Sertifikat Registrasi Lingkungan Digital</p>
                   </div>
 
-                  <p className="font-medium">
-                    Telah terdaftar dalam sistem pengawasan lingkungan <strong className="text-stone-900 font-black">PANTAU LIMBAH</strong> dengan kewajiban melakukan pelaporan logbook limbah berkala, mematuhi parameter kepatuhan TPS B3, dan bersedia dilakukan inspeksi berkala oleh petugas dinas [3].
-                  </p>
-                </div>
+                  {/* Title */}
+                  <div className="space-y-1">
+                    <h4 className="text-xs font-black tracking-widest uppercase underline leading-none text-stone-900">Surat Bukti Registrasi Lingkungan</h4>
+                    <p className="text-[9px] text-stone-500 font-mono font-bold">Nomor: REG/LH/{company.nib}/{new Date().getFullYear()}</p>
+                  </div>
 
-                {/* Signatures & QR Code */}
-                <div className="grid grid-cols-2 gap-4 items-end pt-4 border-t border-stone-200">
-                  {/* QR Security */}
-                  <div className="flex flex-col items-center">
-                    <button
-                      onClick={() => setShowQRVerify(!showQRVerify)}
-                      className="p-2 bg-white border border-stone-300 rounded-none hover:border-emerald-600 transition-all relative group outline-none"
-                    >
-                      <QrCode className="text-stone-800" size={56} />
-                      <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[7px] font-black text-stone-400 group-hover:text-emerald-600 whitespace-nowrap uppercase tracking-wider">
-                        Verifikasi QR
-                      </span>
-                    </button>
+                  {/* Content */}
+                  <div className="space-y-3.5 text-[10px] leading-relaxed max-w-xl mx-auto text-stone-700 text-justify">
+                    <p className="font-medium">
+                      Berdasarkan Undang-Undang Perlindungan dan Pengelolaan Lingkungan Hidup, Dinas Lingkungan Hidup menyatakan bahwa pelaku usaha di bawah ini:
+                    </p>
 
-                    {showQRVerify && (
-                      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white border border-slate-200 p-5 rounded-none shadow-2xl z-[9999] max-w-xs w-full animate-in zoom-in duration-200 text-left font-sans">
-                        <div className="space-y-4">
-                          <div className="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-none flex items-center justify-center mx-auto">
-                            <ShieldCheck size={20} />
+                    <div className="flex flex-col md:grid md:grid-cols-3 gap-y-1.5 md:gap-y-2 border-y border-stone-200 py-3 font-bold text-left bg-stone-100/50 px-3">
+                      <span className="text-stone-500 uppercase tracking-wider text-[8px]">Nama Perusahaan</span>
+                      <span className="md:col-span-2 text-stone-950 text-[9px] break-words"><span className="hidden md:inline">:</span> {company.companyName}</span>
+
+                      <span className="text-stone-500 uppercase tracking-wider text-[8px] mt-1.5 md:mt-0">Nomor Induk Berusaha</span>
+                      <span className="md:col-span-2 text-stone-950 text-[9px] font-mono break-words"><span className="hidden md:inline">:</span> {company.nib}</span>
+
+                      <span className="text-stone-500 uppercase tracking-wider text-[8px] mt-1.5 md:mt-0">Alamat Usaha</span>
+                      <span className="md:col-span-2 text-stone-950 text-[9px] break-words"><span className="hidden md:inline">:</span> {company.address}</span>
+
+                      <span className="text-stone-500 uppercase tracking-wider text-[8px] mt-1.5 md:mt-0">Dokumen Lingkungan</span>
+                      <span className="md:col-span-2 text-stone-950 text-[9px] break-words"><span className="hidden md:inline">:</span> {company.docType} (Registrasi Elektronik)</span>
+                    </div>
+
+                    <p className="font-medium">
+                      Telah terdaftar dalam sistem pengawasan lingkungan <strong className="text-stone-900 font-black">PANTAU LIMBAH</strong> dengan kewajiban melakukan pelaporan logbook limbah berkala, mematuhi parameter kepatuhan TPS B3, dan bersedia dilakukan inspeksi berkala oleh petugas dinas [3].
+                    </p>
+                  </div>
+
+                  {/* Signatures & QR Code */}
+                  <div className="grid grid-cols-2 gap-4 items-end pt-4 border-t border-stone-200">
+                    {/* QR Security */}
+                    <div className="flex flex-col items-center">
+                      <button
+                        onClick={() => setShowQRVerify(!showQRVerify)}
+                        className="p-2 bg-white border border-stone-300 rounded-none hover:border-emerald-600 transition-all relative group outline-none"
+                      >
+                        <QrCode className="text-stone-800" size={56} />
+                        <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[7px] font-black text-stone-400 group-hover:text-emerald-600 whitespace-nowrap uppercase tracking-wider">
+                          Verifikasi QR
+                        </span>
+                      </button>
+
+                      {showQRVerify && (
+                        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white border border-slate-200 p-5 rounded-none shadow-2xl z-[9999] max-w-xs w-full animate-in zoom-in duration-200 text-left font-sans">
+                          <div className="space-y-4">
+                            <div className="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-none flex items-center justify-center mx-auto">
+                              <ShieldCheck size={20} />
+                            </div>
+                            <div className="text-center">
+                              <h4 className="font-black text-slate-800 text-[11px] uppercase tracking-wider leading-none">QR Code Terverifikasi</h4>
+                              <p className="text-[8px] text-slate-400 font-bold uppercase mt-1">Sertifikasi Elektronik BSRE DLH</p>
+                            </div>
+                            <div className="text-[9px] text-left bg-slate-50 p-2.5 rounded-none border border-slate-200 font-mono break-all text-slate-500 space-y-1">
+                              <p><strong>Hash:</strong> sha256:d8c91a03f48...</p>
+                              <p><strong>Status:</strong> Valid / Active</p>
+                              <p><strong>Signee:</strong> Kepala Dinas LH</p>
+                            </div>
+                            <Button
+                              onClick={() => setShowQRVerify(false)}
+                              className="bg-slate-900 hover:bg-slate-800 h-9 w-full rounded-none text-[9px] font-black uppercase tracking-widest text-white"
+                            >
+                              Tutup
+                            </Button>
                           </div>
-                          <div className="text-center">
-                            <h4 className="font-black text-slate-800 text-[11px] uppercase tracking-wider leading-none">QR Code Terverifikasi</h4>
-                            <p className="text-[8px] text-slate-400 font-bold uppercase mt-1">Sertifikasi Elektronik BSRE DLH</p>
-                          </div>
-                          <div className="text-[9px] text-left bg-slate-50 p-2.5 rounded-none border border-slate-200 font-mono break-all text-slate-500 space-y-1">
-                            <p><strong>Hash:</strong> sha256:d8c91a03f48...</p>
-                            <p><strong>Status:</strong> Valid / Active</p>
-                            <p><strong>Signee:</strong> Kepala Dinas LH</p>
-                          </div>
-                          <Button
-                            onClick={() => setShowQRVerify(false)}
-                            className="bg-slate-900 hover:bg-slate-800 h-9 w-full rounded-none text-[9px] font-black uppercase tracking-widest text-white"
-                          >
-                            Tutup
-                          </Button>
                         </div>
+                      )}
+                    </div>
+
+                    {/* Dinas Signature */}
+                    <div className="text-center space-y-3 font-sans">
+                      <p className="text-[8px] font-black text-stone-500 uppercase tracking-widest leading-none">Kepala Dinas Lingkungan Hidup</p>
+                      <div className="h-8 flex items-center justify-center">
+                        <span className="text-[8px] font-black tracking-widest text-emerald-600 border border-emerald-500 border-dashed rounded-none px-3 py-1 rotate-[-3deg] uppercase">
+                          TANDATANGAN ELEKTRONIK
+                        </span>
                       </div>
-                    )}
-                  </div>
-
-                  {/* Dinas Signature */}
-                  <div className="text-center space-y-3 font-sans">
-                    <p className="text-[8px] font-black text-stone-500 uppercase tracking-widest leading-none">Kepala Dinas Lingkungan Hidup</p>
-                    <div className="h-8 flex items-center justify-center">
-                      <span className="text-[8px] font-black tracking-widest text-emerald-600 border border-emerald-500 border-dashed rounded-none px-3 py-1 rotate-[-3deg] uppercase">
-                        TANDATANGAN ELEKTRONIK
-                      </span>
-                    </div>
-                    <div className="space-y-0.5">
-                      <p className="text-[10px] font-black text-stone-900 underline leading-none">Dr. Ir. H. Ahmad Heryawan, M.Si.</p>
-                      <p className="text-[8px] text-stone-400 font-bold tracking-tight">NIP. 19720315 199803 1 002</p>
+                      <div className="space-y-0.5">
+                        <p className="text-[10px] font-black text-stone-900 underline leading-none">Dr. Ir. H. Ahmad Heryawan, M.Si.</p>
+                        <p className="text-[8px] text-stone-400 font-bold tracking-tight">NIP. 19720315 199803 1 002</p>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Print button */}
-                <div className="pt-2 flex gap-2">
-                  <Button variant="outline" className="flex-1 rounded-none h-10 border-stone-300 text-stone-700 font-black text-[9px] uppercase tracking-widest gap-1.5">
-                    <Download size={12} /> Unduh PDF
-                  </Button>
-                  <Button onClick={() => setIsPreviewOpen(false)} className="flex-1 rounded-none h-10 bg-slate-900 hover:bg-slate-800 text-stone-100 font-black text-[9px] uppercase tracking-widest">
-                    Tutup Preview
-                  </Button>
-                </div>
+                  {/* Print button */}
+                  <div className="pt-3 flex gap-2">
+                    <Button
+                      disabled={isDownloading}
+                      onClick={handleDownloadPdf}
+                      variant="outline"
+                      className="flex-1 rounded-none h-10 border-stone-300 text-stone-700 font-black text-[9px] uppercase tracking-widest gap-1.5 disabled:opacity-70"
+                    >
+                      {isDownloading ? <Sparkles className="animate-pulse" size={12} /> : <Download size={12} />}
+                      {isDownloading ? "MENGUNDUH..." : "UNDUH PDF"}
+                    </Button>
+                    <Button
+                      disabled={isDownloading}
+                      onClick={() => setIsPreviewOpen(false)}
+                      className="flex-1 rounded-none h-10 bg-slate-900 hover:bg-slate-800 text-stone-100 font-black text-[9px] uppercase tracking-widest"
+                    >
+                      TUTUP PREVIEW
+                    </Button>
+                  </div>
 
+                </div>
               </div>
             </DialogContent>
           </Dialog>

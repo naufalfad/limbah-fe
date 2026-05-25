@@ -27,6 +27,7 @@ const MENU_CONFIG = {
     { label: "Monitoring Limbah", icon: <Trash2 size={18} />, path: "/admin/waste" },
     { label: "GIS Geospasial", icon: <Map size={18} />, path: "/admin/gis" },
     { label: "Transaksi Jasa", icon: <CreditCard size={18} />, path: "/admin/payments" },
+    { label: "Penugasan Armada", icon: <Truck size={18} />, path: "/admin/pickups" }, // BERHASIL DI-MERGE (size disesuaikan ke 18)
     { label: "Inspeksi Lapangan", icon: <ClipboardList size={18} />, path: "/admin/inspections" },
   ],
   PETUGAS_LAPANGAN: [

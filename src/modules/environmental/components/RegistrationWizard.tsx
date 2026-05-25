@@ -43,32 +43,41 @@ export const EnvironmentalRegistration = () => {
   useFormPersist(methods, 'SIJAGA_REG_DRAFT', ['file_nib', 'file_npwp', 'file_pkkpr', 'file_siteplan', 'foto_lokasi']);
 
   const onSubmit: any = (data: any) => {
-    addCompany({
-      companyName: data.nama_perusahaan,
-      nib: data.nib,
-      npwp: data.npwp_perusahaan,
-      picName: data.nama_penanggung_jawab,
-      picPhone: "081234567890",
-      picRole: data.jabatan_penanggung_jawab || "Penanggung Jawab",
-      investmentType: data.status_penanaman_modal,
-      yearBuilt: data.tahun_berdiri || "2026",
-      buildingArea: Number(data.luas_bangunan_m2) || 0,
-      operationalHours: `${data.jam_operasional} (${data.hari_operasional})`,
-      rawMaterials: data.bahan_baku || "-",
-      waterSource: data.sumber_air || "-",
-      powerSource: data.sumber_listrik || "-",
-      kbli: data.kbli || "-",
-      investment: 1000000000,
-      landArea: Number(data.luas_lahan_m2) || 0,
-      employees: Number(data.jumlah_karyawan) || 0,
-      lat: String(data.latitude || "-6.9175"),
-      lng: String(data.longitude || "107.6191"),
-      address: `${data.alamat_lengkap}, ${data.kecamatan || ""}, ${data.kabupaten_kota || ""}`,
-      docType: docType === "UKL_UPL" ? "UKL-UPL" : "SPPL"
-    });
+    // Build FormData to carry both text fields and file blobs
+    const formData = new FormData();
+
+    formData.append("companyName", data.nama_perusahaan || "");
+    formData.append("nib", data.nib || "");
+    formData.append("npwp", data.npwp_perusahaan || "");
+    formData.append("picName", data.nama_penanggung_jawab || "");
+    formData.append("picPhone", "081234567890");
+    formData.append("picRole", data.jabatan_penanggung_jawab || "Penanggung Jawab");
+    formData.append("investmentType", data.status_penanaman_modal || "PMDN");
+    formData.append("yearBuilt", data.tahun_berdiri || "2026");
+    formData.append("buildingArea", String(Number(data.luas_bangunan_m2) || 0));
+    formData.append("operationalHours", `${data.jam_operasional || ""} (${data.hari_operasional || ""})`);
+    formData.append("rawMaterials", data.bahan_baku || "-");
+    formData.append("waterSource", data.sumber_air || "-");
+    formData.append("powerSource", data.sumber_listrik || "-");
+    formData.append("kbli", data.kbli || "-");
+    formData.append("investment", String(1000000000));
+    formData.append("landArea", String(Number(data.luas_lahan_m2) || 0));
+    formData.append("employees", String(Number(data.jumlah_karyawan) || 0));
+    formData.append("lat", String(data.latitude || "-6.9175"));
+    formData.append("lng", String(data.longitude || "107.6191"));
+    formData.append("address", `${data.alamat_lengkap || ""}, ${data.kecamatan || ""}, ${data.kabupaten_kota || ""}`);
+    formData.append("docType", docType === "UKL_UPL" ? "UKL-UPL" : "SPPL");
+
+    // Append file fields if present (from FileUploadWithPreview stored in RHF)
+    if (data.file_nib instanceof File) formData.append("nibDoc", data.file_nib);
+    if (data.file_npwp instanceof File) formData.append("npwpDoc", data.file_npwp);
+    if (data.file_siteplan instanceof File) formData.append("siteplanDoc", data.file_siteplan);
+
+    addCompany(formData);
     toast.success("Dokumen registrasi lingkungan berhasil diajukan!");
     window.location.href = "/";
   };
+
 
   const determineType = () => {
     const isUklUpl =

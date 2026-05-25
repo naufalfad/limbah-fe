@@ -16,6 +16,7 @@ import WasteMonitoring from "./modules/admin/WasteMonitoring";
 import GISMonitoring from "./modules/admin/GISMonitoring";
 import TransactionManagement from "./modules/admin/TransactionManagement";
 import InspectionManagement from "./modules/admin/InspectionManagement";
+import AdminPickupManagement from "./modules/admin/AdminPickupManagement";
 
 // Perusahaan
 import CompanyDashboard from "./modules/companies/pages/CompanyDashboard";
@@ -55,6 +56,7 @@ function App() {
         <Route path="/admin/waste" element={<WasteMonitoring />} />
         <Route path="/admin/gis" element={<GISMonitoring />} />
         <Route path="/admin/payments" element={<TransactionManagement />} />
+        <Route path="/admin/pickups" element={<AdminPickupManagement />} />
         <Route path="/admin/inspections" element={<InspectionManagement />} />
 
         {/* Perusahaan */}

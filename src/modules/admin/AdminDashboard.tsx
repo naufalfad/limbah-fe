@@ -1,15 +1,43 @@
+// src/modules/admin/AdminDashboard.tsx
 import React, { useEffect } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { cn } from "@/lib/utils"
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useSijagaStore } from '@/store/useSijagaStore';
 import { useNavigate } from 'react-router-dom';
 import {
-  Users, ShieldAlert, BarChart3, TrendingUp, Building2,
+  Users, ShieldAlert, TrendingUp, Building2,
   Map as MapIcon, ArrowUpRight, Clock, CheckCircle2, XCircle
 } from "lucide-react";
+import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+
+// --- Fix Leaflet Default Marker Icons (Vite Bundler Safety) ---
+import icon from "leaflet/dist/images/marker-icon.png";
+import iconShadow from "leaflet/dist/images/marker-shadow.png";
+
+let DefaultIcon = L.icon({
+  iconUrl: icon,
+  shadowUrl: iconShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+});
+L.Marker.prototype.options.icon = DefaultIcon;
+
+// Map size invalidator helper
+function ResizeMap() {
+  const map = useMap();
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [map]);
+  return null;
+}
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -28,7 +56,7 @@ export default function AdminDashboard() {
     fetchWasteLogs();
     fetchNotifications();
     fetchPickupRequests();
-  }, []);
+  }, [fetchCompanies, fetchWasteLogs, fetchNotifications, fetchPickupRequests]);
 
   const totalPerusahaan = companies.length;
   const antreanApproval = companies.filter(c => c.status === "PENDING" || c.status === "REVIEW").length;
@@ -44,17 +72,17 @@ export default function AdminDashboard() {
         {/* Welcome Section */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
           <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tighter uppercase"> {/* DIET: text-4xl -> 3xl */}
+            <h1 className="text-3xl font-black text-slate-900 tracking-tighter uppercase leading-none">
               Command <span className="text-emerald-600">Center.</span>
             </h1>
-            <p className="text-slate-500 text-sm font-medium mt-1">Monitoring kepatuhan lingkungan hidup daerah secara realtime.</p>
+            <p className="text-slate-500 text-sm font-medium mt-1.5">Monitoring kepatuhan lingkungan hidup daerah secara realtime.</p>
           </div>
           <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 px-3 py-1.5 rounded-none flex items-center gap-1.5 shadow-sm">
             <Clock size={14} /> <span className="text-[10px]">Live Synchronized</span>
           </Badge>
         </div>
 
-        {/* Stats Grid - DIET: gap-6 -> gap-4 */}
+        {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard label="Total Perusahaan" value={totalPerusahaan.toLocaleString()} icon={<Users size={20} />} color="blue" />
           <StatCard label="Antrean Approval" value={antreanApproval.toLocaleString()} icon={<ShieldAlert size={20} />} color="amber" />
@@ -62,10 +90,10 @@ export default function AdminDashboard() {
           <StatCard label="EWS Alerts" value={String(activeAlerts).padStart(2, '0')} icon={<ShieldAlert size={20} />} color="red" />
         </div>
 
-        {/* GIS & Activity Row - DIET: gap-8 -> gap-4 */}
+        {/* GIS & Activity Row */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-          {/* GIS Preview - DIET: rounded-[2.5rem] -> rounded-none, p-8 -> p-4 */}
+          {/* GIS Preview (GFW TACTICAL MAP CONTAINER) */}
           <Card className="lg:col-span-2 rounded-none border border-slate-200 shadow-sm flex flex-col">
             <div className="p-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
               <div className="flex items-center gap-2">
@@ -81,17 +109,41 @@ export default function AdminDashboard() {
                 BUKA PETA <ArrowUpRight size={14} className="ml-1" />
               </Button>
             </div>
-            <div
-              className="flex-1 min-h-[300px] bg-slate-100 relative group cursor-pointer overflow-hidden"
-              onClick={() => navigate('/admin/gis')}
-            >
+
+            <div className="h-[300px] bg-slate-100 relative group overflow-hidden rounded-none z-10">
+              {/* Map Container Mini-Preview Taktis */}
+              <MapContainer
+                center={[-6.9147, 107.6098]}
+                zoom={10}
+                className="w-full h-full rounded-none"
+                zoomControl={false}
+                scrollWheelZoom={false}
+                dragging={false}
+                doubleClickZoom={false}
+              >
+                <ResizeMap />
+                <TileLayer
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+                {companies
+                  .filter(c => c.status === "APPROVED" && c.lat && c.lng)
+                  .map(c => (
+                    <Marker key={c.id} position={[parseFloat(c.lat), parseFloat(c.lng)]} />
+                  ))}
+              </MapContainer>
+
+              {/* Klik Interseptor */}
               <div
-                className="absolute inset-0 bg-cover opacity-80 group-hover:scale-105 transition-transform duration-700"
-                style={{ backgroundImage: "url('https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}.png')" }}
+                className="absolute inset-0 bg-transparent cursor-pointer z-[1000] group-hover:bg-slate-900/5 transition-colors"
+                onClick={() => navigate('/admin/gis')}
               />
-              <div className="absolute inset-0 bg-linear-to-t from-slate-900/60 to-transparent" />
-              <div className="absolute bottom-4 left-4 p-3 bg-white/95 backdrop-blur rounded-none border border-slate-200 shadow-sm z-10">
-                <p className="text-[9px] font-black uppercase text-slate-500 tracking-widest">Titik Aktif</p>
+
+              {/* Overlay Gradient Taktis */}
+              <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-slate-900/30 to-transparent pointer-events-none z-[1000]" />
+
+              {/* Kotak Status Kepatuhan Spasial (GFW Sharp Style) */}
+              <div className="absolute bottom-4 left-4 p-3 bg-white/95 backdrop-blur rounded-none border border-slate-200 shadow-none z-[1010] pointer-events-none">
+                <p className="text-[9px] font-black uppercase text-slate-500 tracking-widest leading-none">Titik Aktif</p>
                 <p className="text-xl font-black text-emerald-700 leading-none mt-1">{titikAktif} Lokasi</p>
               </div>
             </div>
