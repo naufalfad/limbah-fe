@@ -13,14 +13,14 @@ import {
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const { 
-    companies, 
-    wasteLogs, 
+  const {
+    companies,
+    wasteLogs,
     notifications,
-    fetchCompanies, 
-    fetchWasteLogs, 
-    fetchNotifications, 
-    fetchPickupRequests 
+    fetchCompanies,
+    fetchWasteLogs,
+    fetchNotifications,
+    fetchPickupRequests
   } = useSijagaStore();
 
   useEffect(() => {
@@ -30,103 +30,103 @@ export default function AdminDashboard() {
     fetchPickupRequests();
   }, []);
 
-  // 1. Hitung total perusahaan
   const totalPerusahaan = companies.length;
-
-  // 2. Antrean Approval (status PENDING atau REVIEW)
   const antreanApproval = companies.filter(c => c.status === "PENDING" || c.status === "REVIEW").length;
-
-  // 3. Total volume limbah terangkut (total dari waste logs yang terverifikasi/dilaporkan)
   const totalVolumeLimbah = wasteLogs.reduce((sum, log) => sum + log.volume, 0);
-
-  // 4. Alerts aktif dari notifikasi bertipe WARNING/DANGER
   const activeAlerts = notifications.filter(n => n.type === "DANGER" || n.type === "WARNING").length;
-
-  // 5. Titik aktif (perusahaan berstatus APPROVED)
   const titikAktif = companies.filter(c => c.status === "APPROVED").length;
-
-  // 6. Registrasi terbaru (4 perusahaan terakhir)
   const recentRegistrations = [...companies].reverse().slice(0, 4);
 
   return (
     <DashboardLayout role="ADMIN_DLH">
-      <div className="space-y-8 text-left">
+      <div className="space-y-6 text-left"> {/* DIET: space-y-8 -> space-y-6 */}
 
         {/* Welcome Section */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
           <div>
-            <h1 className="text-4xl font-black text-slate-900 tracking-tighter">
-              COMMAND <span className="text-emerald-600 italic">CENTER.</span>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tighter uppercase"> {/* DIET: text-4xl -> 3xl */}
+              Command <span className="text-emerald-600">Center.</span>
             </h1>
-            <p className="text-slate-500 font-medium">Monitoring kepatuhan lingkungan hidup daerah secara realtime.</p>
+            <p className="text-slate-500 text-sm font-medium mt-1">Monitoring kepatuhan lingkungan hidup daerah secara realtime.</p>
           </div>
-          <Badge className="bg-emerald-600 text-white px-4 py-2 rounded-xl flex gap-2">
-            <Clock size={16} /> Live Synchronized
+          <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 px-3 py-1.5 rounded-none flex items-center gap-1.5 shadow-sm">
+            <Clock size={14} /> <span className="text-[10px]">Live Synchronized</span>
           </Badge>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard label="Total Perusahaan" value={totalPerusahaan.toLocaleString()} icon={<Users size={24} />} color="blue" />
-          <StatCard label="Antrean Approval" value={antreanApproval.toLocaleString()} icon={<ShieldAlert size={24} />} color="amber" />
-          <StatCard label="Volume Limbah" value={`${totalVolumeLimbah.toLocaleString()} L/kg`} icon={<TrendingUp size={24} />} color="emerald" />
-          <StatCard label="EWS Alerts" value={String(activeAlerts).padStart(2, '0')} icon={<ShieldAlert size={24} />} color="red" />
+        {/* Stats Grid - DIET: gap-6 -> gap-4 */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard label="Total Perusahaan" value={totalPerusahaan.toLocaleString()} icon={<Users size={20} />} color="blue" />
+          <StatCard label="Antrean Approval" value={antreanApproval.toLocaleString()} icon={<ShieldAlert size={20} />} color="amber" />
+          <StatCard label="Volume Limbah" value={`${totalVolumeLimbah.toLocaleString()} L`} icon={<TrendingUp size={20} />} color="emerald" />
+          <StatCard label="EWS Alerts" value={String(activeAlerts).padStart(2, '0')} icon={<ShieldAlert size={20} />} color="red" />
         </div>
 
-        {/* GIS & Activity Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* GIS & Activity Row - DIET: gap-8 -> gap-4 */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-          {/* GIS Preview */}
-          <Card className="lg:col-span-2 rounded-[2.5rem] overflow-hidden border-none shadow-xl shadow-slate-200/50">
-            <div className="p-8 border-b bg-white flex justify-between items-center">
-              <h3 className="font-black text-xl tracking-tight">Geospasial Monitoring</h3>
-              <Button 
-                variant="ghost" 
-                className="text-emerald-600 font-bold hover:bg-emerald-50 rounded-xl"
+          {/* GIS Preview - DIET: rounded-[2.5rem] -> rounded-none, p-8 -> p-4 */}
+          <Card className="lg:col-span-2 rounded-none border border-slate-200 shadow-sm flex flex-col">
+            <div className="p-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <MapIcon size={16} className="text-emerald-600" />
+                <h3 className="font-bold text-sm tracking-tight uppercase text-slate-800">Geospasial Monitoring</h3>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-emerald-600 font-bold rounded-none h-8 text-[10px]"
                 onClick={() => navigate('/admin/gis')}
               >
-                Buka Peta Full <ArrowUpRight size={18} />
+                BUKA PETA <ArrowUpRight size={14} className="ml-1" />
               </Button>
             </div>
-            <div 
-              className="h-[400px] bg-slate-100 relative group cursor-pointer overflow-hidden"
+            <div
+              className="flex-1 min-h-[300px] bg-slate-100 relative group cursor-pointer overflow-hidden"
               onClick={() => navigate('/admin/gis')}
             >
-              <div 
-                className="absolute inset-0 bg-cover opacity-80 group-hover:scale-105 transition-transform duration-1000" 
+              <div
+                className="absolute inset-0 bg-cover opacity-80 group-hover:scale-105 transition-transform duration-700"
                 style={{ backgroundImage: "url('https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}.png')" }}
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent" />
-              <div className="absolute top-10 left-10 p-4 bg-white/90 backdrop-blur rounded-2xl border border-white shadow-xl z-10">
-                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Titik Aktif</p>
-                <p className="text-2xl font-black text-slate-800 italic">{titikAktif} Lokasi</p>
+              <div className="absolute inset-0 bg-linear-to-t from-slate-900/60 to-transparent" />
+              <div className="absolute bottom-4 left-4 p-3 bg-white/95 backdrop-blur rounded-none border border-slate-200 shadow-sm z-10">
+                <p className="text-[9px] font-black uppercase text-slate-500 tracking-widest">Titik Aktif</p>
+                <p className="text-xl font-black text-emerald-700 leading-none mt-1">{titikAktif} Lokasi</p>
               </div>
             </div>
           </Card>
 
-          {/* Recent Registrations */}
-          <Card className="rounded-[2.5rem] border-none shadow-xl shadow-slate-200/50 p-8 space-y-6 bg-white flex flex-col">
-            <h3 className="font-black text-xl tracking-tight">Registrasi Terbaru</h3>
-            <div className="space-y-4 flex-1">
+          {/* Recent Registrations - DIET: Flush List Style */}
+          <Card className="rounded-none border border-slate-200 shadow-sm bg-white flex flex-col">
+            <div className="p-4 border-b border-slate-200 bg-slate-50">
+              <h3 className="font-bold text-sm tracking-tight uppercase text-slate-800">Registrasi Terbaru</h3>
+            </div>
+            <div className="flex-1 flex flex-col">
               {recentRegistrations.length === 0 ? (
-                <p className="text-sm font-bold text-slate-400 text-center py-10">Belum ada registrasi berkas.</p>
+                <div className="p-8 text-center">
+                  <p className="text-xs font-bold text-slate-400">Belum ada registrasi berkas.</p>
+                </div>
               ) : (
                 recentRegistrations.map((c) => (
-                  <RegItem 
-                    key={c.id} 
-                    name={c.companyName} 
-                    type={c.docType === "UKL_UPL" ? "UKL-UPL" : c.docType} 
-                    status={c.status} 
+                  <RegItem
+                    key={c.id}
+                    name={c.companyName}
+                    type={c.docType === "UKL_UPL" ? "UKL-UPL" : c.docType}
+                    status={c.status}
                   />
                 ))
               )}
             </div>
-            <Button 
-              className="w-full h-12 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 font-bold uppercase tracking-widest text-xs mt-4"
-              onClick={() => navigate('/admin/registrations')}
-            >
-              Lihat Semua Antrean
-            </Button>
+            <div className="p-3 border-t border-slate-200 bg-slate-50">
+              <Button
+                variant="outline"
+                className="w-full rounded-none border-slate-300 text-slate-600 hover:bg-slate-100 hover:text-emerald-700 font-bold uppercase tracking-widest text-[10px] h-9"
+                onClick={() => navigate('/admin/registrations')}
+              >
+                Lihat Semua Antrean
+              </Button>
+            </div>
           </Card>
 
         </div>
@@ -137,47 +137,49 @@ export default function AdminDashboard() {
 
 // --- SUB COMPONENTS ---
 
+// DIET: rounded-[2rem] -> rounded-none, padding dikurangin
 function StatCard({ label, value, icon, color }: any) {
   const colors = {
-    blue: "bg-blue-50 text-blue-600",
-    amber: "bg-amber-50 text-amber-600",
-    emerald: "bg-emerald-50 text-emerald-600",
-    red: "bg-red-50 text-red-600"
+    blue: "bg-blue-50 text-blue-600 border-blue-100",
+    amber: "bg-amber-50 text-amber-600 border-amber-100",
+    emerald: "bg-emerald-50 text-emerald-600 border-emerald-100",
+    red: "bg-red-50 text-red-600 border-red-100"
   };
   return (
-    <Card className="border-none shadow-xl shadow-slate-200/40 rounded-[2rem] p-6 hover:translate-y-[-5px] transition-all bg-white group">
-      <div className="flex justify-between items-start">
-        <div className="space-y-1">
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{label}</p>
-          <h2 className="text-3xl font-black text-slate-900 tracking-tighter italic">{value}</h2>
-        </div>
-        <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:rotate-12", colors[color as keyof typeof colors])}>
-          {icon}
-        </div>
+    <Card className="rounded-none border border-slate-200 shadow-sm p-4 bg-white flex justify-between items-start hover:border-emerald-300 transition-colors">
+      <div className="space-y-1">
+        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
+        <h2 className="text-2xl font-black text-slate-900 tracking-tight leading-none">{value}</h2>
+      </div>
+      <div className={cn("w-10 h-10 border flex items-center justify-center shrink-0", colors[color as keyof typeof colors])}>
+        {icon}
       </div>
     </Card>
   );
 }
 
+// DIET: Flush List Style (Nyambung ke tepi, dipisah garis tipis)
 function RegItem({ name, type, status }: any) {
   return (
-    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl hover:bg-emerald-50 transition-colors group">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm text-emerald-600">
-          <Building2 size={18} />
+    <div className="flex items-center justify-between p-4 border-b border-slate-100 hover:bg-slate-50 transition-colors last:border-b-0">
+      <div className="flex items-center gap-3 overflow-hidden">
+        <div className="w-8 h-8 bg-slate-100 flex items-center justify-center border border-slate-200 shrink-0 text-slate-500">
+          <Building2 size={14} />
         </div>
-        <div>
-          <h4 className="text-sm font-black text-slate-800 leading-none">{name}</h4>
-          <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider">{type}</p>
+        <div className="truncate">
+          <h4 className="text-[11px] font-black text-slate-800 leading-tight truncate">{name}</h4>
+          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">{type}</p>
         </div>
       </div>
-      {status === 'APPROVED' ? (
-        <CheckCircle2 className="text-emerald-500" size={18} />
-      ) : status === 'REJECTED' ? (
-        <XCircle className="text-rose-500" size={18} />
-      ) : (
-        <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-      )}
+      <div className="shrink-0 pl-2">
+        {status === 'APPROVED' ? (
+          <CheckCircle2 className="text-emerald-500" size={16} />
+        ) : status === 'REJECTED' ? (
+          <XCircle className="text-rose-500" size={16} />
+        ) : (
+          <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse mr-1" />
+        )}
+      </div>
     </div>
   );
 }

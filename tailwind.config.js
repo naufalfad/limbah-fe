@@ -8,6 +8,10 @@ export default {
   ],
   theme: {
     extend: {
+      // Injeksi Roboto sebagai font sans utama
+      fontFamily: {
+        sans: ['Roboto', 'sans-serif'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -31,5 +35,5 @@ export default {
       },
     },
   },
-   plugins: [require("tailwindcss-animate")],
+  plugins: [require("tailwindcss-animate")],
 }

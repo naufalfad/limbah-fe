@@ -16,17 +16,12 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 export default function WasteMonitoring() {
-  const { 
-    wasteLogs, 
-    companies, 
-    scheduleInspection, 
-    addNotification, 
-    addAuditLog, 
-    currentUser,
-    fetchCompanies,
-    fetchWasteLogs
+  const {
+    wasteLogs, companies, scheduleInspection,
+    addNotification, addAuditLog, currentUser,
+    fetchCompanies, fetchWasteLogs
   } = useSijagaStore();
-  
+
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -38,7 +33,6 @@ export default function WasteMonitoring() {
     fetchWasteLogs();
   }, []);
 
-  // Helpers for EWS Status and Limit
   const getEwsStatus = (type: string, volume: number) => {
     const isB3 = type.toLowerCase().includes("b3") || type.toLowerCase().includes("oli") || type.toLowerCase().includes("kimia");
     if (isB3) {
@@ -56,322 +50,188 @@ export default function WasteMonitoring() {
     return isB3 ? "80 kg/L" : "100 m³";
   };
 
-  // 1. Calculate dynamic statistics from Zustand store
-  const totalCair = wasteLogs
-    .filter(log => log.type.toLowerCase().includes("cair") || log.unit === "m³")
-    .reduce((sum, log) => sum + log.volume, 0);
-
-  const totalB3 = wasteLogs
-    .filter(log => log.type.toLowerCase().includes("b3") || log.type.toLowerCase().includes("oli") || log.type.toLowerCase().includes("kimia"))
-    .reduce((sum, log) => sum + log.volume, 0);
-
+  const totalCair = wasteLogs.filter(log => log.type.toLowerCase().includes("cair") || log.unit === "m³").reduce((sum, log) => sum + log.volume, 0);
+  const totalB3 = wasteLogs.filter(log => log.type.toLowerCase().includes("b3") || log.type.toLowerCase().includes("oli") || log.type.toLowerCase().includes("kimia")).reduce((sum, log) => sum + log.volume, 0);
   const activeAlerts = wasteLogs.filter(log => getEwsStatus(log.type, log.volume) !== "SAFE").length;
 
-  // 2. Identify anomalies
   const anomalies = wasteLogs
     .filter(log => getEwsStatus(log.type, log.volume) !== "SAFE")
     .map(log => {
       const ews = getEwsStatus(log.type, log.volume);
-      const limit = getLimit(log.type);
-      const confidence = ews === "DANGER" ? "98.7%" : "89.4%";
-      const suggestion = ews === "DANGER"
-        ? "Segera lakukan sidak lapangan dan penalti administratif."
-        : "Rekomendasi pemantauan berkala dan surat teguran digital.";
-
       return {
         ...log,
         ews,
-        limit,
-        confidence,
-        suggestion
+        limit: getLimit(log.type),
+        confidence: ews === "DANGER" ? "98.7%" : "89.4%",
+        suggestion: ews === "DANGER" ? "Segera lakukan sidak lapangan dan penalti administratif." : "Rekomendasi pemantauan berkala dan surat teguran."
       };
     });
 
-  // Action: Picu Inspeksi Lapangan
   const handleTriggerInspection = (companyId: string, companyName: string, logId: string) => {
     const matchedCompany = companies.find(c => c.id === companyId);
-    const location = matchedCompany?.address || "Bandung, Jawa Barat";
-
-    // Call store action
     scheduleInspection({
-      companyId,
-      companyName,
-      inspectorId: "OFF-001",
-      inspectorName: "Heryanto, S.T.",
-      date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 3 days from now
-      location,
+      companyId, companyName, inspectorId: "OFF-001", inspectorName: "Heryanto, S.T.",
+      date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      location: matchedCompany?.address || "Bandung",
       notes: `Sidak Otomatis EWS AI: Terdeteksi ambang batas limbah abnormal pada log ${logId}.`
     });
-
     setScheduledAnomalies(prev => [...prev, logId]);
     toast.success(`Inspeksi Lapangan Berhasil Dijadwalkan untuk ${companyName}!`);
   };
 
-  // Action: Kirim Teguran Digital
   const handleSendWarning = (companyId: string, companyName: string, wasteType: string, volumeStr: string, logId: string) => {
-    // Call store action to trigger warning notification
-    addNotification(
-      "TEGURAN DIGITAL: Pelanggaran Ambang Batas",
-      `Teguran resmi untuk ${companyName}: Sistem mendeteksi volume pembuangan limbah ${wasteType} sebesar ${volumeStr} melebihi batas regulasi.`,
-      "DANGER"
-    );
-
-    addAuditLog(
-      currentUser?.email || "admin@dlh.go.id",
-      "ADMIN_DLH",
-      `Mengirimkan surat teguran digital kepada ${companyName} terkait anomali limbah ${wasteType}.`
-    );
-
+    addNotification("TEGURAN DIGITAL: Pelanggaran Ambang Batas", `Teguran resmi untuk ${companyName}: Sistem mendeteksi pembuangan ${wasteType} sebesar ${volumeStr}.`, "DANGER");
     setWarnedAnomalies(prev => [...prev, logId]);
-    toast.success(`Surat Teguran Resmi telah dikirim secara digital ke PIC ${companyName}!`);
+    toast.success(`Surat Teguran Resmi terkirim ke ${companyName}!`);
   };
 
-  // Filtered Logs
   const filteredLogs = wasteLogs.filter(log => {
-    const matchesSearch = log.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.type.toLowerCase().includes(searchTerm.toLowerCase());
-
+    const matchesSearch = log.companyName.toLowerCase().includes(searchTerm.toLowerCase()) || log.type.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = categoryFilter === "ALL" ||
       (categoryFilter === "B3" && (log.type.toLowerCase().includes("b3") || log.type.toLowerCase().includes("oli") || log.type.toLowerCase().includes("kimia"))) ||
       (categoryFilter === "CAIR" && (log.type.toLowerCase().includes("cair") || log.unit === "m³")) ||
       (categoryFilter === "DOMESTIK" && (log.type.toLowerCase().includes("domestik") || log.type.toLowerCase().includes("jelantah")));
-
-    const ewsStatus = getEwsStatus(log.type, log.volume);
-    const matchesStatus = statusFilter === "ALL" || ewsStatus === statusFilter;
-
+    const matchesStatus = statusFilter === "ALL" || getEwsStatus(log.type, log.volume) === statusFilter;
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
   return (
     <DashboardLayout role="ADMIN_DLH">
-      <div className="space-y-8 pb-10 text-left">
+      <div className="space-y-4 text-left"> {/* DIET: space-y-8 -> space-y-4 */}
 
         {/* --- HEADER --- */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tighter">
-              MONITORING <span className="text-emerald-600">PRODUKSI LIMBAH</span>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase"> {/* DIET: text-3xl -> 2xl */}
+              Monitoring <span className="text-emerald-600">Limbah</span>
             </h1>
-            <p className="text-slate-500 text-sm font-medium">Data akumulasi produksi limbah industri secara real-time dan analisis EWS AI.</p>
+            <p className="text-slate-500 text-xs font-medium mt-1">Data akumulasi produksi limbah industri & analisis EWS AI.</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" className="rounded-xl font-bold border-slate-200" onClick={() => toast.info("Data laporan berhasil diexport!")}>
-              <Download className="mr-2" size={18} /> Export Laporan
+            <Button variant="outline" size="sm" className="rounded-none font-bold border-slate-300 text-[10px]" onClick={() => toast.info("Exporting...")}>
+              <Download className="mr-1.5" size={14} /> EXPORT
             </Button>
-            <Button className="rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700" onClick={() => window.location.href = '/admin/gis'}>
-              <MapIcon className="mr-2" size={18} /> Lihat Heatmap
+            <Button size="sm" className="rounded-none font-bold bg-emerald-600 hover:bg-emerald-700 text-[10px]" onClick={() => window.location.href = '/admin/gis'}>
+              <MapIcon className="mr-1.5" size={14} /> HEATMAP
             </Button>
           </div>
         </div>
 
-        {/* --- STATS SUMMARY (TAMPILAN MODERN DYNAMIC) --- */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <StatMiniCard
-            title="Total Limbah Cair"
-            value={`${totalCair.toLocaleString()} m³`}
-            sub="Bulan Mei 2026"
-            icon={<Waves className="text-blue-500" />}
-            trend="+12%"
-          />
-          <StatMiniCard
-            title="Limbah B3 Terdeteksi"
-            value={`${totalB3.toLocaleString()} L/kg`}
-            sub="Perlu Pengangkutan"
-            icon={<Trash2 className="text-orange-500" />}
-            trend="+5%"
-            isWarning={totalB3 > 200}
-          />
-          <StatMiniCard
-            title="Alert EWS Aktif"
-            value={String(activeAlerts).padStart(2, '0')}
-            sub="Ambang Batas Terlewati"
-            icon={<AlertTriangle className="text-rose-500" />}
-            trend={activeAlerts > 0 ? `+${activeAlerts}` : "Aman"}
-            isDanger={activeAlerts > 0}
-          />
+        {/* --- STATS SUMMARY (DIET PADDING & RADIUS) --- */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <StatMiniCard title="Total Limbah Cair" value={`${totalCair.toLocaleString()} m³`} sub="Mei 2026" icon={<Waves size={16} />} color="blue" trend="+12%" />
+          <StatMiniCard title="Limbah B3 Terdeteksi" value={`${totalB3.toLocaleString()} kg`} sub="Perlu Angkut" icon={<Trash2 size={16} />} color="orange" trend="+5%" isWarning={totalB3 > 200} />
+          <StatMiniCard title="Alert EWS Aktif" value={String(activeAlerts).padStart(2, '0')} sub="Over-limit" icon={<AlertTriangle size={16} />} color="red" trend={activeAlerts > 0 ? `+${activeAlerts}` : "Aman"} isDanger={activeAlerts > 0} />
         </div>
 
-        {/* --- AI ANOMALY DETECTION WIDGET --- */}
-        <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 text-white relative">
-          {/* Subtle glowing elements */}
-          <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
-          <div className="absolute bottom-0 left-0 w-80 h-80 bg-rose-500/5 rounded-full blur-3xl -ml-20 -mb-20 pointer-events-none" />
+        {/* --- AI ANOMALY DETECTION WIDGET (DIET) --- */}
+        <Card className="rounded-none border border-slate-800 bg-slate-900 text-white relative">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none" />
 
-          <CardHeader className="p-8 border-b border-white/10 relative z-10">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-emerald-500/20 rounded-2xl border border-emerald-500/30 text-emerald-400 animate-pulse">
-                  <Brain size={24} />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <CardTitle className="text-2xl font-black tracking-tight text-white">PANTAU LIMBAH-AI Anomaly Engine</CardTitle>
-                    <Badge className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[9px] font-black uppercase tracking-wider py-1 px-2.5 rounded-full">
-                      NEURAL NETWORK V2.5
-                    </Badge>
-                  </div>
-                  <CardDescription className="text-slate-400 font-medium mt-1">Sistem Pendeteksi Dini Kepatuhan Lingkungan secara Geospasial & Kuantitas</CardDescription>
-                </div>
+          <div className="p-4 border-b border-white/10 relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400">
+                <Brain size={18} />
               </div>
-              <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-2xl px-4 py-2 font-mono text-[10px] text-slate-300">
-                <Sparkles size={14} className="text-amber-400 animate-spin" /> Confidence Level: 99.4%
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-black tracking-widest uppercase">EWS Anomaly Engine</h3>
+                  <Badge className="bg-emerald-500/20 text-emerald-400 rounded-none text-[8px] font-black border-none tracking-widest px-2">v2.5</Badge>
+                </div>
               </div>
             </div>
-          </CardHeader>
+            <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1 text-[9px] text-slate-300 uppercase tracking-widest font-bold">
+              <Sparkles size={12} className="text-amber-400" /> Conf: 99.4%
+            </div>
+          </div>
 
-          <CardContent className="p-8 relative z-10 space-y-6">
+          <div className="p-0 relative z-10"> {/* Flush list approach for anomalies */}
             {anomalies.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-center space-y-4">
-                <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400 border border-emerald-500/20">
-                  <CheckCircle size={32} />
-                </div>
-                <div>
-                  <h4 className="font-black text-lg text-white">Sistem Stabil - Tidak Ada Anomali</h4>
-                  <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">Seluruh perusahaan non-AMDAL patuh terhadap ambang batas produksi limbah harian yang tercantum pada dokumen SPPL/UKL-UPL.</p>
-                </div>
+              <div className="p-8 text-center flex flex-col items-center">
+                <CheckCircle size={24} className="text-emerald-400 mb-2" />
+                <p className="text-xs font-bold text-slate-300 uppercase tracking-widest">Sistem Stabil</p>
+                <p className="text-[10px] text-slate-500 mt-1">Seluruh pelaporan berada dalam ambang batas wajar.</p>
               </div>
             ) : (
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <ShieldAlert size={16} className="text-rose-400" />
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Terdeteksi {anomalies.length} Anomali Kepatuhan Limbah</span>
-                </div>
+              <div className="flex flex-col divide-y divide-white/5">
+                {anomalies.map((anomaly) => {
+                  const isScheduled = scheduledAnomalies.includes(anomaly.id);
+                  const isWarned = warnedAnomalies.includes(anomaly.id);
 
-                <div className="grid grid-cols-1 gap-4">
-                  {anomalies.map((anomaly) => {
-                    const isScheduled = scheduledAnomalies.includes(anomaly.id);
-                    const isWarned = warnedAnomalies.includes(anomaly.id);
-
-                    return (
-                      <div
-                        key={anomaly.id}
-                        className={cn(
-                          "p-6 rounded-[2rem] border transition-all flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6",
-                          anomaly.ews === "DANGER"
-                            ? "bg-rose-950/20 border-rose-500/20 hover:border-rose-500/30"
-                            : "bg-amber-950/20 border-amber-500/20 hover:border-amber-500/30"
-                        )}
-                      >
-                        <div className="space-y-3 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-black text-base text-white">{anomaly.companyName}</span>
-                            <Badge className={cn(
-                              "text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full border",
-                              anomaly.ews === "DANGER"
-                                ? "bg-rose-500/10 text-rose-400 border-rose-500/30"
-                                : "bg-amber-500/10 text-amber-400 border-amber-500/30"
-                            )}>
-                              {anomaly.ews} ALERT
-                            </Badge>
-                            <span className="text-[10px] text-slate-500 font-mono">Confidence: {anomaly.confidence}</span>
-                          </div>
-
-                          <p className="text-xs text-slate-300 leading-relaxed font-sans font-medium">
-                            Akumulasi limbah <strong className="text-white">{anomaly.type}</strong> sebesar <strong className="text-white">{anomaly.volume} {anomaly.unit}</strong> telah melampaui regulasi ambang batas aman yang disetujui ({anomaly.limit}).
-                          </p>
-
-                          <div className="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-2 flex items-start gap-2 font-medium">
-                            <Sparkles size={12} className="mt-0.5 shrink-0" />
-                            <span><strong>Rekomendasi AI:</strong> {anomaly.suggestion}</span>
-                          </div>
+                  return (
+                    <div key={anomaly.id} className={cn("p-4 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 transition-colors hover:bg-white/5", anomaly.ews === "DANGER" ? "bg-rose-950/20" : "bg-amber-950/20")}>
+                      <div className="space-y-1.5 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-black text-sm uppercase">{anomaly.companyName}</span>
+                          <span className={cn("text-[8px] font-black uppercase px-2 py-0.5 border", anomaly.ews === "DANGER" ? "bg-rose-500/10 text-rose-400 border-rose-500/30" : "bg-amber-500/10 text-amber-400 border-amber-500/30")}>
+                            {anomaly.ews}
+                          </span>
                         </div>
-
-                        <div className="flex flex-wrap gap-2 shrink-0 w-full lg:w-auto border-t lg:border-t-0 pt-4 lg:pt-0 border-white/5">
-                          <Button
-                            disabled={isWarned}
-                            onClick={() => handleSendWarning(anomaly.companyId, anomaly.companyName, anomaly.type, `${anomaly.volume} ${anomaly.unit}`, anomaly.id)}
-                            className={cn(
-                              "flex-1 lg:flex-none rounded-xl text-[10px] font-black tracking-wider uppercase h-10 px-4 transition-all gap-1.5",
-                              isWarned
-                                ? "bg-white/5 text-slate-500 border border-white/5 cursor-not-allowed"
-                                : "bg-white/10 hover:bg-white/20 text-white border border-white/10 hover:scale-[1.02]"
-                            )}
-                          >
-                            <Send size={12} /> {isWarned ? "Teguran Terkirim" : "Surat Teguran"}
-                          </Button>
-                          <Button
-                            disabled={isScheduled}
-                            onClick={() => handleTriggerInspection(anomaly.companyId, anomaly.companyName, anomaly.id)}
-                            className={cn(
-                              "flex-1 lg:flex-none rounded-xl text-[10px] font-black tracking-wider uppercase h-10 px-5 transition-all gap-1.5",
-                              isScheduled
-                                ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 cursor-not-allowed"
-                                : "bg-emerald-600 hover:bg-emerald-700 text-white hover:scale-[1.02] shadow-lg shadow-emerald-900/30"
-                            )}
-                          >
-                            {isScheduled ? <CheckCircle size={12} /> : <Calendar size={12} />}
-                            {isScheduled ? "Sidak Terjadwal" : "Jadwalkan Sidak"}
-                          </Button>
-                        </div>
+                        <p className="text-[11px] text-slate-300">Volume <span className="font-bold text-white">{anomaly.type} ({anomaly.volume} {anomaly.unit})</span> melampaui limit {anomaly.limit}.</p>
+                        <p className="text-[9px] text-emerald-400 font-bold uppercase tracking-widest mt-1">Rekomendasi: {anomaly.suggestion}</p>
                       </div>
-                    );
-                  })}
-                </div>
+
+                      <div className="flex gap-2 w-full lg:w-auto">
+                        <Button
+                          disabled={isWarned} size="sm"
+                          onClick={() => handleSendWarning(anomaly.companyId, anomaly.companyName, anomaly.type, `${anomaly.volume} ${anomaly.unit}`, anomaly.id)}
+                          className={cn("flex-1 lg:flex-none rounded-none text-[9px] font-bold h-8 px-3 transition-colors", isWarned ? "bg-white/10 text-slate-500" : "bg-white/10 hover:bg-white/20 text-white")}
+                        >
+                          <Send size={10} className="mr-1.5" /> {isWarned ? "TERKIRIM" : "TEGURAN"}
+                        </Button>
+                        <Button
+                          disabled={isScheduled} size="sm"
+                          onClick={() => handleTriggerInspection(anomaly.companyId, anomaly.companyName, anomaly.id)}
+                          className={cn("flex-1 lg:flex-none rounded-none text-[9px] font-bold h-8 px-3 transition-colors", isScheduled ? "bg-emerald-500/20 text-emerald-500" : "bg-emerald-600 hover:bg-emerald-700 text-white")}
+                        >
+                          {isScheduled ? <CheckCircle size={10} className="mr-1.5" /> : <Calendar size={10} className="mr-1.5" />}
+                          {isScheduled ? "TERJADWAL" : "SIDAK"}
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
-          </CardContent>
+          </div>
         </Card>
 
-        {/* --- FILTER & SEARCH --- */}
-        <Card className="rounded-[2rem] border-none shadow-sm p-5 bg-white">
-          <div className="flex flex-col lg:flex-row gap-4">
+        {/* --- FILTER & SEARCH (DIET PADDING) --- */}
+        <Card className="rounded-none border border-slate-200 shadow-sm p-3 bg-white">
+          <div className="flex flex-col lg:flex-row gap-3">
             <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
               <Input
-                placeholder="Cari nama perusahaan atau jenis limbah..."
-                className="h-12 pl-12 rounded-2xl bg-slate-50 border-none focus-visible:ring-emerald-500"
+                placeholder="Cari perusahaan atau limbah..."
+                className="h-9 pl-9 rounded-none border-slate-200 bg-slate-50 text-xs"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <div className="flex flex-wrap gap-2">
-              <div className="flex gap-2">
-                <SelectFilter
-                  placeholder="Kategori"
-                  value={categoryFilter}
-                  onChange={setCategoryFilter}
-                  options={[
-                    { label: "Semua Kategori", value: "ALL" },
-                    { label: "Limbah B3", value: "B3" },
-                    { label: "Limbah Cair", value: "CAIR" },
-                    { label: "Limbah Domestik", value: "DOMESTIK" }
-                  ]}
-                />
-                <SelectFilter
-                  placeholder="Status EWS"
-                  value={statusFilter}
-                  onChange={setStatusFilter}
-                  options={[
-                    { label: "Semua Status", value: "ALL" },
-                    { label: "EWS Danger", value: "DANGER" },
-                    { label: "EWS Warning", value: "WARNING" },
-                    { label: "EWS Safe", value: "SAFE" }
-                  ]}
-                />
-              </div>
+            <div className="flex gap-2">
+              <SelectFilter placeholder="Kategori" value={categoryFilter} onChange={setCategoryFilter} options={[{ label: "Semua", value: "ALL" }, { label: "B3", value: "B3" }, { label: "Cair", value: "CAIR" }, { label: "Domestik", value: "DOMESTIK" }]} />
+              <SelectFilter placeholder="Status EWS" value={statusFilter} onChange={setStatusFilter} options={[{ label: "Semua", value: "ALL" }, { label: "Danger", value: "DANGER" }, { label: "Warning", value: "WARNING" }, { label: "Safe", value: "SAFE" }]} />
             </div>
           </div>
         </Card>
 
-        {/* --- MONITORING TABLE --- */}
-        <div className="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden text-left">
+        {/* --- MONITORING TABLE (DENSE) --- */}
+        <div className="bg-white rounded-none border border-slate-200 shadow-sm overflow-hidden text-left">
           <Table>
-            <TableHeader className="bg-slate-50/50">
-              <TableRow className="hover:bg-transparent border-slate-100 h-16">
-                <TableHead className="pl-8 font-black text-slate-400 uppercase text-[10px] tracking-widest">Perusahaan</TableHead>
-                <TableHead className="font-black text-slate-400 uppercase text-[10px] tracking-widest">Kategori Limbah</TableHead>
-                <TableHead className="font-black text-slate-400 uppercase text-[10px] tracking-widest text-center">Volume Saat Ini</TableHead>
-                <TableHead className="font-black text-slate-400 uppercase text-[10px] tracking-widest text-center">Ambang Batas</TableHead>
-                <TableHead className="font-black text-slate-400 uppercase text-[10px] tracking-widest text-center">Status EWS</TableHead>
-                <TableHead className="pr-8 text-right font-black text-slate-400 uppercase text-[10px] tracking-widest">Aksi</TableHead>
+            <TableHeader className="bg-slate-50">
+              <TableRow className="border-b border-slate-200 h-10">
+                <TableHead className="pl-4 font-black text-slate-500 uppercase text-[9px] tracking-widest">Perusahaan</TableHead>
+                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest">Kategori Limbah</TableHead>
+                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest text-center">Volume Saat Ini</TableHead>
+                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest text-center">Ambang Batas</TableHead>
+                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest text-center">Status EWS</TableHead>
+                <TableHead className="pr-4 text-right font-black text-slate-500 uppercase text-[9px] tracking-widest">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredLogs.length === 0 ? (
-                <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={6} className="text-center py-10 font-bold text-slate-400">
-                    Tidak ada data log limbah yang cocok dengan filter.
-                  </TableCell>
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8 font-bold text-slate-400 text-xs">Tidak ada data log limbah.</TableCell>
                 </TableRow>
               ) : (
                 filteredLogs.map((item) => {
@@ -380,38 +240,31 @@ export default function WasteMonitoring() {
                   const trend = item.id.charCodeAt(item.id.length - 1) % 2 === 0 ? "up" : "down";
 
                   return (
-                    <TableRow key={item.id} className="border-slate-50 hover:bg-slate-50/50 transition-colors h-20">
-                      <TableCell className="pl-8">
+                    <TableRow key={item.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors h-14">
+                      <TableCell className="pl-4">
                         <div className="flex flex-col">
-                          <span className="font-black text-slate-900">{item.companyName}</span>
-                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">ID: {item.companyId} | {item.id}</span>
+                          <span className="font-bold text-slate-800 text-xs">{item.companyName}</span>
+                          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{item.date} • {item.id}</span>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="secondary" className="rounded-lg font-bold bg-slate-100 text-slate-600">
-                          {item.type}
-                        </Badge>
+                        <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-1 uppercase">{item.type}</span>
                       </TableCell>
-                      <TableCell className="text-center font-black text-slate-800">
-                        <div className="flex items-center justify-center gap-2">
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center gap-1.5 font-bold text-sm text-slate-800">
                           {item.volume} {item.unit}
-                          {trend === "up" ? <ArrowUpRight size={14} className="text-rose-500" /> : <ArrowDownRight size={14} className="text-emerald-500" />}
+                          {trend === "up" ? <ArrowUpRight size={12} className="text-rose-500" /> : <ArrowDownRight size={12} className="text-emerald-500" />}
                         </div>
                       </TableCell>
-                      <TableCell className="text-center text-slate-400 font-medium italic">
+                      <TableCell className="text-center text-[11px] text-slate-500 font-medium">
                         {limit}
                       </TableCell>
                       <TableCell className="text-center">
                         <EWSBadge status={ews} />
                       </TableCell>
-                      <TableCell className="pr-8 text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="font-black text-[10px] text-emerald-600 hover:bg-emerald-50 tracking-widest"
-                          onClick={() => toast.info(`Logbook Detail: Limbah ${item.type} dilaporkan pada ${item.date} via metode ${item.method}.`)}
-                        >
-                          DETAIL LOGBOOK
+                      <TableCell className="pr-4 text-right">
+                        <Button variant="ghost" size="sm" className="font-bold text-[9px] rounded-none text-emerald-600 hover:bg-emerald-50 tracking-widest h-7" onClick={() => toast.info(`Logbook Detail: ${item.method}`)}>
+                          DETAIL
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -429,49 +282,34 @@ export default function WasteMonitoring() {
 
 // --- SUB COMPONENTS ---
 
-function StatMiniCard({ title, value, sub, icon, trend, isWarning, isDanger }: any) {
+// DIET: Compact Box Style
+function StatMiniCard({ title, value, sub, icon, color, isWarning, isDanger }: any) {
+  const bg = isDanger ? "bg-rose-50 border-rose-200" : isWarning ? "bg-amber-50 border-amber-200" : "bg-white border-slate-200";
+  const text = isDanger ? "text-rose-700" : isWarning ? "text-amber-700" : "text-slate-800";
+  const iconColor = isDanger ? "text-rose-600" : isWarning ? "text-amber-600" : "text-emerald-600";
+
   return (
-    <Card className={cn(
-      "border-none shadow-xl shadow-slate-200/40 rounded-[2rem] overflow-hidden transition-all hover:scale-[1.02] text-left",
-      isDanger ? "bg-rose-600 text-white" : isWarning ? "bg-amber-500 text-white" : "bg-white"
-    )}>
-      <CardContent className="p-6">
-        <div className="flex justify-between items-start">
-          <div className="space-y-4">
-            <div className={cn(
-              "w-12 h-12 rounded-2xl flex items-center justify-center shadow-inner",
-              isDanger || isWarning ? "bg-white/20" : "bg-slate-50"
-            )}>
-              {icon}
-            </div>
-            <div>
-              <p className={cn("text-[10px] font-black uppercase tracking-[0.2em]", isDanger || isWarning ? "text-white/70" : "text-slate-400")}>
-                {title}
-              </p>
-              <h2 className="text-3xl font-black tracking-tighter italic mt-1">{value}</h2>
-              <div className="flex items-center gap-2 mt-1.5">
-                <Badge className={cn("text-[9px] font-black border-none", isDanger || isWarning ? "bg-white/20 text-white" : "bg-emerald-50 text-emerald-700")}>
-                  {trend}
-                </Badge>
-                <span className={cn("text-[10px] font-bold", isDanger || isWarning ? "text-white/60" : "text-slate-400")}>{sub}</span>
-              </div>
-            </div>
-          </div>
-          <Activity className={cn("opacity-20 shrink-0", isDanger || isWarning ? "text-white" : "text-slate-200")} size={64} />
-        </div>
-      </CardContent>
-    </Card>
+    <div className={cn("border p-4 shadow-sm flex items-start gap-4 transition-colors", bg)}>
+      <div className={cn("w-10 h-10 border bg-white flex items-center justify-center shrink-0", iconColor, isDanger ? "border-rose-200" : "border-slate-100")}>
+        {icon}
+      </div>
+      <div className="flex-1">
+        <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">{title}</p>
+        <h2 className={cn("text-xl font-black tracking-tight leading-none mt-1", text)}>{value}</h2>
+        <p className="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-wider">{sub}</p>
+      </div>
+    </div>
   );
 }
 
 function EWSBadge({ status }: { status: string }) {
   const styles: any = {
-    SAFE: "bg-emerald-100 text-emerald-700 border-emerald-200",
-    WARNING: "bg-amber-100 text-amber-700 border-amber-200",
-    DANGER: "bg-rose-100 text-rose-700 border-rose-200 shadow-lg shadow-rose-100",
+    SAFE: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    WARNING: "bg-amber-50 text-amber-700 border-amber-200",
+    DANGER: "bg-rose-50 text-rose-700 border-rose-200",
   };
   return (
-    <Badge className={cn("px-4 py-1 rounded-full text-[10px] font-black border uppercase tracking-widest border-none", styles[status])}>
+    <Badge className={cn("px-2 py-0.5 rounded-none text-[9px] font-bold border uppercase tracking-widest", styles[status])}>
       {status}
     </Badge>
   );
@@ -483,33 +321,30 @@ function SelectFilter({ placeholder, value, onChange, options }: any) {
 
   return (
     <div className="relative font-sans text-left">
-      <div
+      <button
         onClick={() => setIsOpen(!isOpen)}
-        className="h-12 px-4 bg-slate-50 rounded-2xl border-none flex items-center justify-between gap-2 text-slate-600 font-bold text-xs cursor-pointer hover:bg-slate-100 transition-all min-w-[160px]"
+        className="h-9 px-3 bg-slate-50 border border-slate-200 flex items-center justify-between gap-2 text-slate-600 font-bold text-[10px] uppercase tracking-wider hover:bg-slate-100 transition-colors min-w-[120px]"
       >
-        <div className="flex items-center gap-2">
-          <Filter size={14} className="text-slate-400" />
+        <div className="flex items-center gap-1.5">
+          <Filter size={12} className="text-slate-400" />
           <span>{selectedOption ? selectedOption.label : placeholder}</span>
         </div>
-        <span className="text-[10px] opacity-60">▼</span>
-      </div>
+        <span className="text-[8px] opacity-60">▼</span>
+      </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-48 bg-white border border-slate-100 rounded-2xl shadow-xl z-50 overflow-hidden font-sans p-1.5">
+        <div className="absolute right-0 mt-1 w-full bg-white border border-slate-200 shadow-md z-50 overflow-hidden font-sans p-1">
           {options.map((opt: any) => (
-            <div
+            <button
               key={opt.value}
-              onClick={() => {
-                onChange(opt.value);
-                setIsOpen(false);
-              }}
+              onClick={() => { onChange(opt.value); setIsOpen(false); }}
               className={cn(
-                "px-4 py-2.5 text-xs font-bold rounded-xl cursor-pointer transition-all hover:bg-slate-50",
+                "w-full text-left px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors hover:bg-slate-50",
                 value === opt.value ? "text-emerald-600 bg-emerald-50" : "text-slate-600"
               )}
             >
               {opt.label}
-            </div>
+            </button>
           ))}
         </div>
       )}
