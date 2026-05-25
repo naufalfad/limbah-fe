@@ -21,22 +21,32 @@ L.Marker.prototype.options.icon = DefaultIcon;
 // FIXED: Ubah tipe data dari L.LatLngExpression menjadi tuple eksplisit [number, number]
 const DEFAULT_CENTER: [number, number] = [-6.9147, 107.6098];
 
-// Map Events Handler: Nangkep interaksi zoom/klik dari tombol MapHUD
+// Map Events Handler: Nangkep interaksi zoom/klik dari tombol MapHUD & Sinyal Spasial
 function ExternalMapController() {
     const map = useMap();
+
     useEffect(() => {
         const handleZoomIn = () => map.zoomIn();
         const handleZoomOut = () => map.zoomOut();
         const handleResetView = () => map.setView(DEFAULT_CENTER, 12, { animate: true });
 
+        // LOGIKA PENERBANGAN LOKASI ( GFWS Decoupled Event )
+        const handleFlyToCoords = (e: Event) => {
+            const customEvent = e as CustomEvent<{ lat: number; lng: number }>;
+            const { lat, lng } = customEvent.detail;
+            map.flyTo([lat, lng], 14, { animate: true, duration: 1.5 });
+        };
+
         window.addEventListener('map-zoom-in', handleZoomIn);
         window.addEventListener('map-zoom-out', handleZoomOut);
         window.addEventListener('map-reset-view', handleResetView);
+        window.addEventListener('map-fly-to-coords', handleFlyToCoords);
 
         return () => {
             window.removeEventListener('map-zoom-in', handleZoomIn);
             window.removeEventListener('map-zoom-out', handleZoomOut);
             window.removeEventListener('map-reset-view', handleResetView);
+            window.removeEventListener('map-fly-to-coords', handleFlyToCoords);
         };
     }, [map]);
     return null;

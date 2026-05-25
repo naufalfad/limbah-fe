@@ -8,6 +8,8 @@ export type GisPanelType =
     | 'katalog-perusahaan' // Panel daftar perusahaan
     | 'layer-kewajiban'    // Panel toggle layer AMDAL/UKL-UPL/SPPL & Overlay
     | 'detil-perusahaan'   // Panel melayang (floating) untuk detail info perusahaan
+    | 'tugas-patroli'      // Panel daftar penugasan patroli milik petugas lapangan
+    | 'armada-tracking'    // (BARU) Panel pelacakan live armada milik transporter/pengangkut
     | 'hasil-pencarian'    // Panel untuk hasil search global
     | 'tentang';           // Panel informasi aplikasi
 

@@ -1,7 +1,8 @@
 // src/modules/admin/components/gis/GisSidebar.tsx
-import React from "react";
-import { Layers, Building2, Info } from "lucide-react";
+import React, { useMemo } from "react";
+import { Layers, Building2, Info, ClipboardList, Truck } from "lucide-react";
 import { useGisUIStore } from "@/store/useGisUIStore";
+import { useSijagaStore } from "@/store/useSijagaStore";
 import { GisPanelType } from "@/types/gis";
 
 /**
@@ -11,21 +12,51 @@ import { GisPanelType } from "@/types/gis";
  */
 export default function GisSidebar() {
     const { openPanel, activePanels, closePanelsToTheRight } = useGisUIStore();
+    const { currentUser } = useSijagaStore();
 
-    const navigationItems = [
-        {
-            type: "layer-kewajiban" as GisPanelType,
-            label: "Layers",
-            icon: Layers,
-            title: "Konfigurasi Layer Kepatuhan"
-        },
-        {
-            type: "katalog-perusahaan" as GisPanelType,
-            label: "Industri",
-            icon: Building2,
-            title: "Katalog Perusahaan Terdaftar"
+    // Deteksi jika role yang masuk adalah Petugas Lapangan atau Transporter (Information Expert)
+    const isOfficer = currentUser?.role === "PETUGAS_LAPANGAN";
+    const isTransporter = currentUser?.role === "PENGANGKUT";
+
+    // Menyusun navigasi item secara reaktif sesuai role yang aktif (Adaptive GFW UI)
+    const navigationItems = useMemo(() => {
+        const items = [
+            {
+                type: "layer-kewajiban" as GisPanelType,
+                label: "Layers",
+                icon: Layers,
+                title: "Konfigurasi Layer Kepatuhan"
+            }
+        ];
+
+        if (isOfficer) {
+            // Jika Petugas Lapangan
+            items.push({
+                type: "tugas-patroli" as GisPanelType,
+                label: "Tugas",
+                icon: ClipboardList,
+                title: "Daftar Penugasan Patroli"
+            });
+        } else if (isTransporter) {
+            // Jika Transporter (Pengangkut)
+            items.push({
+                type: "armada-tracking" as GisPanelType,
+                label: "Armada",
+                icon: Truck,
+                title: "Live Pelacakan Armada"
+            });
+        } else {
+            // Jika Admin / Auditor biasa
+            items.push({
+                type: "katalog-perusahaan" as GisPanelType,
+                label: "Industri",
+                icon: Building2,
+                title: "Katalog Perusahaan Terdaftar"
+            });
         }
-    ];
+
+        return items;
+    }, [isOfficer, isTransporter]);
 
     // Helper cek status aktif
     const isPanelActive = (type: GisPanelType) => {
@@ -54,7 +85,7 @@ export default function GisSidebar() {
                                 className={`w-full h-16 flex flex-col items-center justify-center gap-1 transition-colors relative active:bg-slate-100 rounded-none outline-none
                   ${isActive
                                         ? "bg-emerald-50 text-emerald-700 border-l-[3px] border-emerald-600"
-                                        : "bg-transparent text-slate-500 hover:bg-slate-50 hover:text-slate-800 border-l-[3px] border-transparent"
+                                        : "bg-transparent text-slate-400 hover:bg-slate-50 hover:text-slate-800 border-l-[3px] border-transparent"
                                     }`}
                             >
                                 <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} />

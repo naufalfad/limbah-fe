@@ -4,11 +4,14 @@ import { X, Map as MapIcon } from "lucide-react";
 import { useGisUIStore } from "@/store/useGisUIStore";
 import { GisPanelType } from "@/types/gis";
 
-// Catatan: Komponen-komponen panel di bawah ini akan kita buat di FASE 3
-// Untuk sementara kita panggil fungsi renderPanelContent untuk placeholder
+// Mengimpor Sub-Panel GIS GFW
 import LayerPanel from "./panels/LayerPanel";
 import CompanyPanel from "./panels/CompanyPanel";
 import DetailPanel from "./panels/DetailPanel";
+import PatrolTaskPanel from "./panels/PatrolTaskPanel";
+
+// MODULAR: Mengimpor laci taktis telemetri dari modul transport
+import ActiveFleetPanel from "@/modules/transport/components/gis/panels/ActiveFleetPanel";
 
 /**
  * PanelOrchestrator - The Stacking Drawer (GFW Paradigm)
@@ -105,6 +108,8 @@ function renderPanelContent(type: GisPanelType, data: any) {
     switch (type) {
         case "layer-kewajiban": return <LayerPanel />;
         case "katalog-perusahaan": return <CompanyPanel />;
+        case "tugas-patroli": return <PatrolTaskPanel />;
+        case "armada-tracking": return <ActiveFleetPanel />; // <-- MODULAR: Mengarahkan laci ke modul transport
         case "detil-perusahaan": return <DetailPanel companyData={data} />;
         case "tentang":
             return (

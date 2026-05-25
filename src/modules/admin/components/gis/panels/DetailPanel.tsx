@@ -1,6 +1,8 @@
 // src/modules/admin/components/gis/panels/DetailPanel.tsx
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { MapPin, Activity, ShieldCheck, Factory, FileText, Calendar, Users, Phone, Zap } from "lucide-react";
+import { useSijagaStore } from "@/store/useSijagaStore";
 import { toast } from "sonner";
 
 interface DetailPanelProps {
@@ -10,6 +12,12 @@ interface DetailPanelProps {
 type DetailTabType = "umum" | "esg";
 
 export default function DetailPanel({ companyData }: DetailPanelProps) {
+    const navigate = useNavigate();
+    const { currentUser } = useSijagaStore();
+
+    // Deteksi jika yang login adalah Petugas Lapangan (Adaptive UI)
+    const isOfficer = currentUser?.role === "PETUGAS_LAPANGAN";
+
     const [activeTab, setActiveTab] = useState<DetailTabType>("umum");
     const [animateBars, setAnimateBars] = useState(false);
 
@@ -39,6 +47,16 @@ export default function DetailPanel({ companyData }: DetailPanelProps) {
         if (score >= 80) return "PATUH (EXCELLENT)";
         if (score >= 60) return "CUKUP (WARNING)";
         return "KRITIS (DANGER)";
+    };
+
+    // Handler memulai sidak untuk petugas lapangan
+    const handleStartSidak = () => {
+        toast.success(`Membuka berkas Evaluasi Fisik Lapangan untuk ${companyData.companyName}`);
+
+        // Mengarahkan langsung ke halaman pengisian BAP dengan mem-passing ID perusahaan ke state
+        navigate("/officer/inspections", {
+            state: { preSelectedCompanyId: companyData.id }
+        });
     };
 
     return (
@@ -134,16 +152,32 @@ export default function DetailPanel({ companyData }: DetailPanelProps) {
 
                         {/* ACTION BUTTONS (Gaya GFW Sharp) */}
                         <div className="mt-4 flex flex-col border-t border-slate-200">
-                            <button
-                                onClick={() => toast.success(`Jadwal inspeksi untuk ${companyData.companyName} disiapkan.`)}
-                                className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-emerald-50 transition-colors border-b border-slate-200 group"
-                            >
-                                <div className="flex items-center gap-2">
-                                    <Calendar size={14} className="text-emerald-600" />
-                                    <span className="text-[11px] font-black text-slate-700 uppercase tracking-wider">Jadwalkan Inspeksi Lapangan</span>
-                                </div>
-                                <span className="text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity font-bold">→</span>
-                            </button>
+                            {/* ADAPTIVE ACTION BUTTON */}
+                            {isOfficer ? (
+                                // Render Tombol "Mulai Audit / Sidak" khsusus Petugas Lapangan
+                                <button
+                                    onClick={handleStartSidak}
+                                    className="w-full flex items-center justify-between px-4 py-3 bg-emerald-600 hover:bg-emerald-750 text-white transition-colors border-b border-slate-200 group"
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <Calendar size={14} className="text-white" />
+                                        <span className="text-[11px] font-black uppercase tracking-wider">Mulai Audit / Sidak</span>
+                                    </div>
+                                    <span className="text-white opacity-0 group-hover:opacity-100 transition-opacity font-bold">→</span>
+                                </button>
+                            ) : (
+                                // Render Tombol "Jadwalkan" untuk Admin / Auditor biasa
+                                <button
+                                    onClick={() => toast.success(`Jadwal inspeksi untuk ${companyData.companyName} disiapkan.`)}
+                                    className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-emerald-50 text-slate-750 transition-colors border-b border-slate-200 group"
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <Calendar size={14} className="text-emerald-600" />
+                                        <span className="text-[11px] font-black text-slate-700 uppercase tracking-wider">Jadwalkan Inspeksi Lapangan</span>
+                                    </div>
+                                    <span className="text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity font-bold">→</span>
+                                </button>
+                            )}
 
                             <button
                                 onClick={() => toast.info(`Membuka riwayat logbook ${companyData.companyName}`)}
