@@ -63,6 +63,7 @@
 }
 
 --- FILE: src\App.tsx ---
+// src/App.tsx
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Toaster } from "sonner";
 
@@ -100,6 +101,7 @@ import OfficerGISPage from "./modules/inspections/pages/OfficerGISPage";
 
 // Auditor / Pimpinan
 import AuditorDashboardPage from "./modules/dashboard/pages/AuditorDashboardPage";
+import AuditorGISPage from "./modules/dashboard/pages/AuditorGISPage"; // Impor Command Center Spasial Pimpinan
 
 // Super Admin
 import SuperAdminPage from "./modules/admin/pages/SuperAdminPage";
@@ -140,8 +142,10 @@ function App() {
         <Route path="/officer/inspections" element={<OfficerInspectionsPage />} />
         <Route path="/officer/gis" element={<OfficerGISPage />} />
 
-        {/* Auditor */}
+        {/* Auditor / Pimpinan */}
         <Route path="/auditor" element={<AuditorDashboardPage />} />
+        {/* SOLUSI DECOUPLING: Mengubah rute menjadi /auditor-gis agar terpisah mutlak dari parameter dinamis /auditor/:tab */}
+        <Route path="/auditor-gis" element={<AuditorGISPage />} />
         <Route path="/auditor/:tab" element={<AuditorDashboardPage />} />
 
         {/* Super Admin */}
@@ -2621,6 +2625,16 @@ export const apiService = {
     getTransporters: async () => {
       const response = await api.get("/api/admin/transporters");
       return response.data;
+    },
+    // Mengambil seluruh data user untuk Super Admin
+    getAllUsers: async () => {
+      const response = await api.get("/api/admin/users");
+      return response.data;
+    },
+    // Mengubah hak akses / role dari user
+    updateUserRole: async (id: string, role: string) => {
+      const response = await api.patch(`/api/admin/users/${id}/role`, { role });
+      return response.data;
     }
   },
   companies: {
@@ -2733,9 +2747,19 @@ export const apiService = {
       const response = await api.post("/api/audit-logs", payload);
       return response.data;
     }
+  },
+  // BLOK BARU: Sistem pemanggil analitik eksekutif terpusat dari Backend
+  analytics: {
+    getExecutive: async () => {
+      const response = await api.get("/api/analytics/executive");
+      return response.data;
+    },
+    getPerformance: async () => {
+      const response = await api.get("/api/analytics/performance");
+      return response.data;
+    }
   }
 };
-
 
 --- FILE: src\lib\utils.ts ---
 import { clsx, type ClassValue } from "clsx"
@@ -3998,7 +4022,7 @@ function DecisionCard({ active, onClick, icon, label, sublabel, color }: any) {
 
 --- FILE: src\modules\admin\components\gis\GisNavbar.tsx ---
 // src/modules/admin/components/gis/GisNavbar.tsx
-import React from "react";
+import React, { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronLeft, Leaf, Share2, RefreshCw } from "lucide-react";
 import { useSijagaStore } from "@/store/useSijagaStore";
@@ -4015,9 +4039,37 @@ export default function GisNavbar() {
     const { currentUser } = useSijagaStore();
     const { clearPanels, resetMapContext } = useGisUIStore();
 
-    // Helper untuk inisial nama
+    // Helper untuk inisial nama pimpinan / petugas secara dinamis (Fase 4) [3]
     const getInitials = (name: string) => {
         return name?.split(" ").map((n) => n[0]).join("").toUpperCase().substring(0, 2) || "AD";
+    };
+
+    // Helper penterjemah label hak akses eksekutif [3]
+    const getRoleLabel = (r: string) => {
+        const labels: Record<string, string> = {
+            SUPER_ADMIN: "SUPER ADMIN",
+            ADMIN_DLH: "VERIFIKATOR",
+            PETUGAS_LAPANGAN: "PETUGAS",
+            PERUSAHAAN: "PERUSAHAAN",
+            PENGANGKUT: "PENGANGKUT",
+            AUDITOR: "AUDITOR"
+        };
+        return labels[r] || r;
+    };
+
+    // FUNGSI BARU: Evaluasi Rute Kembali Berdasarkan Otoritas Sesi (Information Expert) [3]
+    const handleBackClick = () => {
+        const role = currentUser?.role;
+        const routes: Record<string, string> = {
+            SUPER_ADMIN: "/super-admin",
+            ADMIN_DLH: "/admin",
+            PETUGAS_LAPANGAN: "/officer/inspections",
+            PENGANGKUT: "/transporter",
+            AUDITOR: "/auditor",
+        };
+
+        const destination = routes[role || ""] || "/";
+        navigate(destination);
     };
 
     const handleLogoClick = () => {
@@ -4029,17 +4081,17 @@ export default function GisNavbar() {
     return (
         <nav className="absolute top-0 left-0 right-0 h-16 px-6 flex items-center justify-between bg-white border-b border-slate-200 z-50 pointer-events-auto">
 
-            {/* KIRI: Tombol Back & Branding */}
+            {/* KIRI: Tombol Back Dinamis (Fail-Safe Navigation) & Branding [3] */}
             <div className="flex items-center gap-5">
                 <button
-                    onClick={() => navigate('/admin')}
+                    onClick={handleBackClick}
                     className="group flex items-center gap-2 text-slate-500 hover:text-emerald-700 transition-all rounded-none outline-none"
                 >
                     <div className="p-1.5 group-hover:bg-slate-100 transition-colors rounded-none">
                         <ChevronLeft size={20} />
                     </div>
                     <span className="text-[10px] font-bold uppercase tracking-widest hidden md:block">
-                        Dashboard
+                        Kembali
                     </span>
                 </button>
 
@@ -4089,17 +4141,17 @@ export default function GisNavbar() {
 
                 <div className="h-6 w-px bg-slate-200 mx-2 hidden sm:block"></div>
 
-                {/* Profile Label (Tanpa Border Luar, Menyatu dengan background) */}
+                {/* Profile Label Dinamis: Menyerap identitas sesi secara penuh (Fase 4) [3] */}
                 <div className="flex items-center gap-3 pl-2 pr-2 py-1 group cursor-default">
                     <div className="w-8 h-8 bg-emerald-100 flex items-center justify-center text-[11px] font-black text-emerald-700 rounded-none">
-                        {getInitials(currentUser?.name || "Admin")}
+                        {getInitials(currentUser?.name || "AD")}
                     </div>
                     <div className="hidden sm:flex flex-col items-start text-left">
                         <span className="text-[10px] font-black text-slate-800 uppercase tracking-tight line-clamp-1 max-w-[100px]">
                             {currentUser?.name || "Admin DLH"}
                         </span>
                         <span className="text-[8px] text-emerald-600 font-bold uppercase tracking-widest">
-                            Verifikator
+                            {getRoleLabel(currentUser?.role || "ADMIN_DLH")}
                         </span>
                     </div>
                 </div>
@@ -4126,11 +4178,12 @@ export default function GisSidebar() {
     const { openPanel, activePanels, closePanelsToTheRight } = useGisUIStore();
     const { currentUser } = useSijagaStore();
 
-    // Deteksi jika role yang masuk adalah Petugas Lapangan atau Transporter (Information Expert)
+    // Deteksi jika role yang masuk adalah Petugas Lapangan, Transporter, atau Auditor (Information Expert) [3]
     const isOfficer = currentUser?.role === "PETUGAS_LAPANGAN";
     const isTransporter = currentUser?.role === "PENGANGKUT";
+    const isAuditor = currentUser?.role === "AUDITOR"; // DETEKSI BARU: Khusus pimpinan/auditor eksekutif [3]
 
-    // Menyusun navigasi item secara reaktif sesuai role yang aktif (Adaptive GFW UI)
+    // Menyusun navigasi item secara reaktif sesuai role yang aktif (Adaptive GFW UI) [3]
     const navigationItems = useMemo(() => {
         const items = [
             {
@@ -4157,8 +4210,16 @@ export default function GisSidebar() {
                 icon: Truck,
                 title: "Live Pelacakan Armada"
             });
+        } else if (isAuditor) {
+            // OPTIMASI BARU: Jika Auditor / Pimpinan Eksekutif, berikan terminologi khusus kepatuhan daerah [3]
+            items.push({
+                type: "katalog-perusahaan" as GisPanelType,
+                label: "Kepatuhan",
+                icon: Building2,
+                title: "Pemantauan Kepatuhan Industri"
+            });
         } else {
-            // Jika Admin / Auditor biasa
+            // Jika Admin DLH atau Super Admin biasa
             items.push({
                 type: "katalog-perusahaan" as GisPanelType,
                 label: "Industri",
@@ -4168,7 +4229,7 @@ export default function GisSidebar() {
         }
 
         return items;
-    }, [isOfficer, isTransporter]);
+    }, [isOfficer, isTransporter, isAuditor]);
 
     // Helper cek status aktif
     const isPanelActive = (type: GisPanelType) => {
@@ -4561,132 +4622,182 @@ export default function MapHUD() {
 }
 
 --- FILE: src\modules\admin\components\gis\PanelOrchestrator.tsx ---
-// src/modules/admin/components/gis/PanelOrchestrator.tsx
-import React, { useEffect, useState } from "react";
-import { X, Map as MapIcon } from "lucide-react";
-import { useGisUIStore } from "@/store/useGisUIStore";
-import { GisPanelType } from "@/types/gis";
+// src/modules/dashboard/pages/AuditorDashboardPage.tsx
+import React, { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import DashboardLayout from "@/components/layouts/DashboardLayout";
+import { useSijagaStore } from "@/store/useSijagaStore";
+import { Button } from "@/components/ui/button";
+import { Download, BarChart4, Map as MapIcon, ClipboardList, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
-// Mengimpor Sub-Panel GIS GFW
-import LayerPanel from "./panels/LayerPanel";
-import CompanyPanel from "./panels/CompanyPanel";
-import DetailPanel from "./panels/DetailPanel";
-import PatrolTaskPanel from "./panels/PatrolTaskPanel";
-
-// MODULAR: Mengimpor laci taktis telemetri dari modul transport
-import ActiveFleetPanel from "@/modules/transport/components/gis/panels/ActiveFleetPanel";
+// Mengimpor Sub-Modul Eksekutif yang sudah di-diet & dimodularisasi (Prinsip GRASP: Low Coupling)
+import AnalyticsTab from "@/modules/dashboard/components/auditor/AnalyticsTab";
+import PerformanceTab from "@/modules/dashboard/components/auditor/PerformanceTab";
 
 /**
- * PanelOrchestrator - The Stacking Drawer (GFW Paradigm)
- * Mengatur dua jenis perilaku panel dengan Sumbu X (Width) yang ramping:
- * 1. Panel Menu (Flush/Docked): 280px, menempel rapat di kiri (Zero Gap).
- * 2. Panel Detail (Floating): Melayang secara dinamis mengikuti jumlah tumpukan.
+ * AuditorDashboardPage - The Executive Shell & Orchestrator (Diet UI)
+ * Bertindak sebagai kerangka utama halaman pimpinan/auditor:
+ * 1. Menampilkan Header Utama dan Tab Navigator yang kaku & rapat.
+ * 2. Memicu sinkronisasi data master DLH & data agregat analitik secara terpusat [3].
+ * 3. Memilih & merender komponen tab yang aktif sesuai parameter URL [3].
  */
-export default function PanelOrchestrator() {
-    const { activePanels, closePanel, closePanelsToTheRight } = useGisUIStore();
-    const [isMobile, setIsMobile] = useState(false);
+export default function AuditorDashboardPage() {
+    const { tab } = useParams();
+    const navigate = useNavigate();
 
+    // Mengambil pemicu API eksekutif dari Zustand Store
+    const {
+        fetchCompanies,
+        fetchWasteLogs,
+        fetchInvoices,
+        fetchInspections,
+        fetchExecutiveAnalytics,
+        fetchPerformanceAnalytics
+    } = useSijagaStore();
+
+    const activeTab = tab || "analytics";
+
+    // State pelacak pemuatan data
+    const [isLoading, setIsLoading] = useState(true);
+
+    // Memicu sinkronisasi data global DLH sekaligus analitik eksekutif secara paralel (Information Expert) [3]
     useEffect(() => {
-        const handleResize = () => setIsMobile(window.innerWidth < 768);
-        handleResize();
-        window.addEventListener("resize", handleResize);
-        return () => window.removeEventListener("resize", handleResize);
-    }, []);
+        const loadExecutiveDashboardData = async () => {
+            setIsLoading(true);
+            try {
+                await Promise.all([
+                    fetchCompanies(),
+                    fetchWasteLogs(),
+                    fetchInvoices(),
+                    fetchInspections(),
+                    fetchExecutiveAnalytics(),  // API Agregat 1: Kepatuhan MoM, Keuangan, & Tren Limbah
+                    fetchPerformanceAnalytics() // API Agregat 2: Kinerja DLH & Bottleneck Berkas
+                ]);
+            } catch (error) {
+                console.error("Gagal sinkronisasi data eksekutif pimpinan:", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        loadExecutiveDashboardData();
+    }, [
+        fetchCompanies,
+        fetchWasteLogs,
+        fetchInvoices,
+        fetchInspections,
+        fetchExecutiveAnalytics,
+        fetchPerformanceAnalytics
+    ]);
 
-    // Sumbu X: Base width 280px (Ultra Slim)
-    const PANEL_WIDTH = isMobile ? (typeof window !== 'undefined' ? window.innerWidth - 64 : 280) : 280;
-    const PANEL_GAP = 0; // Zero Gap Policy (Flush)
+    const handleExport = () => {
+        toast.success("Mengekspor laporan eksekutif kepatuhan ESG (.PDF). Mohon tunggu...");
+    };
+
+    // Fungsi merender tab aktif secara dinamis (Modular Rendering)
+    const renderTabContent = () => {
+        switch (activeTab) {
+            case "performance":
+                return <PerformanceTab />;
+            case "analytics":
+            default:
+                return <AnalyticsTab />;
+        }
+    };
+
+    // Tampilan Memuat Data Eksekutif (GFW Tactical Spinner)
+    if (isLoading) {
+        return (
+            <DashboardLayout role="AUDITOR">
+                <div className="flex flex-col items-center justify-center h-[70vh] space-y-4">
+                    <Loader2 className="w-10 h-10 text-emerald-600 animate-spin" />
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 animate-pulse">
+                        Mengagregasi Data Keuangan & Kepatuhan Daerah...
+                    </p>
+                </div>
+            </DashboardLayout>
+        );
+    }
 
     return (
-        <div className="absolute top-16 bottom-0 left-16 z-30 pointer-events-none flex items-start">
-            {activePanels.map((panel, index) => {
-                // Cek apakah ini panel detail yang harus melayang (Floating Panel)
-                const isFloating = panel.type === "detil-perusahaan";
+        <DashboardLayout role="AUDITOR">
+            <div className="space-y-4 text-left">
 
-                const xOffset = index * (PANEL_WIDTH + PANEL_GAP);
-                const floatingLeft = isMobile ? 16 : (index * PANEL_WIDTH) + 16;
-
-                return (
-                    <div
-                        key={panel.id}
-                        className={`absolute pointer-events-auto transition-all duration-300 ease-in-out bg-white overflow-hidden flex flex-col ${isFloating
-                            ? 'shadow-2xl border border-slate-200 rounded-none'
-                            : 'border-r border-slate-200 shadow-none rounded-none'
-                            }`}
-                        style={
-                            isFloating
-                                ? {
-                                    left: `${floatingLeft}px`,
-                                    top: '16px',
-                                    bottom: '16px',
-                                    width: '320px', // Panel detail sedikit lebih lebar
-                                    maxWidth: 'calc(100vw - 80px)',
-                                    zIndex: 50,
-                                }
-                                : {
-                                    left: 0,
-                                    top: 0,
-                                    bottom: 0,
-                                    width: `${PANEL_WIDTH}px`,
-                                    transform: `translateX(${xOffset}px)`,
-                                    zIndex: 40 - index,
-                                }
-                        }
-                    >
-                        {/* HEADER PANEL */}
-                        <div className="px-4 py-3 border-b border-slate-200 flex justify-between items-center bg-slate-50 shrink-0">
-                            <div className="flex flex-col">
-                                <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest leading-none">
-                                    {panel.type.replace("-", " ")}
-                                </span>
-                                <h3 className="text-[11px] font-bold text-slate-800 truncate max-w-[200px] tracking-tight mt-1 uppercase">
-                                    {panel.title}
-                                </h3>
-                            </div>
-
-                            <button
-                                onClick={() => closePanel(panel.id)}
-                                className="p-1 rounded-none bg-transparent hover:bg-slate-200 text-slate-400 hover:text-rose-500 transition-colors active:scale-95"
-                                title="Tutup Panel"
-                            >
-                                <X size={16} strokeWidth={2.5} />
-                            </button>
-                        </div>
-
-                        {/* BODY PANEL */}
-                        <div
-                            className="flex-1 overflow-y-auto custom-scrollbar"
-                            onClick={() => !isFloating && closePanelsToTheRight(index)}
-                        >
-                            {renderPanelContent(panel.type, panel.data)}
-                        </div>
+                {/* --- 1. HEADER UTAMA (DIET CARD) --- */}
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-none border border-slate-200 shadow-sm">
+                    <div>
+                        <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase leading-none">
+                            Command Center Auditor
+                        </h1>
+                        <p className="text-slate-500 text-xs font-medium mt-1.5">
+                            Pemantauan tingkat kepatuhan industri, kinerja pengawasan DLH, dan analisis ESG daerah secara geospasial.
+                        </p>
                     </div>
-                );
-            })}
-        </div>
+
+                    <Button
+                        onClick={handleExport}
+                        size="sm"
+                        className="w-full md:w-auto h-9 bg-slate-900 hover:bg-emerald-600 text-white font-bold gap-1.5 px-4 rounded-none text-[10px] tracking-widest uppercase shadow-sm"
+                    >
+                        <Download size={14} /> Export Laporan Eksekutif
+                    </Button>
+                </div>
+
+                {/* --- 2. TAB NAVIGATION BAR (Sharp Edges) --- */}
+                <div className="flex gap-1.5 p-1 bg-slate-100 rounded-none w-fit border border-slate-200">
+                    <TabNavButton
+                        active={activeTab === "analytics"}
+                        label="Executive Analytics"
+                        icon={<BarChart4 size={14} />}
+                        onClick={() => navigate("/auditor")}
+                    />
+                    {/* RUTE SPASIAL IMERSIF: Tombol navigasi langsung meluncur ke AuditorGISPage penuh layar */}
+                    <TabNavButton
+                        active={false}
+                        label="Geospasial Kepatuhan"
+                        icon={<MapIcon size={14} />}
+                        onClick={() => navigate("/auditor/gis")}
+                    />
+                    <TabNavButton
+                        active={activeTab === "performance"}
+                        label="Laporan Kinerja DLH"
+                        icon={<ClipboardList size={14} />}
+                        onClick={() => navigate("/auditor/performance")}
+                    />
+                </div>
+
+                {/* --- 3. DYNAMIC TAB CONTENT (High Cohesion) --- */}
+                <div className="pt-2">
+                    {renderTabContent()}
+                </div>
+
+            </div>
+        </DashboardLayout>
     );
 }
 
-function renderPanelContent(type: GisPanelType, data: any) {
-    switch (type) {
-        case "layer-kewajiban": return <LayerPanel />;
-        case "katalog-perusahaan": return <CompanyPanel />;
-        case "tugas-patroli": return <PatrolTaskPanel />;
-        case "armada-tracking": return <ActiveFleetPanel />; // <-- MODULAR: Mengarahkan laci ke modul transport
-        case "detil-perusahaan": return <DetailPanel companyData={data} />;
-        case "tentang":
-            return (
-                <div className="p-6 text-center space-y-3 text-slate-500">
-                    <MapIcon size={32} className="mx-auto text-emerald-600/40" />
-                    <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">PANTAU LIMBAH GIS</p>
-                        <p className="text-[11px] mt-2 font-medium">Sistem Pemetaan Geospasial Kepatuhan Lingkungan v1.0</p>
-                    </div>
-                </div>
-            );
-        default:
-            return <div className="p-4 text-xs">Modul belum dibuat.</div>;
-    }
+// --- SUB-COMPONENTS ---
+
+interface TabNavButtonProps {
+    active: boolean;
+    label: string;
+    icon: React.ReactNode;
+    onClick: () => void;
+}
+
+function TabNavButton({ active, label, icon, onClick }: TabNavButtonProps) {
+    return (
+        <button
+            onClick={onClick}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-none font-bold text-[10px] uppercase tracking-wider transition-all outline-none ${active
+                ? "bg-white text-emerald-700 shadow-sm border border-slate-200/50 font-black"
+                : "text-slate-500 hover:text-slate-800 hover:bg-white/50"
+                }`}
+        >
+            {icon}
+            <span>{label}</span>
+        </button>
+    );
 }
 
 --- FILE: src\modules\admin\components\gis\panels\CompanyPanel.tsx ---
@@ -5663,7 +5774,7 @@ function ComplianceBadge({ status }: { status: string }) {
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
-import { useSijagaStore } from "@/store/useSijagaStore";
+import { useSijagaStore, UserRole } from "@/store/useSijagaStore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -5672,7 +5783,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import {
   Settings, Users, ShieldAlert, Key,
-  Map as MapIcon, Activity, Lock, Eye, Database, Globe, Search, Download
+  Map as MapIcon, Activity, Lock, Eye, Database, Globe, Search, Download, Loader2
 } from "lucide-react";
 import { toast } from "sonner";
 import { MapContainer, TileLayer, Circle, FeatureGroup, useMap } from "react-leaflet";
@@ -5694,12 +5805,24 @@ function ResizeMap() {
 export default function SuperAdminPage() {
   const { tab } = useParams();
   const navigate = useNavigate();
-  const { auditLogs, addAuditLog, currentUser } = useSijagaStore();
 
-  // Dynamic Tab matching
+  // Mengambil state dan actions dari Zustand Store (API Connected)
+  const {
+    currentUser,
+    users,
+    auditLogs,
+    fetchUsers,
+    updateUserRole,
+    fetchAuditLogs,
+    addAuditLog
+  } = useSijagaStore();
+
   const activeTab = tab || "overview";
 
-  // Mock states
+  // State untuk API Loading
+  const [isDataLoading, setIsDataLoading] = useState(true);
+
+  // Local UI States (Untuk simulasi Gateway & Peta)
   const [sandboxMode, setSandboxMode] = useState(true);
   const [riverLayer, setRiverLayer] = useState(() => {
     const saved = localStorage.getItem("sijaga_river_layer");
@@ -5710,6 +5833,33 @@ export default function SuperAdminPage() {
     return saved !== null ? saved === "true" : true;
   });
   const [selectedGateway, setSelectedGateway] = useState<"XENDIT" | "MIDTRANS">("XENDIT");
+  const [searchLogQuery, setSearchLogQuery] = useState("");
+
+  // FASE 3: Fetch Data dari Backend saat pertama kali render
+  useEffect(() => {
+    const loadMasterData = async () => {
+      setIsDataLoading(true);
+      try {
+        await Promise.all([
+          fetchUsers(),
+          fetchAuditLogs()
+        ]);
+      } catch (error) {
+        console.error("Gagal sinkronisasi data master:", error);
+      } finally {
+        setIsDataLoading(false);
+      }
+    };
+    loadMasterData();
+  }, [fetchUsers, fetchAuditLogs]);
+
+  // FASE 3: Fungsi pengubah Role terkoneksi ke Backend
+  const handleRoleChange = async (userId: string, newRole: string) => {
+    // Panggil action update role di Zustand (Nembak API)
+    await updateUserRole(userId, newRole as UserRole);
+    // Refresh Audit Log untuk menarik log riwayat perubahan dari backend secara instan
+    await fetchAuditLogs();
+  };
 
   const handleSetRiverLayer = (val: boolean) => {
     setRiverLayer(val);
@@ -5721,24 +5871,6 @@ export default function SuperAdminPage() {
     setIndustrialLayer(val);
     localStorage.setItem("sijaga_industrial_layer", String(val));
     addAuditLog(currentUser?.email || "super@sijaga.id", "SUPER_ADMIN", `Mengubah status GIS Layer Zonasi Industri ke: ${val ? "AKTIF" : "NONAKTIF"}`);
-  };
-
-  const [users, setUsers] = useState([
-    { id: "U-001", name: "Super Administrator", email: "super@sijaga.id", role: "SUPER_ADMIN" },
-    { id: "U-002", name: "Admin Verifikator DLH", email: "admin@dlh.go.id", role: "ADMIN_DLH" },
-    { id: "U-003", name: "Heryanto, S.T.", email: "officer@dlh.go.id", role: "PETUGAS_LAPANGAN" },
-    { id: "U-004", name: "Budi Santoso", email: "perusahaan@sijaga.id", role: "PERUSAHAAN" },
-    { id: "U-005", name: "PT. Transport Limbah Indonesia", email: "transport@sijaga.id", role: "PENGANGKUT" },
-    { id: "U-006", name: "Kepala Dinas LH", email: "auditor@sijaga.id", role: "AUDITOR" },
-  ]);
-
-  const [searchLogQuery, setSearchLogQuery] = useState("");
-
-  const handleRoleChange = (userId: string, newRole: string) => {
-    setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
-    const targetUser = users.find(u => u.id === userId);
-    addAuditLog(currentUser?.email || "super@sijaga.id", "SUPER_ADMIN", `Mengubah role pengguna ${targetUser?.email} menjadi ${newRole}`);
-    toast.success(`Role ${targetUser?.name} berhasil diubah.`);
   };
 
   const handleToggleSandbox = (checked: boolean) => {
@@ -5753,9 +5885,22 @@ export default function SuperAdminPage() {
     log.role.toLowerCase().includes(searchLogQuery.toLowerCase())
   );
 
+  if (isDataLoading) {
+    return (
+      <DashboardLayout role="SUPER_ADMIN">
+        <div className="flex flex-col items-center justify-center h-[70vh] space-y-4">
+          <Loader2 className="w-10 h-10 text-emerald-600 animate-spin" />
+          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 animate-pulse">
+            Sinkronisasi Data Super Admin...
+          </p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout role="SUPER_ADMIN">
-      <div className="space-y-4 text-left"> {/* DIET: space-y-8 -> space-y-4 */}
+      <div className="space-y-4 text-left">
 
         {/* Header (DIET CARD) */}
         <div className="bg-white p-4 rounded-none border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -5784,7 +5929,7 @@ export default function SuperAdminPage() {
         {/* 1. OVERVIEW TAB */}
         {activeTab === "overview" && (
           <div className="space-y-4 animate-in fade-in duration-300">
-            {/* Stats Cards (DIET GRID) */}
+            {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <StatCard label="Total Pengguna" value={users.length.toString()} icon={<Users size={20} />} color="blue" />
               <StatCard label="API Gateway" value={selectedGateway} icon={<Key size={20} />} color="emerald" />
@@ -5792,16 +5937,15 @@ export default function SuperAdminPage() {
               <StatCard label="Audit Logs" value={auditLogs.length.toString()} icon={<Activity size={20} />} color="red" />
             </div>
 
-            {/* Quick Summary Panels (DIET GRID & FLUSH LIST) */}
+            {/* Quick Summary Panels */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {/* System Health */}
               <Card className="rounded-none border border-slate-200 shadow-sm bg-white">
                 <div className="p-4 border-b border-slate-200 bg-slate-50">
                   <h3 className="font-bold text-sm tracking-tight text-slate-800 uppercase flex items-center gap-2">
                     <Database className="text-emerald-600" size={16} /> System Health & Parameters
                   </h3>
                 </div>
-                <div className="flex flex-col"> {/* Flush List style */}
+                <div className="flex flex-col">
                   <HealthItem label="EWS Notification Engine" status="ACTIVE" />
                   <HealthItem label="Automatic Document Generator" status="ACTIVE" />
                   <HealthItem label="Zustand App Store Cache" status="OPTIMAL" />
@@ -5809,29 +5953,32 @@ export default function SuperAdminPage() {
                 </div>
               </Card>
 
-              {/* Logs Snapshot */}
               <Card className="rounded-none border border-slate-200 shadow-sm bg-white flex flex-col">
                 <div className="p-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
                   <h3 className="font-bold text-sm tracking-tight text-slate-800 uppercase">Log Aktivitas Terbaru</h3>
                   <Button variant="ghost" size="sm" className="text-emerald-600 font-bold text-[9px] rounded-none h-7 px-2" onClick={() => navigate("/super-admin/logs")}>LIHAT SEMUA</Button>
                 </div>
                 <div className="flex-1 flex flex-col divide-y divide-slate-100 font-sans text-xs">
-                  {auditLogs.slice(0, 3).map((log) => (
-                    <div key={log.id} className="p-3 bg-white space-y-1">
-                      <div className="flex justify-between items-center text-[8px] text-slate-400 font-bold uppercase tracking-wider">
-                        <span>{new Date(log.timestamp).toLocaleTimeString()}</span>
-                        <Badge className="bg-slate-900 text-white rounded-none scale-90 border-none px-1.5 py-0.5">{log.role}</Badge>
+                  {auditLogs.length === 0 ? (
+                    <div className="p-8 text-center text-slate-400 font-bold">Belum ada riwayat aktivitas.</div>
+                  ) : (
+                    auditLogs.slice(0, 3).map((log) => (
+                      <div key={log.id} className="p-3 bg-white space-y-1">
+                        <div className="flex justify-between items-center text-[8px] text-slate-400 font-bold uppercase tracking-wider">
+                          <span>{new Date(log.timestamp).toLocaleString('id-ID')}</span>
+                          <Badge className="bg-slate-900 text-white rounded-none scale-90 border-none px-1.5 py-0.5">{log.role}</Badge>
+                        </div>
+                        <p className="font-bold text-slate-700">{log.action}</p>
                       </div>
-                      <p className="font-bold text-slate-700">{log.action}</p>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </Card>
             </div>
           </div>
         )}
 
-        {/* 2. USERS TAB */}
+        {/* 2. USERS TAB (LIVE DATA DARI API) */}
         {activeTab === "users" && (
           <Card className="rounded-none p-4 border border-slate-200 shadow-sm bg-white animate-in fade-in duration-300">
             <div className="mb-4">
@@ -5851,30 +5998,40 @@ export default function SuperAdminPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {users.map((u) => (
-                    <TableRow key={u.id} className="hover:bg-slate-50 transition-colors border-b last:border-b-0 h-12">
-                      <TableCell className="font-bold text-slate-500 text-xs pl-4">{u.id}</TableCell>
-                      <TableCell className="font-bold text-slate-800 text-xs">{u.name}</TableCell>
-                      <TableCell className="font-medium text-slate-500 text-xs">{u.email}</TableCell>
-                      <TableCell>
-                        <select
-                          value={u.role}
-                          onChange={(e) => handleRoleChange(u.id, e.target.value)}
-                          className="h-8 text-[11px] border border-slate-200 rounded-none px-2 bg-white font-bold text-slate-600 focus:outline-none"
-                        >
-                          <option value="SUPER_ADMIN">SUPER ADMIN</option>
-                          <option value="ADMIN_DLH">ADMIN DLH</option>
-                          <option value="PETUGAS_LAPANGAN">PETUGAS LAPANGAN</option>
-                          <option value="PERUSAHAAN">PERUSAHAAN</option>
-                          <option value="PENGANGKUT">PENGANGKUT</option>
-                          <option value="AUDITOR">AUDITOR</option>
-                        </select>
-                      </TableCell>
-                      <TableCell className="text-right pr-4">
-                        <Button variant="ghost" size="icon-xs" className="text-slate-400 hover:text-slate-600 rounded-none"><Lock size={12} /></Button>
+                  {users.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-6 text-slate-400 font-bold text-xs">
+                        Tidak ada data pengguna terdaftar.
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    users.map((u) => (
+                      <TableRow key={u.id} className="hover:bg-slate-50 transition-colors border-b last:border-b-0 h-12">
+                        <TableCell className="font-bold text-slate-500 text-xs pl-4">{u.id.substring(0, 8)}...</TableCell>
+                        <TableCell className="font-bold text-slate-800 text-xs">{u.name}</TableCell>
+                        <TableCell className="font-medium text-slate-500 text-xs">{u.email}</TableCell>
+                        <TableCell>
+                          <select
+                            value={u.role}
+                            onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                            className="h-8 text-[11px] border border-slate-200 rounded-none px-2 bg-white font-bold text-slate-600 focus:outline-none focus:border-emerald-500"
+                          >
+                            <option value="SUPER_ADMIN">SUPER ADMIN</option>
+                            <option value="ADMIN_DLH">ADMIN DLH</option>
+                            <option value="PETUGAS_LAPANGAN">PETUGAS LAPANGAN</option>
+                            <option value="PERUSAHAAN">PERUSAHAAN</option>
+                            <option value="PENGANGKUT">PENGANGKUT</option>
+                            <option value="AUDITOR">AUDITOR</option>
+                          </select>
+                        </TableCell>
+                        <TableCell className="text-right pr-4">
+                          <Button variant="ghost" size="icon-xs" className="text-slate-400 hover:text-slate-600 rounded-none" title="Ubah Password (Akan Datang)">
+                            <Lock size={12} />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </div>
@@ -6003,7 +6160,7 @@ export default function SuperAdminPage() {
           </div>
         )}
 
-        {/* 5. AUDIT LOGS TAB (DENSE) */}
+        {/* 5. AUDIT LOGS TAB (LIVE DATA DARI API) */}
         {activeTab === "logs" && (
           <Card className="rounded-none p-4 border border-slate-200 shadow-sm bg-white animate-in fade-in duration-300">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4">
@@ -6039,17 +6196,25 @@ export default function SuperAdminPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredLogs.map((log) => (
-                    <TableRow key={log.id} className="hover:bg-slate-50 transition-colors border-b last:border-b-0 h-12">
-                      <TableCell className="text-slate-400 font-bold text-xs pl-4">{new Date(log.timestamp).toLocaleString()}</TableCell>
-                      <TableCell className="font-bold text-slate-500 text-xs">{log.id}</TableCell>
-                      <TableCell className="font-bold text-slate-800 text-xs">{log.user}</TableCell>
-                      <TableCell>
-                        <Badge className="bg-slate-900 text-white font-bold text-[8px] tracking-wider uppercase rounded-none border-none">{log.role}</Badge>
+                  {filteredLogs.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-6 text-slate-400 font-bold text-xs">
+                        Tidak ada log yang ditemukan.
                       </TableCell>
-                      <TableCell className="font-bold text-slate-700 text-xs leading-normal">{log.action}</TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    filteredLogs.map((log) => (
+                      <TableRow key={log.id} className="hover:bg-slate-50 transition-colors border-b last:border-b-0 h-12">
+                        <TableCell className="text-slate-400 font-bold text-xs pl-4">{new Date(log.timestamp).toLocaleString('id-ID')}</TableCell>
+                        <TableCell className="font-bold text-slate-500 text-xs">{log.id.substring(0, 10)}</TableCell>
+                        <TableCell className="font-bold text-slate-800 text-xs">{log.user}</TableCell>
+                        <TableCell>
+                          <Badge className="bg-slate-900 text-white font-bold text-[8px] tracking-wider uppercase rounded-none border-none">{log.role}</Badge>
+                        </TableCell>
+                        <TableCell className="font-bold text-slate-700 text-xs leading-normal">{log.action}</TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </div>
@@ -6067,9 +6232,9 @@ function TabNavButton({ active, label, icon, onClick }: { active: boolean, label
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-1.5 px-3 py-2 rounded-none font-bold text-[10px] uppercase tracking-wider transition-all ${active
+      className={`flex items-center gap-1.5 px-3 py-2 rounded-none font-bold text-[10px] uppercase tracking-wider transition-all outline-none ${active
         ? "bg-white text-emerald-700 shadow-sm border border-slate-200/50 font-black"
-        : "text-slate-500 hover:text-slate-850 hover:bg-white/50"
+        : "text-slate-500 hover:text-slate-800 hover:bg-white/50"
         }`}
     >
       {icon}
@@ -6078,7 +6243,6 @@ function TabNavButton({ active, label, icon, onClick }: { active: boolean, label
   );
 }
 
-// DIET: rounded-[2rem] -> rounded-none, p-6 -> p-4
 function StatCard({ label, value, icon, color }: any) {
   const colors = {
     blue: "bg-blue-50 text-blue-600 border-blue-100",
@@ -6087,7 +6251,7 @@ function StatCard({ label, value, icon, color }: any) {
     red: "bg-red-50 text-red-600 border-red-100"
   };
   return (
-    <div className="border p-4 shadow-sm flex items-start justify-between bg-white rounded-none">
+    <div className="border border-slate-200 p-4 shadow-sm flex items-start justify-between bg-white rounded-none">
       <div className="space-y-1">
         <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">{label}</p>
         <h2 className="text-2xl font-black text-slate-900 tracking-tight leading-none mt-1">{value}</h2>
@@ -6099,7 +6263,6 @@ function StatCard({ label, value, icon, color }: any) {
   );
 }
 
-// DIET: Flush List style item
 function HealthItem({ label, status }: { label: string, status: string }) {
   const isOptimal = status === "ACTIVE" || status === "OPTIMAL";
   return (
@@ -6130,6 +6293,7 @@ import {
 import { useSijagaStore } from '@/store/useSijagaStore';
 import { DetailDrawer } from "./components/DetailDrawer";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 type StatusFilter = "ALL" | "PENDING" | "REVIEW" | "APPROVED" | "REJECTED";
 
@@ -6455,9 +6619,8 @@ export default function TransactionManagement() {
       calculatedStatus = "REFUNDED";
     }
 
-    const transporter = matchedPickup ? matchedPickup.transporterName : "Kas Daerah Pemda";
+    const transporter = matchedPickup ? (matchedPickup.transporterName ?? "PT. Transport Limbah Indonesia") : "Kas Daerah Pemda";
     const type = inv.type || (matchedPickup ? `${matchedPickup.wasteType} Transport` : "Retribusi SPPL");
-
     return {
       id: inv.id,
       company: inv.companyName,
@@ -6766,17 +6929,17 @@ export default function WasteMonitoring() {
 
   return (
     <DashboardLayout role="ADMIN_DLH">
-      <div className="space-y-4 text-left"> {/* DIET: space-y-8 -> space-y-4 */}
+      <div className="space-y-4 text-left animate-in fade-in duration-300"> {/* DIET: space-y-8 -> space-y-4 */}
 
         {/* --- HEADER --- */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-4 border-slate-200">
           <div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase"> {/* DIET: text-3xl -> 2xl */}
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase leading-none">
               Monitoring <span className="text-emerald-600">Limbah</span>
             </h1>
-            <p className="text-slate-500 text-xs font-medium mt-1">Data akumulasi produksi limbah industri & analisis EWS AI.</p>
+            <p className="text-slate-500 text-xs font-medium mt-1.5">Data akumulasi produksi limbah industri & analisis EWS AI.</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 shrink-0">
             <Button variant="outline" size="sm" className="rounded-none font-bold border-slate-300 text-[10px]" onClick={() => toast.info("Exporting...")}>
               <Download className="mr-1.5" size={14} /> EXPORT
             </Button>
@@ -6786,7 +6949,7 @@ export default function WasteMonitoring() {
           </div>
         </div>
 
-        {/* --- STATS SUMMARY --- */}
+        {/* --- STATS SUMMARY (DIET PADDING & RADIUS) --- */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <StatMiniCard title="Total Limbah Cair" value={`${totalCair.toLocaleString()} m³`} sub="Mei 2026" icon={<Waves size={16} />} color="blue" trend="+12%" />
           <StatMiniCard title="Limbah B3 Terdeteksi" value={`${totalB3.toLocaleString()} kg`} sub="Perlu Angkut" icon={<Trash2 size={16} />} color="orange" trend="+5%" isWarning={totalB3 > 200} />
@@ -6794,12 +6957,12 @@ export default function WasteMonitoring() {
         </div>
 
         {/* --- AI ANOMALY DETECTION WIDGET --- */}
-        <Card className="rounded-none border border-slate-800 bg-slate-900 text-white relative">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-[100px] -mr-10 -mt-10 pointer-events-none" />
+        <Card className="rounded-none border border-slate-800 bg-slate-900 text-white relative shadow-none">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none" />
 
           <div className="p-4 border-b border-white/10 relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400">
+              <div className="p-2 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-none">
                 <Brain size={18} />
               </div>
               <div>
@@ -6809,12 +6972,12 @@ export default function WasteMonitoring() {
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1 text-[9px] text-slate-300 uppercase tracking-widest font-bold">
+            <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1 text-[9px] text-slate-300 uppercase tracking-widest font-bold rounded-none">
               <Sparkles size={12} className="text-amber-400" /> Conf: 99.4%
             </div>
           </div>
 
-          <div className="p-0 relative z-10"> {/* Flush list approach for anomalies */}
+          <div className="p-0 relative z-10">
             {anomalies.length === 0 ? (
               <div className="p-8 text-center flex flex-col items-center">
                 <CheckCircle size={24} className="text-emerald-400 mb-2" />
@@ -6832,12 +6995,12 @@ export default function WasteMonitoring() {
                       <div className="space-y-1.5 flex-1">
                         <div className="flex items-center gap-2">
                           <span className="font-black text-sm uppercase">{anomaly.companyName}</span>
-                          <span className={cn("text-[8px] font-black uppercase px-2 py-0.5 border", anomaly.ews === "DANGER" ? "bg-rose-500/10 text-rose-400 border-rose-500/30" : "bg-amber-500/10 text-amber-400 border-amber-500/30")}>
+                          <span className={cn("text-[8px] font-black uppercase px-2 py-0.5 border rounded-none", anomaly.ews === "DANGER" ? "bg-rose-500/10 text-rose-400 border-rose-500/30" : "bg-amber-500/10 text-amber-400 border-amber-500/30")}>
                             {anomaly.ews}
                           </span>
                         </div>
                         <p className="text-[11px] text-slate-300">Volume <span className="font-bold text-white">{anomaly.type} ({anomaly.volume} {anomaly.unit})</span> melampaui limit {anomaly.limit}.</p>
-                        <p className="text-[9px] text-emerald-400 font-bold uppercase tracking-widest mt-1">Rekomendasi: {anomaly.suggestion}</p>
+                        <p className="text-[9px] text-emerald-400 font-bold uppercase tracking-widest mt-1 leading-none">Rekomendasi: {anomaly.suggestion}</p>
                       </div>
 
                       <div className="flex gap-2 w-full lg:w-auto">
@@ -6894,14 +7057,14 @@ export default function WasteMonitoring() {
                 <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest text-center">Volume Saat Ini</TableHead>
                 <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest text-center">Ambang Batas</TableHead>
                 <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest text-center">Status EWS</TableHead>
-                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest text-center">Verifikasi</TableHead> {/* BERHASIL DI-MERGE (size disesuaikan ke 9px) */}
+                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest text-center">Verifikasi</TableHead>
                 <TableHead className="pr-4 text-right font-black text-slate-500 uppercase text-[9px] tracking-widest">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredLogs.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 font-bold text-slate-400 text-xs">Tidak ada data log limbah.</TableCell>
+                  <TableCell colSpan={7} className="text-center py-8 font-bold text-slate-400 text-xs uppercase tracking-widest">Tidak ada data log limbah.</TableCell>
                 </TableRow>
               ) : (
                 filteredLogs.map((item) => {
@@ -6912,9 +7075,9 @@ export default function WasteMonitoring() {
                   return (
                     <TableRow key={item.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors h-14">
                       <TableCell className="pl-4">
-                        <div className="flex flex-col">
-                          <span className="font-bold text-slate-800 text-xs">{item.companyName}</span>
-                          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{item.date} • {item.id}</span>
+                        <div className="flex flex-col text-left">
+                          <span className="font-bold text-slate-800 text-xs leading-none">{item.companyName}</span>
+                          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1.5 leading-none">{item.date} • {item.id}</span>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -6936,13 +7099,13 @@ export default function WasteMonitoring() {
                       {/* Kolom Status Verifikasi Taktis GFW [3] */}
                       <TableCell className="text-center">
                         <Badge variant="outline" className={cn(
-                          "rounded-none font-bold text-[8px] border uppercase tracking-widest",
+                          "rounded-none font-bold text-[8px] border uppercase tracking-widest shadow-none",
                           item.status === 'Terverifikasi' ? "border-emerald-200 text-emerald-600 bg-emerald-50" :
                             item.status === 'Ditolak' ? "border-rose-200 text-rose-600 bg-rose-50" :
-                              item.status === 'Proses Verifikasi' ? "border-amber-200 text-amber-600 bg-amber-50" :
+                              item.status === 'Proses_Verifikasi' ? "border-amber-200 text-amber-600 bg-amber-50" :
                                 "border-slate-200 text-slate-600 bg-slate-50"
                         )}>
-                          {item.status}
+                          {item.status.replace('_', ' ')}
                         </Badge>
                       </TableCell>
 
@@ -6950,7 +7113,7 @@ export default function WasteMonitoring() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="font-black text-[9px] text-emerald-600 hover:bg-emerald-50 tracking-widest h-7 rounded-none"
+                          className="font-black text-[9px] text-emerald-600 hover:bg-emerald-50 tracking-widest h-7 rounded-none outline-none"
                           onClick={() => setSelectedLog(item)}
                         >
                           DETAIL LOGBOOK
@@ -6970,7 +7133,7 @@ export default function WasteMonitoring() {
             <div className="bg-white rounded-none shadow-none w-full max-w-xl overflow-hidden border border-slate-300 flex flex-col">
 
               {/* Header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50 shrink-0">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-none bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0 border border-emerald-200">
                     <FileText size={18} />
@@ -6988,12 +7151,12 @@ export default function WasteMonitoring() {
               {/* Body */}
               <div className="p-6 space-y-5 overflow-y-auto max-h-[60vh] custom-scrollbar text-left font-sans">
                 <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-1">
+                  <div className="space-y-1 text-left">
                     <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Nama Perusahaan</p>
                     <p className="font-bold text-slate-800 text-xs leading-none uppercase">{selectedLog.companyName}</p>
                     <p className="text-[9px] text-slate-400 font-mono mt-1 leading-none">ID: {selectedLog.companyId}</p>
                   </div>
-                  <div className="space-y-1">
+                  <div className="space-y-1 text-left">
                     <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Tanggal Pelaporan</p>
                     <p className="font-bold text-slate-850 text-xs leading-none uppercase">
                       {new Date(selectedLog.date).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
@@ -7028,7 +7191,7 @@ export default function WasteMonitoring() {
                 </div>
               </div>
 
-              {/* Verification Actions (Only for 'Proses Verifikasi') [3] */}
+              {/* Verification Actions (Only for 'Proses_Verifikasi') [3] */}
               <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex flex-wrap items-center justify-between gap-4 font-sans">
                 <div className="flex items-center gap-2">
                   <p className="text-[8px] font-black uppercase tracking-widest text-slate-500">Status Laporan:</p>
@@ -7036,14 +7199,14 @@ export default function WasteMonitoring() {
                     "rounded-none font-bold text-[8px] uppercase tracking-widest border",
                     selectedLog.status === 'Terverifikasi' ? "border-emerald-200 text-emerald-600 bg-emerald-50" :
                       selectedLog.status === 'Ditolak' ? "border-rose-200 text-rose-600 bg-rose-50" :
-                        selectedLog.status === 'Proses Verifikasi' ? "border-amber-200 text-amber-600 bg-amber-50" :
+                        selectedLog.status === 'Proses_Verifikasi' ? "border-amber-200 text-amber-600 bg-amber-50" :
                           "border-slate-200 text-slate-600 bg-slate-50"
                   )}>
-                    {selectedLog.status}
+                    {selectedLog.status.replace('_', ' ')}
                   </Badge>
                 </div>
 
-                {selectedLog.status === 'Proses Verifikasi' && (
+                {selectedLog.status === 'Proses_Verifikasi' && (
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
@@ -7068,7 +7231,7 @@ export default function WasteMonitoring() {
                     </Button>
                   </div>
                 )}
-                {selectedLog.status !== 'Proses Verifikasi' && (
+                {selectedLog.status !== 'Proses_Verifikasi' && (
                   <Button variant="ghost" className="rounded-none h-9 text-[9px] font-black uppercase tracking-widest text-slate-500 hover:bg-slate-200" onClick={() => setSelectedLog(null)}>
                     Tutup Keluar
                   </Button>
@@ -8455,7 +8618,7 @@ export default function GFWStatCard({
 --- FILE: src\modules\companies\components\tables\PickupRequestTable.tsx ---
 // src/modules/companies/components/tables/PickupRequestTable.tsx
 import React, { useState, useMemo } from "react";
-import { useSijagaStore } from "@/store/useSijagaStore";
+import { useSijagaStore, PickupRequest } from "@/store/useSijagaStore";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8466,16 +8629,16 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { Truck, Eye, ShieldCheck, MapPin } from "lucide-react";
+import { Truck, Eye, ShieldCheck } from "lucide-react";
 
 export default function PickupRequestTable() {
     const navigate = useNavigate();
     const { pickupRequests, selectedCompanyId } = useSijagaStore();
 
-    // State Bukti Serah Terima Dialog
-    const [selectedProofUrl, setSelectedProofUrl] = useState<string | null>(null);
+    // FIX ERROR: Ubah state tracking dari string URL menjadi utuh objek PickupRequest (GRASP Information Expert) [3]
+    const [selectedPick, setSelectedPick] = useState<PickupRequest | null>(null);
 
-    // Filter pickup berdasarkan perusahaan aktif (Information Expert) [3]
+    // Filter pickup berdasarkan perusahaan aktif [3]
     const companyPickups = useMemo(() => {
         return pickupRequests.filter((p) => p.companyId === selectedCompanyId);
     }, [pickupRequests, selectedCompanyId]);
@@ -8591,7 +8754,8 @@ export default function PickupRequestTable() {
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
-                                                onClick={() => setSelectedProofUrl(pick.evidencePhoto || null)}
+                                                // FIX ERROR: Set state selectedPick dengan seluruh objek data 'pick' yang aman [3]
+                                                onClick={() => setSelectedPick(pick)}
                                                 className="text-emerald-600 hover:text-emerald-700 font-black text-[9px] tracking-widest uppercase rounded-none h-8 px-2"
                                             >
                                                 <Eye size={12} className="mr-1 inline-block" /> Bukti
@@ -8609,11 +8773,8 @@ export default function PickupRequestTable() {
             </div>
 
             {/* DIALOG POPUP PREVIEW BUKTI SERAH TERIMA MANIFEST */}
-            {selectedProofUrl && (
-                // Cuplikan perubahan di src/modules/companies/components/tables/PickupRequestTable.tsx
-                // Cari bagian Dialog render buktiCompleted, dan ubah isinya menjadi responsif:
-
-                <Dialog open={!!selectedProofUrl} onOpenChange={() => setSelectedProofUrl(null)}>
+            {selectedPick && (
+                <Dialog open={!!selectedPick} onOpenChange={() => setSelectedPick(null)}>
                     <DialogContent className="sm:max-w-[480px] rounded-none bg-white border border-slate-200 text-left p-6 z-[9999]">
                         <DialogHeader className="border-b pb-3">
                             <DialogTitle className="text-xs font-black tracking-widest text-slate-800 uppercase flex items-center gap-2">
@@ -8627,11 +8788,11 @@ export default function PickupRequestTable() {
                                 {(() => {
                                     let photos = [];
                                     try {
-                                        // Parsing aman jika payload bertipe JSON array string [3]
-                                        photos = JSON.parse(selectedProofUrl || "[]");
-                                        if (!Array.isArray(photos)) photos = [selectedProofUrl];
+                                        // FIX ERROR: Akses evidencePhoto aman dari state seleksi 'selectedPick' [3]
+                                        photos = JSON.parse(selectedPick.evidencePhoto || "[]");
+                                        if (!Array.isArray(photos)) photos = [selectedPick.evidencePhoto];
                                     } catch (e) {
-                                        photos = [selectedProofUrl];
+                                        photos = [selectedPick.evidencePhoto || ""];
                                     }
                                     return photos.map((p, i) => (
                                         <img key={i} src={p} alt={`Bukti ${i}`} className="max-h-[150px] rounded-none border border-slate-200 shrink-0" />
@@ -8639,22 +8800,22 @@ export default function PickupRequestTable() {
                                 })()}
                             </div>
 
-                            {/* Tampilan Volume Aktual & Laporan Pengangkut Baru (Rapat & Taktis) */}
+                            {/* FIX ERROR: Tampilan aman diakses dari objek status state 'selectedPick' [3] */}
                             <div className="space-y-2.5 bg-slate-50 p-3 border border-slate-200 rounded-none text-xs">
                                 <div>
                                     <p className="text-[8px] font-black uppercase text-slate-400 tracking-widest leading-none">Volume Aktual Terangkut</p>
-                                    <p className="font-bold text-slate-800 mt-1 leading-none">{pick?.actualVolume || "Tidak ada laporan volume"}</p>
+                                    <p className="font-bold text-slate-800 mt-1 leading-none">{selectedPick.actualVolume || "Tidak ada laporan volume"}</p>
                                 </div>
                                 <div className="border-t pt-2">
                                     <p className="text-[8px] font-black uppercase text-slate-400 tracking-widest leading-none">Catatan Lapangan Transporter</p>
-                                    <p className="font-bold text-slate-800 text-xs italic mt-1 leading-normal">"{pick?.transportReport || "-"}"</p>
+                                    <p className="font-bold text-slate-800 text-xs italic mt-1 leading-normal">"{selectedPick.transportReport || "-"}"</p>
                                 </div>
                             </div>
                         </div>
 
                         <div className="flex gap-2">
                             <Button
-                                onClick={() => setSelectedProofUrl(null)}
+                                onClick={() => setSelectedPick(null)}
                                 className="w-full h-10 bg-slate-900 hover:bg-slate-800 text-white font-black text-[9px] tracking-widest uppercase rounded-none"
                             >
                                 Tutup Dokumen
@@ -8669,198 +8830,130 @@ export default function PickupRequestTable() {
 }
 
 --- FILE: src\modules\companies\components\tables\WasteLogbookTable.tsx ---
-// src/modules/companies/components/forms/WasteLogbookForm.tsx
-import React, { useState } from "react";
+import React, { useMemo } from "react";
 import { useSijagaStore } from "@/store/useSijagaStore";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { AlertTriangle, CheckCircle2, ShieldAlert } from "lucide-react";
-import { toast } from "sonner";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Truck } from "lucide-react";
 
-interface WasteLogbookFormProps {
-    onSuccess?: () => void;
-}
+export default function WasteLogbookTable() {
+    const { wasteLogs, selectedCompanyId } = useSijagaStore();
 
-export default function WasteLogbookForm({ onSuccess }: WasteLogbookFormProps) {
-    const { companies, selectedCompanyId, currentUser, addWasteLog } = useSijagaStore();
+    // Memfilter logbook secara spesifik untuk perusahaan yang sedang aktif (Strict Scope)
+    const companyLogs = useMemo(() => {
+        return wasteLogs.filter((log) => log.companyId === selectedCompanyId);
+    }, [wasteLogs, selectedCompanyId]);
 
-    // State Form internal
-    const [type, setType] = useState("Oli Bekas");
-    const [volume, setVolume] = useState("");
-    const [unit, setUnit] = useState<"L" | "kg" | "m³">("L");
-    const [method, setMethod] = useState<"Dinas" | "Mandiri">("Dinas");
-    const [note, setNote] = useState("");
-    const [loading, setLoading] = useState(false);
-
-    // State EWS Anomaly Warning
-    const [showAnomalyWarning, setShowAnomalyWarning] = useState(false);
-
-    // Mengidentifikasi entitas perusahaan terdaftar
-    const activeCompany = companies.find(c => c.id === selectedCompanyId) ||
-        companies.find(c => c.id === currentUser?.companyId) ||
-        companies[0];
-
-    const handlePreSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!activeCompany) {
-            toast.error("Tidak ada profil perusahaan aktif terdeteksi.");
-            return;
-        }
-        if (!volume || parseFloat(volume) <= 0) {
-            toast.error("Volume laporan limbah harus lebih besar dari 0.");
-            return;
-        }
-
-        const volNum = parseFloat(volume);
-        // Smart EWS Anomaly Trigger: Volume > 100 memicu mode warning [3]
-        if (volNum > 100) {
-            setShowAnomalyWarning(true);
-        } else {
-            executeSubmit();
-        }
-    };
-
-    const executeSubmit = async () => {
-        setLoading(true);
-        try {
-            await addWasteLog({
-                companyId: activeCompany.id,
-                type,
-                volume: parseFloat(volume),
-                unit,
-                date: new Date().toISOString().split("T")[0],
-                method,
-                note
-            });
-
-            // Reset Form
-            setVolume("");
-            setNote("");
-            setShowAnomalyWarning(false);
-            if (onSuccess) onSuccess();
-        } catch (err) {
-            toast.error("Gagal mencatat logbook limbah.");
-        } finally {
-            setLoading(false);
-        }
+    // Generator Lencana Status dengan skema warna yang kohesif
+    const getStatusBadge = (status: string) => {
+        const styles: any = {
+            "Proses_Verifikasi": "bg-amber-50 text-amber-700 border-amber-200 animate-pulse",
+            "Terverifikasi": "bg-emerald-50 text-emerald-700 border-emerald-200",
+            "Terjadwal_Pickup": "bg-indigo-50 text-indigo-700 border-indigo-200",
+            "Ditolak": "bg-rose-50 text-rose-700 border-rose-200",
+        };
+        const labels: any = {
+            "Proses_Verifikasi": "Proses Verifikasi",
+            "Terverifikasi": "Terverifikasi DLH",
+            "Terjadwal_Pickup": "Terjadwal Angkut",
+            "Ditolak": "Laporan Ditolak",
+        };
+        return (
+            <Badge className={`${styles[status] || "bg-slate-100 text-slate-600"} px-2 py-0.5 rounded-none text-[8px] font-black border uppercase tracking-widest shadow-none`}>
+                {labels[status] || status}
+            </Badge>
+        );
     };
 
     return (
         <div className="font-sans text-left">
-            {showAnomalyWarning ? (
-                /* PANEL PERINGATAN ANOMALI EWS (TACTICAL RED WARNING) */
-                <div className="space-y-6 py-2 animate-in zoom-in duration-300">
-                    <div className="p-4 bg-rose-50 border border-rose-300 rounded-none flex items-start gap-4 text-rose-950">
-                        <AlertTriangle className="text-rose-600 shrink-0 mt-0.5 animate-bounce" size={24} />
-                        <div className="space-y-1">
-                            <h4 className="font-black text-xs uppercase tracking-widest leading-none text-rose-900">
-                                EWS ALERT: VOLUME ABNORMAL DETECTED
-                            </h4>
-                            <p className="text-[11px] font-medium leading-relaxed mt-2 text-rose-800">
-                                Laporan volume sebesar <strong className="font-black">{volume} {unit}</strong> melampaui ambang batas aman operasional.
-                                Sistem AI otomatis akan mengirimkan alarm bahaya serta mencatat log audit ketidakpatuhan ini ke database verifikator DLH [3].
-                            </p>
-                        </div>
-                    </div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase text-center tracking-widest">
-                        Apakah Anda yakin data ini sudah akurat?
-                    </p>
-                    <div className="flex gap-2">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => setShowAnomalyWarning(false)}
-                            className="flex-1 rounded-none h-11 border-slate-300 text-slate-500 font-bold text-xs uppercase tracking-wider"
-                        >
-                            Revisi Volume
-                        </Button>
-                        <Button
-                            type="button"
-                            disabled={loading}
-                            onClick={executeSubmit}
-                            className="flex-1 rounded-none h-11 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs uppercase tracking-widest"
-                        >
-                            {loading ? "MEMPROSES..." : "Tetap Kirim"}
-                        </Button>
-                    </div>
-                </div>
-            ) : (
-                /* NORMAL FORM BLOCK */
-                <form onSubmit={handlePreSubmit} className="space-y-4">
-                    <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Jenis Limbah</Label>
-                        <select
-                            value={type}
-                            onChange={(e) => setType(e.target.value)}
-                            className="h-10 w-full rounded-none border border-slate-300 bg-white px-3 text-xs font-bold uppercase tracking-wider text-slate-700 focus:outline-none focus:border-emerald-600 focus:ring-0 cursor-pointer"
-                        >
-                            <option value="Oli Bekas">Oli Bekas (B3)</option>
-                            <option value="Limbah Cair Kimia">Limbah Cair Kimia (B3)</option>
-                            <option value="Minyak Jelantah">Minyak Jelantah (Domestik)</option>
-                            <option value="Limbah Padat B3">Limbah Padat B3</option>
-                        </select>
-                    </div>
+            <div className="border border-slate-200 bg-white rounded-none overflow-hidden">
+                <Table>
+                    <TableHeader className="bg-slate-50">
+                        <TableRow className="border-b border-slate-200 h-9">
+                            <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest pl-4">ID Log</TableHead>
+                            <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest">Jenis Limbah</TableHead>
+                            <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest text-right">Volume</TableHead>
+                            <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest text-center">Tanggal</TableHead>
+                            <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest text-center">Metode Kelola</TableHead>
+                            <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest text-center">Status</TableHead>
+                            <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest text-right pr-4">Catatan</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {companyLogs.length === 0 ? (
+                            <TableRow>
+                                <TableCell colSpan={7} className="text-center py-10 text-slate-400 font-bold text-xs uppercase tracking-widest">
+                                    Belum ada catatan logbook limbah B3.
+                                </TableCell>
+                            </TableRow>
+                        ) : (
+                            companyLogs.map((log) => (
+                                <TableRow key={log.id} className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors h-14">
+                                    
+                                    {/* ID Logbook */}
+                                    <TableCell className="pl-4 font-black text-slate-800 text-xs">
+                                        {log.id}
+                                    </TableCell>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                            <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Volume</Label>
-                            <Input
-                                type="number"
-                                required
-                                placeholder="Contoh: 45"
-                                value={volume}
-                                onChange={(e) => setVolume(e.target.value)}
-                                className="rounded-none h-10 border-slate-300 bg-white font-bold"
-                            />
-                        </div>
-                        <div className="space-y-1.5">
-                            <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Satuan</Label>
-                            <select
-                                value={unit}
-                                onChange={(e) => setUnit(e.target.value as any)}
-                                className="h-10 w-full rounded-none border border-slate-300 bg-white px-3 text-xs font-bold uppercase tracking-wider text-slate-700 focus:outline-none focus:border-emerald-600 focus:ring-0 cursor-pointer"
-                            >
-                                <option value="L">Liter (L)</option>
-                                <option value="kg">Kilogram (kg)</option>
-                                <option value="m³">Meter Kubik (m³)</option>
-                            </select>
-                        </div>
-                    </div>
+                                    {/* Jenis Limbah */}
+                                    <TableCell>
+                                        <div className="flex flex-col text-left">
+                                            <span className="font-bold text-slate-800 text-xs leading-none">{log.type}</span>
+                                            {log.type.toLowerCase().includes("b3") || log.type.toLowerCase().includes("kimia") || log.type.toLowerCase().includes("oli") ? (
+                                                <span className="text-[8px] font-black text-rose-600 bg-rose-50 px-1.5 py-0.5 border border-rose-100 rounded-none mt-1 w-max leading-none">
+                                                    LIMBAH BERBAHAYA
+                                                </span>
+                                            ) : (
+                                                <span className="text-[8px] font-black text-slate-500 bg-slate-100 px-1.5 py-0.5 border border-slate-200 rounded-none mt-1 w-max leading-none">
+                                                    NON-B3
+                                                </span>
+                                            )}
+                                        </div>
+                                    </TableCell>
 
-                    <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Metode Pengelolaan</Label>
-                        <select
-                            value={method}
-                            onChange={(e) => setMethod(e.target.value as any)}
-                            className="h-10 w-full rounded-none border border-slate-300 bg-white px-3 text-xs font-bold uppercase tracking-wider text-slate-700 focus:outline-none focus:border-emerald-600 focus:ring-0 cursor-pointer"
-                        >
-                            <option value="Dinas">Dinas LH (Transporter Berlisensi)</option>
-                            <option value="Mandiri">Mandiri (Punya IPAL / TPS B3 Internal)</option>
-                        </select>
-                    </div>
+                                    {/* Volume */}
+                                    <TableCell className="text-right">
+                                        <span className="font-black text-slate-800 text-xs">{log.volume}</span>
+                                        <span className="text-[9px] text-slate-500 font-bold ml-1">{log.unit}</span>
+                                    </TableCell>
 
-                    <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Catatan Tambahan</Label>
-                        <Input
-                            placeholder="Contoh: Penampungan drum minggu ke-2"
-                            value={note}
-                            onChange={(e) => setNote(e.target.value)}
-                            className="rounded-none h-10 border-slate-300 bg-white text-xs font-bold"
-                        />
-                    </div>
+                                    {/* Tanggal Rilis */}
+                                    <TableCell className="text-center font-bold text-slate-500 text-xs">
+                                        {log.date}
+                                    </TableCell>
 
-                    <div className="pt-2">
-                        <Button
-                            type="submit"
-                            disabled={loading}
-                            className="w-full h-11 bg-slate-900 hover:bg-emerald-600 text-white font-black text-xs uppercase tracking-widest rounded-none shadow-none"
-                        >
-                            {loading ? "MEMPROSES..." : "Kirim Laporan"}
-                        </Button>
-                    </div>
-                </form>
-            )}
+                                    {/* Metode Kelola */}
+                                    <TableCell className="text-center">
+                                        {log.method === "Dinas" ? (
+                                            <div className="flex items-center justify-center gap-1.5 text-indigo-700">
+                                                <Truck size={12} />
+                                                <span className="text-[9px] font-black uppercase tracking-widest">Jasa Transporter</span>
+                                            </div>
+                                        ) : (
+                                            <span className="text-[9px] text-emerald-700 font-black uppercase tracking-widest bg-emerald-50 px-2 py-1">
+                                                Mandiri (IPAL)
+                                            </span>
+                                        )}
+                                    </TableCell>
+
+                                    {/* Status Verifikasi */}
+                                    <TableCell className="text-center">
+                                        {getStatusBadge(log.status)}
+                                    </TableCell>
+
+                                    {/* Catatan Keterangan */}
+                                    <TableCell className="text-right pr-4">
+                                        <span className="text-[9px] font-bold text-slate-500 italic max-w-[120px] truncate inline-block">
+                                            {log.note || "-"}
+                                        </span>
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        )}
+                    </TableBody>
+                </Table>
+            </div>
         </div>
     );
 }
@@ -9355,21 +9448,21 @@ import {
 import {
   ShieldCheck, Leaf, QrCode, Download, Eye,
   Clock, CheckCircle2, AlertCircle, FileText,
-  Sparkles, ChevronRight
+  Sparkles, ChevronRight, X, Loader2
 } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { apiService } from "@/lib/api";
 
 // Mengimpor Komponen Modular Taktis GFW [3]
 import CompanyHeader from "../components/CompanyHeader";
 
 export default function DocumentStatusPage() {
-  const { currentUser, companies, selectedCompanyId, downloadCompanyCertificate } = useSijagaStore();
+  const { currentUser, companies, selectedCompanyId, downloadCompanyCertificate, invoices } = useSijagaStore();
   const navigate = useNavigate();
 
-  // State Pengendali Preview Sertifikat & QR Verifikasi [3]
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-  const [showQRVerify, setShowQRVerify] = useState(false);
+  // State Pengendali Preview Sertifikat Nyata (PDF) [3]
+  const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
 
   // Mengidentifikasi entitas perusahaan terdaftar
@@ -9377,16 +9470,35 @@ export default function DocumentStatusPage() {
     companies.find(c => c.id === currentUser?.companyId) ||
     companies[0];
 
-  const handleDownloadPdf = async () => {
+  // Cek Status Pembayaran Retribusi (Payment Barrier)
+  const isUklUpl = company?.docType === "UKL-UPL" || company?.docType === "UKL_UPL";
+  const retribusiType = isUklUpl ? "Retribusi UKL-UPL" : "Retribusi SPPL";
+  const retribusiInvoice = invoices.find(i => i.companyId === company?.id && i.type === retribusiType);
+  const isPaymentPending = company?.status === "APPROVED" && (!retribusiInvoice || retribusiInvoice.status !== "SETTLED");
+
+  const handlePreviewPdf = async () => {
     if (!company) return;
     setIsDownloading(true);
     try {
-      await downloadCompanyCertificate(company.id, company.companyName);
+      const blob = await apiService.companies.downloadCertificatePdf(company.id);
+      const url = window.URL.createObjectURL(new Blob([blob], { type: "application/pdf" }));
+      setPreviewPdfUrl(url);
     } catch (error) {
-      console.error("Download failed", error);
+      console.error("Preview failed", error);
+      toast.error("Gagal memuat dokumen PDF. Pastikan server Backend aktif.");
     } finally {
       setIsDownloading(false);
     }
+  };
+
+  const forceDownloadFromPreview = () => {
+    if (!company || !previewPdfUrl) return;
+    const link = document.createElement('a');
+    link.href = previewPdfUrl;
+    link.setAttribute('download', `Sertifikat_${company.companyName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   if (!company) {
@@ -9446,10 +9558,16 @@ export default function DocumentStatusPage() {
 
           {company.status === "APPROVED" && (
             <Button
-              onClick={() => setIsPreviewOpen(true)}
-              className="w-full sm:w-auto h-9 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[9px] uppercase tracking-widest gap-1.5 shadow-none rounded-none px-4"
+              disabled={isDownloading || isPaymentPending}
+              onClick={handlePreviewPdf}
+              className={`w-full sm:w-auto h-9 font-black text-[9px] uppercase tracking-widest gap-1.5 shadow-none rounded-none px-4 ${
+                isPaymentPending 
+                  ? "bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300" 
+                  : "bg-emerald-600 hover:bg-emerald-700 text-white"
+              }`}
             >
-              <Eye size={12} /> Lihat Sertifikat
+              {isDownloading ? <Loader2 size={12} className="animate-spin" /> : <Eye size={12} />} 
+              {isPaymentPending ? "TERKUNCI" : isDownloading ? "MEMUAT BERKAS..." : "LIHAT SERTIFIKAT"}
             </Button>
           )}
         </div>
@@ -9487,7 +9605,7 @@ export default function DocumentStatusPage() {
           </div>
 
           {/* Status Alert Banner */}
-          {company.status === "APPROVED" ? (
+          {company.status === "APPROVED" && !isPaymentPending ? (
             <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-none flex items-start gap-3">
               <CheckCircle2 className="text-emerald-600 shrink-0 mt-0.5" size={16} />
               <div>
@@ -9495,6 +9613,24 @@ export default function DocumentStatusPage() {
                 <p className="text-[9px] font-semibold text-emerald-700 mt-1.5 leading-normal">
                   Sertifikat registrasi digital Anda telah resmi ditandatangani secara elektronik. Anda berhak melakukan operasional usaha sesuai regulasi pengawasan lingkungan.
                 </p>
+              </div>
+            </div>
+          ) : company.status === "APPROVED" && isPaymentPending ? (
+            <div className="p-4 bg-rose-50 border border-rose-200 rounded-none flex items-start gap-3">
+              <AlertCircle className="text-rose-600 shrink-0 mt-0.5 animate-pulse" size={16} />
+              <div className="w-full">
+                <h4 className="font-black text-rose-950 text-[10px] uppercase tracking-widest leading-none">Tindakan Diperlukan: Pembayaran Retribusi</h4>
+                <p className="text-[9px] font-semibold text-rose-700 mt-1.5 leading-normal">
+                  Pendaftaran dokumen lingkungan Anda telah disetujui. Silakan selesaikan tagihan retribusi administrasi untuk mengaktifkan dan mengunduh sertifikat Anda.
+                </p>
+                <div className="mt-3">
+                  <Button
+                    onClick={() => navigate("/company/payments")}
+                    className="h-8 bg-rose-600 hover:bg-rose-700 text-white rounded-none text-[9px] font-black uppercase tracking-widest shadow-none"
+                  >
+                    Bayar Retribusi Sekarang
+                  </Button>
+                </div>
               </div>
             </div>
           ) : company.status === "REVIEW" ? (
@@ -9520,133 +9656,44 @@ export default function DocumentStatusPage() {
           )}
         </Card>
 
-        {/* 4. CERTIFICATE PREVIEW DIALOG (GFW OFFICIAL BAP STYLE) */}
-        {isPreviewOpen && (
-          <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-            <DialogContent className="max-w-[650px] w-[95vw] md:w-full bg-stone-50 border border-stone-300 rounded-none p-0 text-stone-900 shadow-2xl overflow-hidden relative z-[9999]">
-              <div className="max-h-[85vh] overflow-y-auto p-6 md:p-10 relative w-full">
-                {/* Border Frame Bingkai Dokumen Resmi Kaku Siku */}
-                <div className="absolute inset-3 border border-dashed border-stone-400 rounded-none pointer-events-none" />
-
-                <div className="space-y-6 text-center relative z-10 font-sans">
-                  {/* Government Header */}
-                  <div className="flex flex-col items-center border-b-2 border-stone-800 pb-4">
-                    <div className="w-10 h-10 bg-stone-200 rounded-none border border-stone-300 flex items-center justify-center text-stone-700 mb-2">
-                      <Leaf size={24} />
-                    </div>
-                    <h2 className="text-xs font-black tracking-wider leading-none uppercase text-stone-800">Pemerintah Kabupaten / Kota</h2>
-                    <h3 className="text-sm font-black tracking-widest leading-none uppercase mt-1 text-stone-900">Dinas Lingkungan Hidup</h3>
-                    <p className="text-[8px] text-stone-500 font-bold tracking-[0.2em] uppercase mt-1.5">Sertifikat Registrasi Lingkungan Digital</p>
+        {/* 4. REAL PDF FULLSCREEN PREVIEW OVERLAY */}
+        {previewPdfUrl && (
+          <Dialog open={!!previewPdfUrl} onOpenChange={() => setPreviewPdfUrl(null)}>
+            <DialogContent className="max-w-5xl w-[95vw] h-[90vh] p-0 rounded-none overflow-hidden flex flex-col bg-slate-950 border border-slate-800 shadow-2xl z-[9999]">
+              {/* Overlay Header Hitam Taktis */}
+              <div className="bg-slate-900 text-white px-6 py-4 flex justify-between items-center shrink-0 border-b border-slate-800">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-none bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+                    <ShieldCheck size={16} />
                   </div>
-
-                  {/* Title */}
-                  <div className="space-y-1">
-                    <h4 className="text-xs font-black tracking-widest uppercase underline leading-none text-stone-900">Surat Bukti Registrasi Lingkungan</h4>
-                    <p className="text-[9px] text-stone-500 font-mono font-bold">Nomor: REG/LH/{company.nib}/{new Date().getFullYear()}</p>
+                  <div className="font-sans text-left">
+                    <p className="text-sm font-black tracking-wide text-slate-100">Pratinjau Sertifikat Resmi (PDF)</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{company.companyName}</p>
                   </div>
-
-                  {/* Content */}
-                  <div className="space-y-3.5 text-[10px] leading-relaxed max-w-xl mx-auto text-stone-700 text-justify">
-                    <p className="font-medium">
-                      Berdasarkan Undang-Undang Perlindungan dan Pengelolaan Lingkungan Hidup, Dinas Lingkungan Hidup menyatakan bahwa pelaku usaha di bawah ini:
-                    </p>
-
-                    <div className="flex flex-col md:grid md:grid-cols-3 gap-y-1.5 md:gap-y-2 border-y border-stone-200 py-3 font-bold text-left bg-stone-100/50 px-3">
-                      <span className="text-stone-500 uppercase tracking-wider text-[8px]">Nama Perusahaan</span>
-                      <span className="md:col-span-2 text-stone-950 text-[9px] break-words"><span className="hidden md:inline">:</span> {company.companyName}</span>
-
-                      <span className="text-stone-500 uppercase tracking-wider text-[8px] mt-1.5 md:mt-0">Nomor Induk Berusaha</span>
-                      <span className="md:col-span-2 text-stone-950 text-[9px] font-mono break-words"><span className="hidden md:inline">:</span> {company.nib}</span>
-
-                      <span className="text-stone-500 uppercase tracking-wider text-[8px] mt-1.5 md:mt-0">Alamat Usaha</span>
-                      <span className="md:col-span-2 text-stone-950 text-[9px] break-words"><span className="hidden md:inline">:</span> {company.address}</span>
-
-                      <span className="text-stone-500 uppercase tracking-wider text-[8px] mt-1.5 md:mt-0">Dokumen Lingkungan</span>
-                      <span className="md:col-span-2 text-stone-950 text-[9px] break-words"><span className="hidden md:inline">:</span> {company.docType} (Registrasi Elektronik)</span>
-                    </div>
-
-                    <p className="font-medium">
-                      Telah terdaftar dalam sistem pengawasan lingkungan <strong className="text-stone-900 font-black">PANTAU LIMBAH</strong> dengan kewajiban melakukan pelaporan logbook limbah berkala, mematuhi parameter kepatuhan TPS B3, dan bersedia dilakukan inspeksi berkala oleh petugas dinas [3].
-                    </p>
-                  </div>
-
-                  {/* Signatures & QR Code */}
-                  <div className="grid grid-cols-2 gap-4 items-end pt-4 border-t border-stone-200">
-                    {/* QR Security */}
-                    <div className="flex flex-col items-center">
-                      <button
-                        onClick={() => setShowQRVerify(!showQRVerify)}
-                        className="p-2 bg-white border border-stone-300 rounded-none hover:border-emerald-600 transition-all relative group outline-none"
-                      >
-                        <QrCode className="text-stone-800" size={56} />
-                        <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[7px] font-black text-stone-400 group-hover:text-emerald-600 whitespace-nowrap uppercase tracking-wider">
-                          Verifikasi QR
-                        </span>
-                      </button>
-
-                      {showQRVerify && (
-                        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white border border-slate-200 p-5 rounded-none shadow-2xl z-[9999] max-w-xs w-full animate-in zoom-in duration-200 text-left font-sans">
-                          <div className="space-y-4">
-                            <div className="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-none flex items-center justify-center mx-auto">
-                              <ShieldCheck size={20} />
-                            </div>
-                            <div className="text-center">
-                              <h4 className="font-black text-slate-800 text-[11px] uppercase tracking-wider leading-none">QR Code Terverifikasi</h4>
-                              <p className="text-[8px] text-slate-400 font-bold uppercase mt-1">Sertifikasi Elektronik BSRE DLH</p>
-                            </div>
-                            <div className="text-[9px] text-left bg-slate-50 p-2.5 rounded-none border border-slate-200 font-mono break-all text-slate-500 space-y-1">
-                              <p><strong>Hash:</strong> sha256:d8c91a03f48...</p>
-                              <p><strong>Status:</strong> Valid / Active</p>
-                              <p><strong>Signee:</strong> Kepala Dinas LH</p>
-                            </div>
-                            <Button
-                              onClick={() => setShowQRVerify(false)}
-                              className="bg-slate-900 hover:bg-slate-800 h-9 w-full rounded-none text-[9px] font-black uppercase tracking-widest text-white"
-                            >
-                              Tutup
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Dinas Signature */}
-                    <div className="text-center space-y-3 font-sans">
-                      <p className="text-[8px] font-black text-stone-500 uppercase tracking-widest leading-none">Kepala Dinas Lingkungan Hidup</p>
-                      <div className="h-8 flex items-center justify-center">
-                        <span className="text-[8px] font-black tracking-widest text-emerald-600 border border-emerald-500 border-dashed rounded-none px-3 py-1 rotate-[-3deg] uppercase">
-                          TANDATANGAN ELEKTRONIK
-                        </span>
-                      </div>
-                      <div className="space-y-0.5">
-                        <p className="text-[10px] font-black text-stone-900 underline leading-none">Dr. Ir. H. Ahmad Heryawan, M.Si.</p>
-                        <p className="text-[8px] text-stone-400 font-bold tracking-tight">NIP. 19720315 199803 1 002</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Print button */}
-                  <div className="pt-3 flex gap-2">
-                    <Button
-                      disabled={isDownloading}
-                      onClick={handleDownloadPdf}
-                      variant="outline"
-                      className="flex-1 rounded-none h-10 border-stone-300 text-stone-700 font-black text-[9px] uppercase tracking-widest gap-1.5 disabled:opacity-70"
-                    >
-                      {isDownloading ? <Sparkles className="animate-pulse" size={12} /> : <Download size={12} />}
-                      {isDownloading ? "MENGUNDUH..." : "UNDUH PDF"}
-                    </Button>
-                    <Button
-                      disabled={isDownloading}
-                      onClick={() => setIsPreviewOpen(false)}
-                      className="flex-1 rounded-none h-10 bg-slate-900 hover:bg-slate-800 text-stone-100 font-black text-[9px] uppercase tracking-widest"
-                    >
-                      TUTUP PREVIEW
-                    </Button>
-                  </div>
-
+                </div>
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={forceDownloadFromPreview} 
+                    className="flex items-center gap-1.5 bg-slate-800 hover:bg-emerald-600 text-slate-300 hover:text-white px-4 py-2 rounded-none text-xs font-bold transition-colors border border-slate-700 hover:border-emerald-500 shadow-sm uppercase tracking-widest"
+                  >
+                    <Download size={14} /> Unduh
+                  </button>
+                  <div className="w-px h-6 bg-slate-700 mx-1" />
+                  <button 
+                    onClick={() => setPreviewPdfUrl(null)} 
+                    className="p-2 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 rounded-none transition-colors border border-transparent hover:border-rose-500/30"
+                  >
+                    <X size={20} />
+                  </button>
                 </div>
               </div>
+              
+              {/* Area Render PDF (Memanfaatkan iframe native browser) */}
+              <iframe 
+                src={previewPdfUrl} 
+                title="Sertifikat Digital" 
+                className="w-full flex-1 border-none bg-slate-100" 
+              />
             </DialogContent>
           </Dialog>
         )}
@@ -10259,7 +10306,7 @@ export default function RegistrationPage() {
   );
 }
 
-// ─── FileUploadBox (Refactored to GFW Sharp Look) ───────────────────────────────
+// ─── Sub-Components (GFW Paradigm Compliant & Complete) ─────────────────────────
 
 interface FileUploadBoxProps {
   label: string;
@@ -10302,7 +10349,6 @@ function FileUploadBox({ label, required, accept, file, onFileChange, hint }: Fi
       />
 
       {file ? (
-        /* Filled state (Sharp GFW styling) */
         <div
           className="relative rounded-none border border-emerald-500 bg-emerald-50/20 p-3 flex items-center gap-2.5 cursor-pointer hover:bg-emerald-50/50 transition-all group"
           onClick={handleClick}
@@ -10331,7 +10377,6 @@ function FileUploadBox({ label, required, accept, file, onFileChange, hint }: Fi
           </button>
         </div>
       ) : (
-        /* Empty state (Sharp GFW styling) */
         <div
           onClick={handleClick}
           className={cn(
@@ -10352,8 +10397,6 @@ function FileUploadBox({ label, required, accept, file, onFileChange, hint }: Fi
   );
 }
 
-// ─── FileStatusRow (for Step 5 summary) ───────────────────────────────────
-
 function FileStatusRow({ label, file, required }: { label: string; file: File | null; required: boolean }) {
   return (
     <div className="flex items-center justify-between text-[11px] font-bold">
@@ -10373,7 +10416,76 @@ function FileStatusRow({ label, file, required }: { label: string; file: File | 
   );
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+function InteractiveMap() {
+  const { setValue, watch } = useFormContext();
+  const lat = parseFloat(watch("lat") || "-6.9175");
+  const lng = parseFloat(watch("lng") || "107.6191");
+
+  useMapEvents({
+    click(e) {
+      setValue("lat", e.latlng.lat.toFixed(6));
+      setValue("lng", e.latlng.lng.toFixed(6));
+    },
+  });
+
+  return <Marker position={[lat, lng]} />;
+}
+
+function StepIndicator({ active, label, icon }: { active: boolean, label: string, icon: any }) {
+  return (
+    <div className={cn(
+      "flex items-center gap-3 p-3 border transition-all duration-200 rounded-none",
+      active ? "bg-white border-slate-300" : "bg-transparent border-transparent opacity-45"
+    )}>
+      <div className={cn(
+        "w-8 h-8 rounded-none flex items-center justify-center transition-colors border",
+        active ? "bg-slate-900 border-slate-900 text-white" : "bg-slate-100 border-slate-200 text-slate-400"
+      )}>
+        {icon}
+      </div>
+      <span className={cn("text-[9px] font-black uppercase tracking-widest leading-none", active ? "text-slate-900 font-black" : "text-slate-400")}>
+        {label}
+      </span>
+    </div>
+  );
+}
+
+function CardHeaderLayout({ title, desc }: { title: string, desc: string }) {
+  return (
+    <div className="p-4 bg-slate-50 border-b border-slate-200">
+      <h2 className="text-xs font-black text-slate-800 tracking-widest uppercase leading-none">{title}</h2>
+      <p className="text-[9px] text-slate-400 font-bold uppercase mt-1 leading-none">{desc}</p>
+    </div>
+  );
+}
+
+function FormGroup({ label, name, placeholder, type = "text" }: any) {
+  const {
+    register,
+    formState: { errors },
+  } = useFormContext();
+
+  return (
+    <div className="space-y-1.5 text-left">
+      <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+        {label}
+      </Label>
+
+      <Input
+        type={type}
+        {...register(name)}
+        placeholder={placeholder}
+        className="h-10 rounded-none border-slate-300 bg-white text-xs font-bold focus-visible:ring-0 focus-visible:border-emerald-600"
+      />
+
+      {errors[name] && (
+        <p className="text-[9px] text-rose-500 font-black uppercase tracking-wider mt-1 leading-none">
+          {errors[name]?.message as string}
+        </p>
+      )}
+    </div>
+  );
+}
 
 function SPPLTemplate() {
   const commitments = [
@@ -10615,45 +10727,65 @@ import {
 import { Award, Leaf, TrendingUp, DollarSign } from "lucide-react";
 
 export default function AnalyticsTab() {
-    const { companies, wasteLogs, invoices } = useSijagaStore();
+    // Membaca data agregat dinamis dari Zustand Store (Fase 3 & 4)
+    const { executiveAnalytics, companies, wasteLogs } = useSijagaStore();
 
-    const totalCompanies = companies.length;
+    // Safeguard jika data analitik sedang dimuat oleh Parent Container
+    if (!executiveAnalytics) {
+        return (
+            <div className="p-8 text-center text-slate-500 font-bold text-xs uppercase tracking-widest animate-pulse">
+                Menghubungkan ke pusat data eksekutif...
+            </div>
+        );
+    }
 
-    const complianceCompanies = useMemo(() => {
-        return companies.filter(c => c.score !== undefined && c.score !== null);
+    // Mengambil nilai agregasi database dari state eksekutif
+    const {
+        totalCompanies,
+        averageEsg,
+        esgDelta,
+        totalWasteB3,
+        totalRevenue
+    } = executiveAnalytics;
+
+    // 1. Pemetaan Skor ESG untuk Bar Chart (APPROVED Companies)
+    const barData = useMemo(() => {
+        return companies
+            .filter(c => c.status === "APPROVED")
+            .map(c => ({
+                name: c.companyName.split(". ").pop()?.substring(0, 8) || c.companyName,
+                "Skor ESG": c.score || 0
+            }));
     }, [companies]);
 
-    const avgCompliance = useMemo(() => {
-        return complianceCompanies.length > 0
-            ? Math.round(complianceCompanies.reduce((acc, curr) => acc + (curr.score || 0), 0) / complianceCompanies.length)
-            : 78;
-    }, [complianceCompanies]);
+    // 2. Kalkulasi Dinamis Pie Chart berdasarkan Komposisi Limbah Riil (Information Expert)
+    const wastePieData = useMemo(() => {
+        const groups: Record<string, number> = {};
 
-    const totalWasteB3 = useMemo(() => {
-        return wasteLogs
-            .filter(w => w.type.toLowerCase().includes("b3") || w.type.toLowerCase().includes("oli"))
-            .reduce((acc, curr) => acc + curr.volume, 0);
+        // Kelompokkan dan akumulasikan volume berdasarkan jenis limbah logbook
+        wasteLogs.forEach(log => {
+            const type = log.type || "Lainnya";
+            groups[type] = (groups[type] || 0) + log.volume;
+        });
+
+        const colors = ["#ef4444", "#f59e0b", "#10b981", "#3b82f6", "#8b5cf6"];
+        return Object.keys(groups).map((key, i) => ({
+            name: key,
+            value: groups[key],
+            color: colors[i % colors.length]
+        }));
     }, [wasteLogs]);
 
-    const totalRevenue = useMemo(() => {
-        return invoices
-            .filter(i => i.status === "SETTLED")
-            .reduce((acc, curr) => acc + curr.amount, 0);
-    }, [invoices]);
+    const totalWasteVolumeSum = useMemo(() => {
+        return wastePieData.reduce((sum, item) => sum + item.value, 0);
+    }, [wastePieData]);
 
-    const barData = useMemo(() => {
-        return companies.map(c => ({
-            name: c.companyName.split(". ").pop()?.substring(0, 8) || c.companyName,
-            "Skor ESG": c.score || 0
-        }));
+    // 3. Urutkan Perusahaan Berdasarkan Skor ESG Tertinggi (Dynamic Ranking Table)
+    const rankedCompanies = useMemo(() => {
+        return [...companies]
+            .filter(c => c.status === "APPROVED")
+            .sort((a, b) => (b.score || 0) - (a.score || 0));
     }, [companies]);
-
-    const wasteData = [
-        { name: "Oli Bekas", value: 90, color: "#ef4444" },
-        { name: "Cair Kimia", value: 120, color: "#f59e0b" },
-        { name: "Minyak Jelantah", value: 15, color: "#10b981" },
-        { name: "Padat B3", value: 85, color: "#3b82f6" }
-    ];
 
     const getScoreBadge = (score?: number) => {
         if (!score) return <Badge className="bg-slate-50 text-slate-500 border border-slate-200 rounded-none text-[8px] font-black uppercase tracking-widest">Belum Audit</Badge>;
@@ -10663,14 +10795,38 @@ export default function AnalyticsTab() {
     };
 
     return (
-        <div className="space-y-4 animate-in fade-in duration-300">
+        <div className="space-y-4 animate-in fade-in duration-300 text-left">
 
-            {/* 1. Stats Cards Grid */}
+            {/* 1. Stats Cards Grid (Koneksi Agregat Database & Trend Indicators) */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <AuditorStatCard label="Indeks Kepatuhan" value={`${avgCompliance}/100`} sub="Rata-rata Daerah" icon={<Award />} color="emerald" />
-                <AuditorStatCard label="Total Usaha Terdaftar" value={totalCompanies.toString()} sub="SPPL & UKL-UPL" icon={<Leaf />} color="blue" />
-                <AuditorStatCard label="Akumulasi Limbah B3" value={`${totalWasteB3} L`} sub="Volume Terangkut" icon={<TrendingUp />} color="red" />
-                <AuditorStatCard label="Retribusi Terkumpul" value={`Rp ${totalRevenue.toLocaleString()}`} sub="PAD Lingkungan Hidup" icon={<DollarSign />} color="amber" />
+                <AuditorStatCard
+                    label="Indeks Kepatuhan"
+                    value={`${averageEsg}/100`}
+                    trend={esgDelta >= 0 ? `+${esgDelta}% MoM` : `${esgDelta}% MoM`}
+                    color={esgDelta >= 0 ? "emerald" : "red"}
+                    icon={<Award />}
+                />
+                <AuditorStatCard
+                    label="Total Usaha Terdaftar"
+                    value={totalCompanies.toString()}
+                    sub="Status APPROVED aktif"
+                    icon={<Leaf />}
+                    color="blue"
+                />
+                <AuditorStatCard
+                    label="Akumulasi Limbah B3"
+                    value={`${totalWasteB3.toLocaleString()} L/kg`}
+                    sub="Volume Total Terangkut"
+                    icon={<TrendingUp />}
+                    color="red"
+                />
+                <AuditorStatCard
+                    label="Retribusi Terkumpul"
+                    value={`Rp ${totalRevenue.toLocaleString()}`}
+                    sub="Kas Umum Daerah (RKUD)"
+                    icon={<DollarSign />}
+                    color="amber"
+                />
             </div>
 
             {/* 2. Charts Area */}
@@ -10694,50 +10850,58 @@ export default function AnalyticsTab() {
                     </div>
                 </Card>
 
-                {/* Waste Pie Chart */}
+                {/* Waste Pie Chart (Dinamis Berbasis Logbook) */}
                 <Card className="lg:col-span-4 rounded-none border border-slate-200 shadow-sm bg-white p-4 flex flex-col justify-between">
                     <div className="border-b pb-3 mb-2">
                         <h3 className="font-black text-xs uppercase tracking-widest text-slate-800">Komposisi Volume Limbah</h3>
                     </div>
                     <div className="h-[160px] w-full flex items-center justify-center relative">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={wasteData}
-                                    cx="50%"
-                                    cy="50%"
-                                    innerRadius={50}
-                                    outerRadius={70}
-                                    paddingAngle={4}
-                                    dataKey="value"
-                                >
-                                    {wasteData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.color} />
-                                    ))}
-                                </Pie>
-                                <Tooltip />
-                            </PieChart>
-                        </ResponsiveContainer>
-                        <div className="absolute flex flex-col items-center">
-                            <span className="text-[9px] font-black text-slate-400 uppercase">Volume</span>
-                            <span className="text-base font-black text-slate-800">310 L</span>
-                        </div>
+                        {wastePieData.length === 0 ? (
+                            <div className="text-slate-400 text-xs font-bold uppercase">Nihil Laporan</div>
+                        ) : (
+                            <>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={wastePieData}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={50}
+                                            outerRadius={70}
+                                            paddingAngle={4}
+                                            dataKey="value"
+                                        >
+                                            {wastePieData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.color} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                                <div className="absolute flex flex-col items-center">
+                                    <span className="text-[9px] font-black text-slate-400 uppercase">Total</span>
+                                    <span className="text-sm font-black text-slate-800 font-mono leading-none mt-1">
+                                        {totalWasteVolumeSum.toLocaleString()} L
+                                    </span>
+                                </div>
+                            </>
+                        )}
                     </div>
-                    <div className="space-y-1.5 mt-2 font-sans border-t pt-3 border-slate-100">
-                        {wasteData.map((d, i) => (
+                    <div className="space-y-1.5 mt-2 font-sans border-t pt-3 border-slate-100 max-h-[120px] overflow-y-auto custom-scrollbar">
+                        {wastePieData.map((d, i) => (
                             <div key={i} className="flex justify-between items-center text-[10px] font-bold">
                                 <div className="flex items-center gap-1.5">
                                     <span className="w-2 h-2 rounded-none shrink-0" style={{ backgroundColor: d.color }} />
                                     <span className="text-slate-500 uppercase tracking-tight">{d.name}</span>
                                 </div>
-                                <span className="text-slate-850 font-black">{d.value} L</span>
+                                <span className="text-slate-850 font-black">{d.value.toLocaleString()} L/kg</span>
                             </div>
                         ))}
                     </div>
                 </Card>
             </div>
 
-            {/* 3. Industry Compliance Ranking Table */}
+            {/* 3. Industry Compliance Ranking Table (Dinamis & Terurut) */}
             <div className="bg-white rounded-none border border-slate-200 shadow-sm overflow-hidden">
                 <div className="p-4 border-b bg-slate-50/50">
                     <h3 className="font-black text-xs uppercase tracking-widest text-slate-800">Peringkat Kepatuhan ESG Industri</h3>
@@ -10754,30 +10918,38 @@ export default function AnalyticsTab() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {companies.map((c) => (
-                            <TableRow key={c.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors h-14">
-                                <TableCell className="pl-4">
-                                    <div className="flex flex-col text-left">
-                                        <span className="font-bold text-slate-900 text-xs">{c.companyName}</span>
-                                        <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{c.address}</span>
-                                    </div>
-                                </TableCell>
-                                <TableCell className="font-bold text-slate-600 text-xs">{c.kbli || "KBLI Default"}</TableCell>
-                                <TableCell className="text-center">
-                                    <Badge className="bg-slate-100 text-slate-600 rounded-none border-none font-bold text-[9px] tracking-widest">
-                                        {c.docType}
-                                    </Badge>
-                                </TableCell>
-                                <TableCell className="text-center">
-                                    <span className={`text-[10px] font-black uppercase tracking-widest ${c.status === "APPROVED" ? "text-emerald-600" : "text-amber-500"}`}>
-                                        {c.status}
-                                    </span>
-                                </TableCell>
-                                <TableCell className="text-right pr-4">
-                                    {getScoreBadge(c.score)}
+                        {rankedCompanies.length === 0 ? (
+                            <TableRow>
+                                <TableCell colSpan={5} className="text-center py-6 text-slate-400 font-bold">
+                                    Belum ada industri terdaftar.
                                 </TableCell>
                             </TableRow>
-                        ))}
+                        ) : (
+                            rankedCompanies.map((c) => (
+                                <TableRow key={c.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors h-14">
+                                    <TableCell className="pl-4">
+                                        <div className="flex flex-col text-left">
+                                            <span className="font-bold text-slate-900 text-xs">{c.companyName}</span>
+                                            <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{c.address}</span>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="font-bold text-slate-600 text-xs">{c.kbli || "N/A"}</TableCell>
+                                    <TableCell className="text-center">
+                                        <Badge className="bg-slate-100 text-slate-600 rounded-none border-none font-bold text-[9px] tracking-widest">
+                                            {c.docType}
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                        <span className={`text-[10px] font-black uppercase tracking-widest ${c.status === "APPROVED" ? "text-emerald-600" : "text-amber-500"}`}>
+                                            {c.status}
+                                        </span>
+                                    </TableCell>
+                                    <TableCell className="text-right pr-4">
+                                        {getScoreBadge(c.score)}
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        )}
                     </TableBody>
                 </Table>
             </div>
@@ -10978,78 +11150,144 @@ import { useSijagaStore } from "@/store/useSijagaStore";
 import AuditorStatCard from "./AuditorStatCard";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { FileText, CheckCircle2, TrendingUp } from "lucide-react";
+import { FileText, CheckCircle2, ShieldAlert, Award } from "lucide-react";
 
 export default function PerformanceTab() {
-    const { companies, inspections } = useSijagaStore();
+    // Membaca data agregat kinerja operasional dari Zustand Store (Fase 3 & 4)
+    const { performanceAnalytics, companies } = useSijagaStore();
 
-    const pendingApprovals = useMemo(() => {
-        return companies.filter(c => c.status === "PENDING" || c.status === "REVIEW").length;
+    // Safeguard jika data analitik kinerja sedang dimuat oleh Parent Container
+    if (!performanceAnalytics) {
+        return (
+            <div className="p-8 text-center text-slate-500 font-bold text-xs uppercase tracking-widest animate-pulse">
+                Menghubungkan ke sistem kinerja operasional...
+            </div>
+        );
+    }
+
+    // Mengambil nilai agregat kinerja dari state eksekutif
+    const {
+        pendingApprovals,
+        completedInspections,
+        overdueInspections,
+        recentInspections,
+        documentComposition
+    } = performanceAnalytics;
+
+    // Kalkulasi Persentase Progress Bar berdasarkan data riil (Information Expert)
+    const approvedCount = useMemo(() => {
+        return companies.filter(c => c.status === "APPROVED").length;
     }, [companies]);
 
-    const completedInspections = useMemo(() => {
-        return inspections.filter(i => i.status === "Selesai").length;
-    }, [inspections]);
+    const totalCompanies = companies.length || 1; // Mencegah division-by-zero error
+
+    const approvedPercentage = Math.round((approvedCount / totalCompanies) * 100);
+    const pendingPercentage = Math.round((pendingApprovals / totalCompanies) * 100);
 
     return (
-        <div className="space-y-4 animate-in fade-in duration-300">
+        <div className="space-y-4 animate-in fade-in duration-300 text-left">
 
-            {/* 1. DLH KPIs Stat Cards */}
+            {/* 1. DLH KPIs Stat Cards (Metrik Dinamis Kinerja Sektoral) */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <AuditorStatCard label="Dokumen Diajukan" value={`${pendingApprovals} Antrean`} sub="Tinjau Validasi DLH" icon={<FileText />} color="amber" />
-                <AuditorStatCard label="Inspeksi Lapangan" value={`${completedInspections} Selesai`} sub="Patroli Bidang Pengawasan" icon={<CheckCircle2 />} color="emerald" />
-                <AuditorStatCard label="Response Time Rerata" value="1.8 Hari" sub="Durasi Verifikasi Berkas" icon={<TrendingUp />} color="blue" />
+                <AuditorStatCard
+                    label="Dokumen Diajukan"
+                    value={`${pendingApprovals} Antrean`}
+                    sub="Tinjau Validasi DLH"
+                    icon={<FileText />}
+                    color="amber"
+                />
+                <AuditorStatCard
+                    label="Inspeksi Lapangan"
+                    value={`${completedInspections} Selesai`}
+                    sub="Patroli Bidang Pengawasan"
+                    icon={<CheckCircle2 />}
+                    color="emerald"
+                />
+                <AuditorStatCard
+                    label="Sidak Jatuh Tempo"
+                    value={`${overdueInspections} Lokasi`}
+                    sub="Sidak Lewat 30 Hari (WARNING)"
+                    icon={<ShieldAlert />}
+                    color="red"
+                    trend={overdueInspections > 0 ? "Perlu Tindakan" : "Aman"}
+                />
             </div>
 
             {/* 2. Historical & Progress Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 font-sans">
 
-                {/* Log Kunjungan Inspeksi Lapangan (Gaya Flush List) */}
+                {/* Log Kunjungan Inspeksi Lapangan (Gaya Flush List Berbasis Database API) */}
                 <Card className="lg:col-span-6 rounded-none border border-slate-200 shadow-sm bg-white">
                     <div className="p-4 border-b border-slate-200 bg-slate-50">
                         <h3 className="font-bold text-xs uppercase tracking-widest text-slate-800">Log Kunjungan Inspeksi Lapangan</h3>
                     </div>
                     <div className="flex flex-col divide-y divide-slate-100 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar text-left">
-                        {inspections.map((insp) => (
-                            <div key={insp.id} className="p-3.5 space-y-1 hover:bg-slate-50 transition-colors">
-                                <div className="flex justify-between items-center text-[8px] text-slate-400 font-bold uppercase tracking-widest">
-                                    <span>{insp.date} — {insp.id}</span>
-                                    <Badge className={`border-none rounded-none text-[8px] font-black ${insp.status === "Selesai" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
-                                        {insp.status}
-                                    </Badge>
-                                </div>
-                                <h4 className="font-black text-slate-800 text-xs leading-none">{insp.companyName}</h4>
-                                <p className="text-[10px] text-slate-500 font-medium">Petugas Lapangan: {insp.inspectorName}</p>
-                                {insp.notes && <p className="text-[9px] text-emerald-600 font-black uppercase tracking-widest mt-0.5">Hasil: "{insp.notes}"</p>}
+                        {recentInspections.length === 0 ? (
+                            <div className="p-8 text-center text-slate-400 font-bold text-xs uppercase">
+                                Belum ada riwayat inspeksi fisik.
                             </div>
-                        ))}
+                        ) : (
+                            recentInspections.map((insp) => (
+                                <div key={insp.id} className="p-3.5 space-y-1 hover:bg-slate-50 transition-colors">
+                                    <div className="flex justify-between items-center text-[8px] text-slate-400 font-bold uppercase tracking-widest">
+                                        <span>{insp.date} — {insp.id}</span>
+                                        <Badge className={`border-none rounded-none text-[8px] font-black ${insp.status === "Selesai" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+                                            {insp.status}
+                                        </Badge>
+                                    </div>
+                                    <h4 className="font-black text-slate-800 text-xs leading-none">{insp.companyName}</h4>
+                                    <p className="text-[10px] text-slate-500 font-medium">Petugas Lapangan: {insp.inspectorName}</p>
+                                    {insp.notes && <p className="text-[9px] text-emerald-600 font-black uppercase tracking-widest mt-0.5">Hasil: "{insp.notes}"</p>}
+                                </div>
+                            ))
+                        )}
                     </div>
                 </Card>
 
-                {/* Status Registrasi Progress Tracker (Kotak Tanpa rounded) */}
-                <Card className="lg:col-span-6 rounded-none border border-slate-200 shadow-sm bg-white p-4 space-y-6">
-                    <div className="border-b pb-3">
-                        <h3 className="font-bold text-xs uppercase tracking-widest text-slate-800">Status Registrasi Dokumen Pelaku Usaha</h3>
-                    </div>
+                {/* Status Registrasi Progress Tracker (Dinamis Siku Kaku) */}
+                <Card className="lg:col-span-6 rounded-none border border-slate-200 shadow-sm bg-white p-4 space-y-6 flex flex-col justify-between">
                     <div className="space-y-4">
-                        <div className="space-y-2">
-                            <div className="flex justify-between text-[11px] font-bold text-slate-600">
-                                <span className="uppercase tracking-widest text-[9px] font-black text-slate-500">Dokumen Disetujui (Approved)</span>
-                                <span className="font-mono">{companies.filter(c => c.status === "APPROVED").length} / {companies.length}</span>
+                        <div className="border-b pb-3">
+                            <h3 className="font-bold text-xs uppercase tracking-widest text-slate-800">Status Registrasi Dokumen Pelaku Usaha</h3>
+                        </div>
+                        <div className="space-y-4">
+                            {/* Progress: Approved */}
+                            <div className="space-y-2">
+                                <div className="flex justify-between text-[11px] font-bold text-slate-600">
+                                    <span className="uppercase tracking-widest text-[9px] font-black text-slate-500">Dokumen Disetujui (Approved)</span>
+                                    <span className="font-mono">{approvedCount} / {companies.length} ({approvedPercentage}%)</span>
+                                </div>
+                                <div className="w-full bg-slate-100 h-1.5 rounded-none overflow-hidden">
+                                    <div className="bg-emerald-500 h-full rounded-none" style={{ width: `${approvedPercentage}%` }} />
+                                </div>
                             </div>
-                            <div className="w-full bg-slate-100 h-1.5 rounded-none overflow-hidden">
-                                <div className="bg-emerald-500 h-full rounded-none" style={{ width: `${(companies.filter(c => c.status === "APPROVED").length / companies.length) * 100}%` }} />
+
+                            {/* Progress: Pending / Review */}
+                            <div className="space-y-2">
+                                <div className="flex justify-between text-[11px] font-bold text-slate-600">
+                                    <span className="uppercase tracking-widest text-[9px] font-black text-slate-500">Dalam Proses Penelaahan (Review/Pending)</span>
+                                    <span className="font-mono">{pendingApprovals} / {companies.length} ({pendingPercentage}%)</span>
+                                </div>
+                                <div className="w-full bg-slate-100 h-1.5 rounded-none overflow-hidden">
+                                    <div className="bg-amber-500 h-full rounded-none" style={{ width: `${pendingPercentage}%` }} />
+                                </div>
                             </div>
                         </div>
+                    </div>
 
-                        <div className="space-y-2">
-                            <div className="flex justify-between text-[11px] font-bold text-slate-600">
-                                <span className="uppercase tracking-widest text-[9px] font-black text-slate-500">Dalam Proses Penelaahan (Review/Pending)</span>
-                                <span className="font-mono">{pendingApprovals} / {companies.length}</span>
-                            </div>
-                            <div className="w-full bg-slate-100 h-1.5 rounded-none overflow-hidden">
-                                <div className="bg-amber-500 h-full rounded-none" style={{ width: `${(pendingApprovals / companies.length) * 100}%` }} />
-                            </div>
+                    {/* Metadata Baru: Komposisi Dokumen Terbit Riil dari Database */}
+                    <div className="grid grid-cols-2 gap-4 border-t pt-4 border-slate-100">
+                        <div className="bg-slate-50 p-3.5 text-left rounded-none border">
+                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">Total SPPL Terbit</p>
+                            <p className="text-base font-black text-slate-800 font-mono mt-2 leading-none">
+                                {documentComposition.sppl} <span className="text-[9px] font-bold text-slate-400">Berkas</span>
+                            </p>
+                        </div>
+                        <div className="bg-slate-50 p-3.5 text-left rounded-none border">
+                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">Total UKL-UPL Terbit</p>
+                            <p className="text-base font-black text-slate-800 font-mono mt-2 leading-none">
+                                {documentComposition.uklUpl} <span className="text-[9px] font-bold text-slate-400">Berkas</span>
+                            </p>
                         </div>
                     </div>
                 </Card>
@@ -11061,50 +11299,86 @@ export default function PerformanceTab() {
 
 --- FILE: src\modules\dashboard\pages\AuditorDashboardPage.tsx ---
 // src/modules/dashboard/pages/AuditorDashboardPage.tsx
-import React, { useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import { useSijagaStore } from "@/store/useSijagaStore";
 import { Button } from "@/components/ui/button";
-import { Download, BarChart4, Map as MapIcon, ClipboardList } from "lucide-react";
+import { Download, BarChart4, Map as MapIcon, ClipboardList, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-// Mengimpor Sub-Modul Eksekutif yang sudah di-diet & dimodularisasi (Prinsip GRASP: Low Coupling) [3]
+// Mengimpor Sub-Modul Eksekutif yang sudah di-diet & dimodularisasi (Prinsip GRASP: Low Coupling)
 import AnalyticsTab from "../components/auditor/AnalyticsTab";
-import GisTab from "../components/auditor/GisTab";
 import PerformanceTab from "../components/auditor/PerformanceTab";
 
 /**
  * AuditorDashboardPage - The Executive Shell & Orchestrator (Diet UI)
  * Bertindak sebagai kerangka utama halaman pimpinan/auditor:
  * 1. Menampilkan Header Utama dan Tab Navigator yang kaku & rapat.
- * 2. Memicu sinkronisasi data master DLH secara terpusat saat halaman di-load [3].
+ * 2. Memicu sinkronisasi data master DLH secara terpusat dengan skema Fail-Safe [3].
  * 3. Memilih & merender komponen tab yang aktif sesuai parameter URL [3].
  */
 export default function AuditorDashboardPage() {
   const { tab } = useParams();
   const navigate = useNavigate();
-  const { fetchCompanies, fetchWasteLogs, fetchInvoices, fetchInspections } = useSijagaStore();
+
+  // Mengambil state dan actions dari Zustand Store
+  const {
+    fetchCompanies,
+    fetchWasteLogs,
+    fetchInvoices,
+    fetchInspections,
+    fetchExecutiveAnalytics,
+    fetchPerformanceAnalytics
+  } = useSijagaStore();
 
   const activeTab = tab || "analytics";
 
-  // Memicu sinkronisasi data global DLH saat pertama kali masuk halaman Auditor (Information Expert) [3]
+  // State untuk penanda loading data
+  const [isLoading, setIsLoading] = useState(true);
+
+  // FASE 3: Sinkronisasi data eksekutif pimpinan dengan skema individual Fail-Safe (Information Expert) [3]
   useEffect(() => {
-    fetchCompanies();
-    fetchWasteLogs();
-    fetchInvoices();
-    fetchInspections();
-  }, [fetchCompanies, fetchWasteLogs, fetchInvoices, fetchInspections]);
+    let isMounted = true;
+
+    const loadDataSequentially = async () => {
+      if (!isMounted) return;
+      setIsLoading(true);
+
+      // Pemanggilan Data Taktis Individual: Satu API gagal, sisa data tetap dirender sempurna [3]
+      try { await fetchCompanies(); } catch (e) { console.error("fetchCompanies failed:", e); }
+      try { await fetchWasteLogs(); } catch (e) { console.error("fetchWasteLogs failed:", e); }
+      try { await fetchInvoices(); } catch (e) { console.error("fetchInvoices failed:", e); }
+      try { await fetchInspections(); } catch (e) { console.error("fetchInspections failed:", e); }
+      try { await fetchExecutiveAnalytics(); } catch (e) { console.error("fetchExecutiveAnalytics failed:", e); }
+      try { await fetchPerformanceAnalytics(); } catch (e) { console.error("fetchPerformanceAnalytics failed:", e); }
+
+      if (isMounted) {
+        setIsLoading(false);
+      }
+    };
+
+    loadDataSequentially();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [
+    fetchCompanies,
+    fetchWasteLogs,
+    fetchInvoices,
+    fetchInspections,
+    fetchExecutiveAnalytics,
+    fetchPerformanceAnalytics
+  ]);
 
   const handleExport = () => {
     toast.success("Mengekspor laporan eksekutif kepatuhan ESG (.PDF). Mohon tunggu...");
   };
 
-  // Fungsi merender tab aktif secara dinamis (Modular Rendering) [3]
+  // Fungsi merender tab aktif secara dinamis (Modular Rendering) - Peta Lama Dilepas Bersih [3]
   const renderTabContent = () => {
     switch (activeTab) {
-      case "gis":
-        return <GisTab />;
       case "performance":
         return <PerformanceTab />;
       case "analytics":
@@ -11113,14 +11387,28 @@ export default function AuditorDashboardPage() {
     }
   };
 
+  // Tampilan Memuat Data Eksekutif (GFW Tactical Spinner)
+  if (isLoading) {
+    return (
+      <DashboardLayout role="AUDITOR">
+        <div className="flex flex-col items-center justify-center h-[60vh] space-y-4">
+          <Loader2 className="w-10 h-10 text-emerald-600 animate-spin" />
+          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 animate-pulse">
+            Mengagregasi Data Keuangan & Kepatuhan Daerah...
+          </p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout role="AUDITOR">
-      <div className="space-y-4 text-left"> {/* DIET: space-y-8 -> space-y-4 */}
+      <div className="space-y-4 text-left">
 
         {/* --- 1. HEADER UTAMA (DIET CARD) --- */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-none border border-slate-200 shadow-sm">
           <div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase leading-none">
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-none uppercase">
               Command Center Auditor
             </h1>
             <p className="text-slate-500 text-xs font-medium mt-1.5">
@@ -11145,11 +11433,12 @@ export default function AuditorDashboardPage() {
             icon={<BarChart4 size={14} />}
             onClick={() => navigate("/auditor")}
           />
+          {/* RUTE SPASIAL DECOUPLED: Tombol navigasi langsung meluncur ke rute mutlak /auditor-gis penuh layar */}
           <TabNavButton
-            active={activeTab === "gis"}
+            active={false}
             label="Geospasial Kepatuhan"
             icon={<MapIcon size={14} />}
-            onClick={() => navigate("/auditor/gis")}
+            onClick={() => navigate("/auditor-gis")}
           />
           <TabNavButton
             active={activeTab === "performance"}
@@ -11171,7 +11460,6 @@ export default function AuditorDashboardPage() {
 
 // --- SUB-COMPONENTS ---
 
-// DIET: Tab button dengan sudut kaku tajam (rounded-none), text rapat
 interface TabNavButtonProps {
   active: boolean;
   label: string;
@@ -11192,6 +11480,76 @@ function TabNavButton({ active, label, icon, onClick }: TabNavButtonProps) {
       <span>{label}</span>
     </button>
   );
+}
+
+--- FILE: src\modules\dashboard\pages\AuditorGISPage.tsx ---
+// src/modules/dashboard/pages/AuditorGISPage.tsx
+import React, { useEffect } from 'react';
+import { useSijagaStore } from '@/store/useSijagaStore';
+
+// REUSE: Mengimpor ekosistem GFW Paradigm imersif yang sudah kita bangun (Prinsip GRASP: Low Coupling)
+import GisNavbar from '@/modules/admin/components/gis/GisNavbar';
+import GisSidebar from '@/modules/admin/components/gis/GisSidebar';
+import PanelOrchestrator from '@/modules/admin/components/gis/PanelOrchestrator';
+import MapHUD from '@/modules/admin/components/gis/MapHUD';
+import LimbahMap from '@/modules/admin/components/gis/LimbahMap';
+
+/**
+ * AuditorGISPage - The Executive Command Center (Auditor / Pimpinan Role)
+ * Mengadopsi arsitektur Infinite Canvas dengan Stacking Layers:
+ * 1. Peta LimbahMap mendominasi dasar layar (Z-0) untuk rendering data spasial industri [3].
+ * 2. Navbar & Sidebar memegang navigasi global dengan sudut siku kaku (Z-50 & Z-40) [3].
+ * 3. Orchestrator menumpuk panel menu kepatuhan dan panel detail analisis ESG secara dinamis (Z-30) [3].
+ * 4. MapHUD mengontrol basemap, opacity poligon, dan legenda visual kepatuhan (Z-30) [3].
+ */
+export default function AuditorGISPage() {
+    const { fetchCompanies } = useSijagaStore();
+
+    // Memastikan data master spasial (perusahaan) diambil saat masuk halaman ini (Information Expert) [3]
+    useEffect(() => {
+        fetchCompanies();
+    }, [fetchCompanies]);
+
+    return (
+        // Latar belakang diatur agar memenuhi 100% tinggi dan lebar layar (h-screen w-screen).
+        // Menghilangkan DashboardLayout agar mendapatkan efek imersif penuh secara instan (No Toggle Needed).
+        <main className="relative h-screen w-screen overflow-hidden bg-slate-50 font-sans text-slate-800 selection:bg-emerald-200 selection:text-emerald-900">
+
+            {/* =====================================================================
+          LAYER 0: THE INFINITE CANVAS (PETA UTAMA)
+          Berada di dasar (z-0), mengambil alih 100% ruang viewport untuk analisis [3].
+      ====================================================================== */}
+            <LimbahMap />
+
+            {/* =====================================================================
+          LAYER 1: THE GLOBAL CONTEXT (NAVBAR ATAS)
+          Tinggi fix 64px, posisi absolut nempel atas, z-50 [3].
+      ====================================================================== */}
+            <GisNavbar />
+
+            {/* =====================================================================
+          LAYER 2: THE SLIM ANCHOR (SIDEBAR KIRI)
+          Lebar fix 64px, posisi absolut nempel kiri bawah navbar, z-40 [3].
+          Otomatis menyediakan tab Katalog Industri & Analisis ESG untuk Auditor [3].
+      ====================================================================== */}
+            <GisSidebar />
+
+            {/* =====================================================================
+          LAYER 3: THE STACKING DRAWERS (PANEL ORCHESTRATOR)
+          Wadah untuk laci menu peta dan panel floating detail industri.
+          Bermula persis di samping sidebar (left-16) dan di bawah navbar (top-16), z-30 [3].
+      ====================================================================== */}
+            <PanelOrchestrator />
+
+            {/* =====================================================================
+          LAYER 4: MAP HUD & CONTROLS (KANAN BAWAH)
+          Komponen kontrol Legenda Kepatuhan ESG dan Navigasi Zoom.
+          Posisinya absolut di pojok kanan bawah, z-30 [3].
+      ====================================================================== */}
+            <MapHUD />
+
+        </main>
+    );
 }
 
 --- FILE: src\modules\environmental\components\FileUploadWithPreview.tsx ---
@@ -13230,7 +13588,7 @@ export default function ActiveManifests({
 }: ActiveManifestsProps) {
     const navigate = useNavigate();
     const { pickupRequests, currentUser } = useSijagaStore();
-    const transporterId = currentUser?.transporterId || "TRANS-001";
+    const transporterId = currentUser?.id;
 
     // Memfilter order aktif untuk transporter ini (selain PENDING dan COMPLETED)
     const activePickups = useMemo(() => {
@@ -13429,14 +13787,14 @@ export default function EvidenceUploadModal({ isOpen, onClose, evidenceRequest }
         try {
             const photoPayload = evidencePhotos.length > 0 ? JSON.stringify(evidencePhotos) : "[]";
 
-            // Serialisasi data multi-part menjadi JSON String agar lolos type-checking compiler [3]
-            const payloadString = JSON.stringify({
+            // Mengirimkan objek payload asli, bukan diserialisasi (karena api.ts menggunakan spread operator ...payload)
+            const payloadObject = {
                 evidencePhoto: photoPayload,
                 actualVolume,
                 transportReport
-            });
+            };
 
-            await updatePickupStatus(evidenceRequest.id, "COMPLETED", payloadString);
+            await updatePickupStatus(evidenceRequest.id, "COMPLETED", payloadObject);
 
             // Reset State & Tutup Dialog [3]
             setEvidencePhotos([]);
@@ -13935,7 +14293,7 @@ function TrackingMapController({ truckPos }: { truckPos: [number, number] }) {
 }
 
 export default function TrackingMap() {
-    const { pickupRequests } = useSijagaStore();
+    const { pickupRequests, companies } = useSijagaStore();
     const activeOrders = pickupRequests.filter(p => p.status === "ON_THE_ROAD" || p.status === "LOADED" || p.status === "PAID");
     const [selectedOrder, setSelectedOrder] = useState<any>(null);
 
@@ -13961,6 +14319,20 @@ export default function TrackingMap() {
         return () => window.removeEventListener('map-truck-update', handleGpsUpdate);
     }, []);
 
+    // Resolusi Koordinat Pabrik Pengirim secara Dinamis [3]
+    const company = companies.find(c => c.id === selectedOrder?.companyId);
+    let companyCoords: [number, number] = DEFAULT_CENTER;
+    if (company && company.lat && company.lng) {
+        const parsedLat = parseFloat(company.lat);
+        const parsedLng = parseFloat(company.lng);
+        if (!isNaN(parsedLat) && !isNaN(parsedLng)) {
+            companyCoords = [parsedLat, parsedLng];
+        }
+    }
+
+    // Sambungkan titik rute dari pabrik riil menuju titik tengah (simulasi)
+    const dynamicRoutePoints = [companyCoords, ...routePoints];
+
     return (
         <div className="absolute inset-0 z-0 bg-slate-100">
             <MapContainer
@@ -13973,8 +14345,8 @@ export default function TrackingMap() {
 
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
 
-                {/* Jalur Rute Polylines */}
-                <Polyline positions={routePoints} color="#059669" weight={4} dashArray="5, 10" />
+                {/* Jalur Rute Polylines Dinamis */}
+                <Polyline positions={dynamicRoutePoints} color="#059669" weight={4} dashArray="5, 10" />
 
                 {/* Marker Truk Bergerak */}
                 <Marker position={truckPos} icon={TruckIcon}>
@@ -13987,11 +14359,12 @@ export default function TrackingMap() {
                 </Marker>
 
                 {/* Titik Muat Limbah (Start) */}
-                <Marker position={DEFAULT_CENTER}>
+                <Marker position={companyCoords}>
                     <Popup>
                         <div className="text-left font-sans p-1">
-                            <h4 className="font-black text-slate-800 text-xs leading-none">Titik Muat Limbah</h4>
-                            <p className="text-[10px] text-slate-500 font-bold mt-1.5">{selectedOrder?.companyName || "Industri Payer"}</p>
+                            <h4 className="font-black text-slate-800 text-xs leading-none">Lokasi Pabrik (Penjemputan)</h4>
+                            <p className="text-[10px] text-slate-500 font-bold mt-1.5">{selectedOrder?.companyName || "Pabrik Pemesan"}</p>
+                            {company && <p className="text-[9px] text-slate-400 mt-1">{company.address}</p>}
                         </div>
                     </Popup>
                 </Marker>
@@ -14025,7 +14398,7 @@ interface IncomingBidsProps {
 
 export default function IncomingBids({ onSelectRequest }: IncomingBidsProps) {
     const { pickupRequests, currentUser } = useSijagaStore();
-    const transporterId = currentUser?.transporterId || "TRANS-001";
+    const transporterId = currentUser?.id;
 
     // Memfilter penugasan berstatus PENDING (menunggu penawaran harga)
     const pendingBids = useMemo(() => {
@@ -14220,7 +14593,7 @@ import EvidenceUploadModal from "../components/EvidenceUploadModal";
 
 export default function TransporterDashboard() {
   const { pickupRequests, currentUser, fetchPickupRequests, updatePickupStatus } = useSijagaStore();
-  const transporterId = currentUser?.transporterId || "TRANS-001";
+  const transporterId = currentUser?.id;
 
   // State Pengendali Modal Penawaran Harga [3]
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
@@ -14409,12 +14782,13 @@ import TrackingMap from "../components/gis/TrackingMap"; // Komponen peta murni 
  * 3. Kecepatan, sisa jarak, pH, & suhu tangki terintegrasi di dalam laci kiri [3].
  */
 export default function TransporterTracking() {
-  const { fetchPickupRequests } = useSijagaStore();
+  const { fetchPickupRequests, fetchCompanies } = useSijagaStore();
 
-  // Memastikan database manifest pengangkutan diambil saat masuk halaman ini (Information Expert) [3]
+  // Memastikan database manifest dan data perusahaan ditarik saat masuk halaman ini
   useEffect(() => {
     fetchPickupRequests();
-  }, [fetchPickupRequests]);
+    fetchCompanies();
+  }, [fetchPickupRequests, fetchCompanies]);
 
   return (
     // Memenuhi 100% viewport layar tanpa dibungkus DashboardLayout untuk sensasi Command Center penuh
@@ -14609,6 +14983,7 @@ export interface User {
   companyId?: string; // Fallback backward-compatibility
   transporterId?: string;
   officerId?: string;
+  createdAt?: string;
 }
 
 export interface Company {
@@ -14722,10 +15097,41 @@ export interface AuditLog {
   action: string;
 }
 
+export interface ExecutiveAnalyticsData {
+  totalCompanies: number;
+  averageEsg: number;
+  esgDelta: number;
+  totalWasteB3: number;
+  totalRevenue: number;
+  unpaidRevenue: number;
+  weeklyWasteChart: { date: string; volume: number }[];
+  distribution: { sangatPatuh: number; cukupPatuh: number; kritis: number };
+}
+
+export interface PerformanceAnalyticsData {
+  pendingApprovals: number;
+  completedInspections: number;
+  overdueInspections: number;
+  recentInspections: {
+    id: string;
+    companyId: string;
+    companyName: string;
+    inspectorId: string;
+    inspectorName: string;
+    date: string;
+    score: number | null;
+    status: string;
+    location: string;
+    notes?: string;
+  }[];
+  documentComposition: { sppl: number; uklUpl: number };
+}
+
 interface SijagaState {
   // Core State
   currentUser: User | null;
   selectedCompanyId: string | null;
+  users: User[]; // Data pengguna terpusat untuk Super Admin
   companies: Company[];
   wasteLogs: WasteLog[];
   pickupRequests: PickupRequest[];
@@ -14734,13 +15140,17 @@ interface SijagaState {
   notifications: SystemNotification[];
   auditLogs: AuditLog[];
   transporters: User[];
+  executiveAnalytics: ExecutiveAnalyticsData | null;
+  performanceAnalytics: PerformanceAnalyticsData | null;
 
   // Actions
   setSelectedCompanyId: (id: string | null) => void;
   login: (email: string, password: string, role?: UserRole) => Promise<User | null>;
   logout: () => Promise<void>;
-  
+
   // API Fetchers
+  fetchUsers: () => Promise<void>;
+  updateUserRole: (id: string, role: UserRole) => Promise<void>;
   fetchCompanies: () => Promise<void>;
   fetchWasteLogs: (companyId?: string) => Promise<void>;
   fetchPickupRequests: (companyId?: string) => Promise<void>;
@@ -14748,6 +15158,7 @@ interface SijagaState {
   fetchInspections: () => Promise<void>;
   fetchNotifications: () => Promise<void>;
   readNotification: (id: string) => Promise<void>;
+  fetchAuditLogs: () => Promise<void>; // Fungsi fetch murni dari API
 
   addCompany: (formData: FormData) => Promise<void>;
   updateCompanyStatus: (id: string, status: Company["status"]) => Promise<void>;
@@ -14765,33 +15176,55 @@ interface SijagaState {
   addNotification: (title: string, message: string, type: SystemNotification["type"]) => Promise<void>;
   readAllNotifications: () => Promise<void>;
   addAuditLog: (user: string, role: string, action: string) => Promise<void>;
+  fetchExecutiveAnalytics: () => Promise<void>;
+  fetchPerformanceAnalytics: () => Promise<void>;
 }
 
-// Initial Mock Data (used as offline fallbacks)
+// STRATEGI RECOVERY: Struktur default data aman jika API Backend gagal merespon (Fase 3 & 4) [3]
+const defaultExecutiveAnalytics: ExecutiveAnalyticsData = {
+  totalCompanies: 0,
+  averageEsg: 0,
+  esgDelta: 0,
+  totalWasteB3: 0,
+  totalRevenue: 0,
+  unpaidRevenue: 0,
+  weeklyWasteChart: [],
+  distribution: { sangatPatuh: 0, cukupPatuh: 0, kritis: 0 }
+};
+
+const defaultPerformanceAnalytics: PerformanceAnalyticsData = {
+  pendingApprovals: 0,
+  completedInspections: 0,
+  overdueInspections: 0,
+  recentInspections: [],
+  documentComposition: { sppl: 0, uklUpl: 0 }
+};
+
+// Initial Mock Data (used as offline fallbacks for companies/pickups)
 const initialCompanies: Company[] = [
   {
     id: "COM-001",
     companyName: "PT. Tekstil Sejahtera",
     nib: "9120301294821",
     npwp: "01.234.567.8-401.000",
-    picName: "Budi Santoso",
-    picPhone: "08123456789",
-    picRole: "Direktur",
+    picName: "Budi",
+    picPhone: "081234567890",
+    picRole: "Direktur Utama",
     investmentType: "PMDN",
-    yearBuilt: "2018",
+    yearBuilt: "2015",
     buildingArea: 2500,
-    operationalHours: "24 Jam",
-    rawMaterials: "Kapas, Zat Pewarna Kimia",
-    waterSource: "PDAM & Sumur Bor",
-    powerSource: "PLN 150 kVA",
-    kbli: "13111",
-    investment: 8500000000,
+    operationalHours: "08:00 - 17:00",
+    rawMaterials: "Serat Kapas, Pewarna Tekstil",
+    waterSource: "PDAM",
+    powerSource: "PLN",
+    kbli: "13121",
+    investment: 6000000000,
     landArea: 6000,
-    employees: 120,
+    employees: 150,
     lat: "-6.9147",
     lng: "107.6098",
-    address: "Jl. Rancaekek KM 15, Kec. Cicadas, Bandung",
-    docType: "UKL-UPL",
+    address: "Jl. Rancaekek No. 12, Bandung",
+    docType: "UKL_UPL",
     status: "APPROVED",
     score: 85
   },
@@ -14800,85 +15233,59 @@ const initialCompanies: Company[] = [
     companyName: "Bengkel Jaya Motor",
     nib: "9120301294112",
     npwp: "02.345.678.9-402.000",
-    picName: "Agus Pratama",
-    picPhone: "08129876543",
+    picName: "Budi",
+    picPhone: "081234567890",
     picRole: "Pemilik",
     investmentType: "PMDN",
     yearBuilt: "2020",
-    buildingArea: 150,
-    operationalHours: "08:00 - 17:00",
-    rawMaterials: "Sparepart, Oli, Grease",
-    waterSource: "Sumur Gali",
-    powerSource: "PLN 2200 VA",
-    kbli: "45201",
-    investment: 350000000,
-    landArea: 200,
-    employees: 8,
+    buildingArea: 200,
+    operationalHours: "09:00 - 19:00",
+    rawMaterials: "Sparepart Motor, Oli",
+    waterSource: "Sumur Bor",
+    powerSource: "PLN",
+    kbli: "45404",
+    investment: 300000000,
+    landArea: 300,
+    employees: 5,
     lat: "-6.9034",
     lng: "107.6189",
-    address: "Jl. Ir. H. Djuanda No. 120, Kec. Coblong, Bandung",
+    address: "Jl. Suropati No. 45, Bandung",
     docType: "SPPL",
-    status: "REVIEW"
+    status: "REVIEW",
+    score: undefined
   },
   {
     id: "COM-003",
     companyName: "Restoran Sunda Nikmat",
     nib: "9120301294553",
     npwp: "03.456.789.0-403.000",
-    picName: "Siti Aminah",
-    picPhone: "08771234567",
+    picName: "Asep",
+    picPhone: "087823456789",
     picRole: "Manajer Operasional",
     investmentType: "PMDN",
-    yearBuilt: "2015",
-    buildingArea: 400,
+    yearBuilt: "2018",
+    buildingArea: 800,
     operationalHours: "10:00 - 22:00",
-    rawMaterials: "Bahan Makanan, Minyak Goreng",
+    rawMaterials: "Bahan Pangan, Minyak Goreng",
     waterSource: "PDAM",
-    powerSource: "PLN 5500 VA",
+    powerSource: "PLN",
     kbli: "56101",
     investment: 1200000000,
-    landArea: 600,
-    employees: 25,
+    landArea: 1000,
+    employees: 24,
     lat: "-6.8245",
     lng: "107.6190",
-    address: "Jl. Raya Lembang No. 45, Kec. Lembang, Bandung",
+    address: "Jl. Lembang No. 102, Bandung Barat",
     docType: "SPPL",
     status: "APPROVED",
     score: 90
-  },
-  {
-    id: "COM-004",
-    companyName: "Pabrik Kimia Farma",
-    nib: "9120301294001",
-    npwp: "01.111.222.3-401.000",
-    picName: "Indra Wijaya",
-    picPhone: "081122334455",
-    picRole: "Kepala Pabrik",
-    investmentType: "PMDN",
-    yearBuilt: "2012",
-    buildingArea: 4000,
-    operationalHours: "24 Jam",
-    rawMaterials: "Bahan Aktif Obat, Alkohol",
-    waterSource: "PDAM",
-    powerSource: "PLN 300 kVA",
-    kbli: "21012",
-    investment: 15000000000,
-    landArea: 8000,
-    employees: 200,
-    lat: "-6.9388",
-    lng: "107.6255",
-    address: "Jl. Soekarno-Hatta No. 500, Bandung",
-    docType: "UKL-UPL",
-    status: "APPROVED",
-    score: 65
   }
 ];
 
 const initialWasteLogs: WasteLog[] = [
   { id: "W-001", companyId: "COM-002", companyName: "Bengkel Jaya Motor", type: "Oli Bekas", volume: 45, unit: "L", date: "2026-05-15", method: "Dinas", status: "Terverifikasi" },
   { id: "LOG-006", companyId: "COM-002", companyName: "PT. Tekstil Sejahtera", type: "Limbah Cair", volume: 150, unit: "m³", date: "2026-05-18", method: "Dinas", status: "Proses_Verifikasi" },
-  { id: "LOG-007", companyId: "COM-001", companyName: "PT. Eco Industri", type: "Limbah Domestik", volume: 300, unit: "kg", date: "2026-05-19", method: "Mandiri", status: "Terjadwal_Pickup" },
-  { id: "W-004", companyId: "COM-004", companyName: "Pabrik Kimia Farma", type: "Limbah Padat B3", volume: 85, unit: "kg", date: "2026-05-17", method: "Mandiri", status: "Terverifikasi" }
+  { id: "LOG-007", companyId: "COM-001", companyName: "PT. Eco Industri", type: "Limbah Domestik", volume: 300, unit: "kg", date: "2026-05-19", method: "Mandiri", status: "Terjadwal_Pickup" }
 ];
 
 const initialPickupRequests: PickupRequest[] = [
@@ -14897,30 +15304,12 @@ const initialPickupRequests: PickupRequest[] = [
     driverName: "Budi Santoso",
     invoiceId: "INV-001",
     address: "Jl. Ir. H. Djuanda No. 120, Kec. Coblong, Bandung"
-  },
-  {
-    id: "PICK-002",
-    companyId: "COM-003",
-    companyName: "Restoran Sunda Nikmat",
-    wasteType: "Minyak Jelantah",
-    volume: "15 L",
-    date: "2026-05-21",
-    status: "PRICED",
-    transporterId: "TRANS-001",
-    transporterName: "PT. Transport Limbah Indonesia",
-    cost: 150000,
-    plateNo: "D 5678 DLH",
-    driverName: "Agus Salim",
-    invoiceId: "INV-003",
-    address: "Jl. Raya Lembang No. 45, Kec. Lembang, Bandung"
   }
 ];
 
 const initialInvoices: Invoice[] = [
   { id: "INV-001", companyId: "COM-002", companyName: "Bengkel Jaya Motor", type: "Pengangkutan", amount: 450000, date: "2026-05-20", status: "SETTLED" },
-  { id: "INV-002", companyId: "COM-001", companyName: "PT. Tekstil Sejahtera", type: "Retribusi UKL-UPL", amount: 1250000, date: "2026-05-10", status: "SETTLED" },
-  { id: "INV-003", companyId: "COM-003", companyName: "Restoran Sunda Nikmat", type: "Pengangkutan", amount: 150000, date: "2026-05-20", status: "UNPAID" },
-  { id: "INV-004", companyId: "COM-004", companyName: "Pabrik Kimia Farma", type: "Denda Keterlambatan", amount: 250000, date: "2026-05-05", status: "UNPAID" }
+  { id: "INV-002", companyId: "COM-001", companyName: "PT. Tekstil Sejahtera", type: "Retribusi UKL-UPL", amount: 1250000, date: "2026-05-10", status: "SETTLED" }
 ];
 
 const initialInspections: Inspection[] = [
@@ -14937,32 +15326,6 @@ const initialInspections: Inspection[] = [
     notes: "TPS B3 sudah tertata rapi, saluran IPAL lancar.",
     bapSigned: true,
     checklist: { tpsB3: true, ipal: true, apar: true, noise: false, safetyEquipment: true }
-  },
-  {
-    id: "INSP-002",
-    companyId: "COM-002",
-    companyName: "Bengkel Jaya Motor",
-    inspectorId: "OFF-001",
-    inspectorName: "Heryanto, S.T.",
-    date: "2026-05-25",
-    score: null,
-    status: "Terjadwal",
-    location: "Kec. Coblong, Bandung",
-    checklist: { tpsB3: false, ipal: false, apar: false, noise: false, safetyEquipment: false }
-  },
-  {
-    id: "INSP-003",
-    companyId: "COM-004",
-    companyName: "Pabrik Kimia Farma",
-    inspectorId: "OFF-001",
-    inspectorName: "Heryanto, S.T.",
-    date: "2026-05-18",
-    score: 65,
-    status: "Selesai",
-    location: "Bandung",
-    notes: "TPS B3 kurang rapi, air IPAL mendekati ambang batas pH 9.",
-    bapSigned: true,
-    checklist: { tpsB3: true, ipal: true, apar: false, noise: false, safetyEquipment: false }
   }
 ];
 
@@ -14974,28 +15337,7 @@ const initialNotifications: SystemNotification[] = [
     type: "DANGER",
     timestamp: "2026-05-20T09:30:00Z",
     read: false
-  },
-  {
-    id: "NTF-002",
-    title: "Jadwal Inspeksi Baru",
-    message: "Inspeksi terjadwal untuk Bengkel Jaya Motor pada 25 Mei 2026.",
-    type: "INFO",
-    timestamp: "2026-05-20T08:15:00Z",
-    read: false
-  },
-  {
-    id: "NTF-003",
-    title: "Pembayaran Diterima",
-    message: "Invoice INV-001 senilai Rp 450.000 telah dibayar oleh Bengkel Jaya Motor (Langsung disetor ke Kas Daerah).",
-    type: "SUCCESS",
-    timestamp: "2026-05-20T10:10:00Z",
-    read: false
   }
-];
-
-const initialAuditLogs: AuditLog[] = [
-  { id: "LOG-001", timestamp: "2026-05-20T08:00:00Z", user: "super@sijaga.id", role: "SUPER_ADMIN", action: "Konfigurasi payment gateway dimodifikasi ke Sandbox Mode." },
-  { id: "LOG-002", timestamp: "2026-05-20T09:12:00Z", user: "admin@dlh.go.id", role: "ADMIN_DLH", action: "Menyetujui dokumen UKL-UPL PT. Tekstil Sejahtera." }
 ];
 
 const getInitialAuthState = () => {
@@ -15025,14 +15367,17 @@ const initialAuth = getInitialAuthState();
 export const useSijagaStore = create<SijagaState>((set, get) => ({
   currentUser: initialAuth.currentUser,
   selectedCompanyId: initialAuth.selectedCompanyId,
+  users: [],
   companies: initialAuth.companies,
   wasteLogs: initialWasteLogs,
   pickupRequests: initialPickupRequests,
   invoices: initialInvoices,
   inspections: initialInspections,
   notifications: initialNotifications,
-  auditLogs: initialAuditLogs,
+  auditLogs: [], // Cleaned up mock data, purely fetched from API now
   transporters: [],
+  executiveAnalytics: null,
+  performanceAnalytics: null,
 
   setSelectedCompanyId: (id) => {
     set({ selectedCompanyId: id });
@@ -15040,35 +15385,23 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
 
   login: async (email, password, role) => {
     try {
-      /**
-       * 1. Eksekusi API Login
-       * Mengirim email dan password ke backend.
-       * Backend akan memvalidasi kredensial dan mengembalikan data User + Role + Token.
-       */
       const data = await apiService.auth.login(email, password, role);
 
       if (data && data.success) {
-        // 2. Persistensi Token & Profil
         const token = data.token;
         localStorage.setItem("sijaga_token", token);
 
-        // 3. Mapping Data User dari Backend
-        // Data user sekarang mengandung 'role' asli dari database.
         const apiUser = data.user;
         const apiCompanies = apiUser.companies || [];
 
         localStorage.setItem("sijaga_user", JSON.stringify(apiUser));
 
-        // 4. Update State Global
         set({
           currentUser: apiUser,
           companies: apiCompanies,
-          // Set default company ID jika user adalah role PERUSAHAAN
           selectedCompanyId: apiUser.companyId || (apiCompanies.length > 0 ? apiCompanies[0].id : null),
         });
 
-        // 5. Audit Log Real-time
-        // Kita menggunakan apiUser.role yang didapat dari database, bukan inputan manual.
         get().addAuditLog(apiUser.email, apiUser.role, "Melakukan login ke sistem (Autentikasi Terintegrasi).");
 
         return apiUser;
@@ -15076,10 +15409,6 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
 
       return null;
     } catch (error: any) {
-      /**
-       * Error Handling:
-       * Jika gagal (401, 500, dll), kita lempar error agar LoginPage dapat memproses toast pesan.
-       */
       console.error("Login Failure:", error.response?.data?.message || error.message);
       throw error;
     }
@@ -15100,6 +15429,79 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
     localStorage.removeItem("token");
     localStorage.removeItem("sijaga_user");
     set({ currentUser: null, selectedCompanyId: null });
+  },
+
+  // FUNGSI BARU: Mengambil seluruh pengguna terdaftar
+  fetchUsers: async () => {
+    try {
+      const response = await apiService.admin.getAllUsers();
+      if (response && response.success) {
+        set({ users: response.users || [] });
+      }
+    } catch (e) {
+      console.error("API fetchUsers failed", e);
+      toast.error("Gagal memuat data pengguna.");
+    }
+  },
+
+  // FUNGSI BARU: Mengubah hak akses pengguna
+  updateUserRole: async (id: string, role: UserRole) => {
+    try {
+      const response = await apiService.admin.updateUserRole(id, role);
+      if (response && response.success) {
+        set((state) => ({
+          users: state.users.map((u) => (u.id === id ? { ...u, role } : u))
+        }));
+        toast.success(`Berhasil! Hak akses pengguna diubah menjadi ${role}`);
+      }
+    } catch (e) {
+      console.error("API updateUserRole failed", e);
+      toast.error("Gagal mengubah hak akses pengguna.");
+    }
+  },
+
+  // FUNGSI BARU: Mengambil histori log secara nyata
+  fetchAuditLogs: async () => {
+    try {
+      const response = await apiService.auditLogs.getAll();
+      if (response && response.success) {
+        set({ auditLogs: response.logs || [] });
+      }
+    } catch (e) {
+      console.error("API fetchAuditLogs failed", e);
+    }
+  },
+
+  // FUNGSI BARU FAIL-SAFE: Mengambil seluruh data analitik eksekutif MoM dan delta kepatuhan [3]
+  fetchExecutiveAnalytics: async () => {
+    try {
+      const response = await apiService.analytics.getExecutive();
+      if (response && response.success) {
+        set({ executiveAnalytics: response.data });
+      } else {
+        set({ executiveAnalytics: defaultExecutiveAnalytics });
+      }
+    } catch (e) {
+      console.error("API fetchExecutiveAnalytics failed, using fallback", e);
+      set({ executiveAnalytics: defaultExecutiveAnalytics });
+      toast.error("Gagal memuat analitik eksekutif. Menampilkan data lokal.");
+    }
+  },
+
+  // FUNGSI BARU FAIL-SAFE: Mengambil analisis kinerja DLH dan monitoring bottleneck data [3]
+  fetchPerformanceAnalytics: async () => {
+    try {
+      const response = await apiService.analytics.getPerformance();
+      if (response && response.success) {
+        set({ performanceAnalytics: response.data });
+      } else {
+        set({ performanceAnalytics: defaultPerformanceAnalytics });
+      }
+    } catch (e) {
+      console.error("API fetchPerformanceAnalytics failed, using fallback", e);
+      set({ performanceAnalytics: defaultPerformanceAnalytics });
+      toast.error("Gagal memuat kinerja operasional. Menampilkan data lokal.");
+    }
   },
 
   fetchCompanies: async () => {
@@ -15319,6 +15721,27 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
 
     const comp = get().companies.find((c) => c.id === id);
     if (comp) {
+      // Auto-generate invoice if APPROVED (Offline)
+      if (status === "APPROVED" && comp.status !== "APPROVED") {
+        const isUklUpl = comp.docType === "UKL-UPL" || comp.docType === "UKL_UPL";
+        const invoiceType = isUklUpl ? "Retribusi UKL-UPL" : "Retribusi SPPL";
+        const amount = isUklUpl ? 1500000 : 500000;
+
+        const existingInvoice = get().invoices.find(i => i.companyId === id && i.type.includes("Retribusi"));
+        if (!existingInvoice) {
+          const newInvoice = {
+            id: `INV-${String(get().invoices.length + 1).padStart(3, "0")}`,
+            companyId: id,
+            companyName: comp.companyName,
+            type: invoiceType,
+            amount: amount,
+            date: new Date().toISOString().split("T")[0],
+            status: "UNPAID" as const
+          };
+          set((state) => ({ invoices: [...state.invoices, newInvoice] }));
+        }
+      }
+
       const user = get().currentUser;
       get().addAuditLog(user?.email || "SYSTEM", user?.role || "ADMIN_DLH", `Mengubah status perusahaan ${comp.companyName} menjadi ${status}`);
       get().addNotification(
@@ -15332,7 +15755,7 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
   downloadCompanyCertificate: async (id, companyName) => {
     try {
       const blob = await apiService.companies.downloadCertificatePdf(id);
-      
+
       // Buat URL Object sementara di memori browser
       const url = window.URL.createObjectURL(new Blob([blob]));
       const link = document.createElement('a');
@@ -15340,10 +15763,10 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
       // Beri nama file yang aman (hapus karakter aneh)
       link.setAttribute('download', `Sertifikat_${companyName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
       document.body.appendChild(link);
-      
+
       // Paksa browser memicu download
       link.click();
-      
+
       // Bersihkan memori
       link.parentNode?.removeChild(link);
       window.URL.revokeObjectURL(url);
@@ -15417,7 +15840,7 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
     } catch (e) {
       console.warn("API verifyWasteLog failed, fallback to local state", e);
     }
-    
+
     // Fallback offline
     set((state) => ({
       wasteLogs: state.wasteLogs.map(log => log.id === id ? { ...log, status } : log)
@@ -15449,7 +15872,7 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
     // --- FALLBACK OFFLINE ---
     const newId = `PICK-${String(get().pickupRequests.length + 1).padStart(3, "0")}`;
     const newInvId = `INV-${String(get().invoices.length + 1).padStart(3, "0")}`;
-    
+
     // Auto-calculate for offline fallback
     const parsedVol = parseFloat(requestData.volume.replace(/[^0-9.]/g, '')) || 0;
     const calcCost = parsedVol > 0 ? parsedVol * 10000 : 50000;
@@ -15820,9 +16243,8 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
     set((state) => ({
       auditLogs: [newLog, ...state.auditLogs]
     }));
-  }
+  },
 }));
-
 
 --- FILE: src\types\environmental.ts ---
 // src/types/environmental.ts

@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useSijagaStore } from "@/store/useSijagaStore";
 
-// --- MENU CONFIG FOR 6 ROLES ---
+// --- MENU CONFIG FOR 6 ROLES (DECOUPLED AUDITOR ROUTE) ---
 const MENU_CONFIG = {
   SUPER_ADMIN: [
     { label: "Dashboard", icon: <LayoutDashboard size={18} />, path: "/super-admin" },
@@ -47,7 +47,8 @@ const MENU_CONFIG = {
   ],
   AUDITOR: [
     { label: "Executive Analytics", icon: <BarChart4 size={18} />, path: "/auditor" },
-    { label: "Geospasial Kepatuhan", icon: <Map size={18} />, path: "/auditor/gis" },
+    // SOLUSI DECOUPLING: Mengubah rute pimpinan menjadi /auditor-gis agar navigasi unmount secara bersih
+    { label: "Geospasial Kepatuhan", icon: <Map size={18} />, path: "/auditor-gis" },
     { label: "Laporan Kinerja", icon: <ClipboardList size={18} />, path: "/auditor/performance" },
   ]
 };
@@ -141,7 +142,7 @@ export default function DashboardLayout({ children, noPadding = false }: any) {
                 className={cn(
                   "flex items-center gap-3 px-4 py-3 transition-colors border-l-[3px] outline-none group",
                   isActive
-                    ? "bg-emerald-500/10 text-emerald-400 border-emerald-500"
+                    ? "bg-emerald-50/10 text-emerald-400 border-emerald-500"
                     : "text-slate-400 border-transparent hover:bg-slate-800 hover:text-white"
                 )}
                 title={!sidebarOpen ? item.label : undefined}
@@ -182,35 +183,6 @@ export default function DashboardLayout({ children, noPadding = false }: any) {
               <Search size={14} className="text-slate-400" />
               <input type="text" placeholder="Cari data..." className="bg-transparent border-none text-xs font-medium outline-none w-64 text-slate-700 placeholder:text-slate-400" />
             </div>
-
-            {/* Multi-Company Selector Dropdown (Sharp Edges) */}
-            {currentUser && currentUser.role === "PERUSAHAAN" && (
-              <div className="flex items-center gap-2 ml-2 bg-slate-50 border border-slate-200 px-3 py-1.5 shadow-sm">
-                <Building2 size={14} className="text-emerald-600 shrink-0" />
-                <select
-                  value={selectedCompanyId || ""}
-                  onChange={(e) => {
-                    if (e.target.value === "ADD_NEW") {
-                      navigate("/company/register");
-                    } else {
-                      setSelectedCompanyId(e.target.value || null);
-                    }
-                  }}
-                  className="bg-transparent text-xs font-bold text-slate-800 outline-none cursor-pointer w-48 truncate"
-                >
-                  {currentUser.companies && currentUser.companies.length > 0 ? (
-                    currentUser.companies.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.companyName}
-                      </option>
-                    ))
-                  ) : (
-                    <option value="" disabled>Belum Ada Perusahaan</option>
-                  )}
-                  <option value="ADD_NEW" className="text-emerald-600 font-bold">+ Registrasi Perusahaan Baru</option>
-                </select>
-              </div>
-            )}
           </div>
 
           <div className="flex items-center gap-4">

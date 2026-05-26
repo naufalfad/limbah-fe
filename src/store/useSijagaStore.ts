@@ -127,6 +127,36 @@ export interface AuditLog {
   action: string;
 }
 
+export interface ExecutiveAnalyticsData {
+  totalCompanies: number;
+  averageEsg: number;
+  esgDelta: number;
+  totalWasteB3: number;
+  totalRevenue: number;
+  unpaidRevenue: number;
+  weeklyWasteChart: { date: string; volume: number }[];
+  distribution: { sangatPatuh: number; cukupPatuh: number; kritis: number };
+}
+
+export interface PerformanceAnalyticsData {
+  pendingApprovals: number;
+  completedInspections: number;
+  overdueInspections: number;
+  recentInspections: {
+    id: string;
+    companyId: string;
+    companyName: string;
+    inspectorId: string;
+    inspectorName: string;
+    date: string;
+    score: number | null;
+    status: string;
+    location: string;
+    notes?: string;
+  }[];
+  documentComposition: { sppl: number; uklUpl: number };
+}
+
 interface SijagaState {
   // Core State
   currentUser: User | null;
@@ -140,6 +170,8 @@ interface SijagaState {
   notifications: SystemNotification[];
   auditLogs: AuditLog[];
   transporters: User[];
+  executiveAnalytics: ExecutiveAnalyticsData | null;
+  performanceAnalytics: PerformanceAnalyticsData | null;
 
   // Actions
   setSelectedCompanyId: (id: string | null) => void;
@@ -174,7 +206,29 @@ interface SijagaState {
   addNotification: (title: string, message: string, type: SystemNotification["type"]) => Promise<void>;
   readAllNotifications: () => Promise<void>;
   addAuditLog: (user: string, role: string, action: string) => Promise<void>;
+  fetchExecutiveAnalytics: () => Promise<void>;
+  fetchPerformanceAnalytics: () => Promise<void>;
 }
+
+// STRATEGI RECOVERY: Struktur default data aman jika API Backend gagal merespon (Fase 3 & 4) [3]
+const defaultExecutiveAnalytics: ExecutiveAnalyticsData = {
+  totalCompanies: 0,
+  averageEsg: 0,
+  esgDelta: 0,
+  totalWasteB3: 0,
+  totalRevenue: 0,
+  unpaidRevenue: 0,
+  weeklyWasteChart: [],
+  distribution: { sangatPatuh: 0, cukupPatuh: 0, kritis: 0 }
+};
+
+const defaultPerformanceAnalytics: PerformanceAnalyticsData = {
+  pendingApprovals: 0,
+  completedInspections: 0,
+  overdueInspections: 0,
+  recentInspections: [],
+  documentComposition: { sppl: 0, uklUpl: 0 }
+};
 
 // Initial Mock Data (used as offline fallbacks for companies/pickups)
 const initialCompanies: Company[] = [
@@ -183,24 +237,24 @@ const initialCompanies: Company[] = [
     companyName: "PT. Tekstil Sejahtera",
     nib: "9120301294821",
     npwp: "01.234.567.8-401.000",
-    picName: "Budi Santoso",
-    picPhone: "08123456789",
-    picRole: "Direktur",
+    picName: "Budi",
+    picPhone: "081234567890",
+    picRole: "Direktur Utama",
     investmentType: "PMDN",
-    yearBuilt: "2018",
+    yearBuilt: "2015",
     buildingArea: 2500,
-    operationalHours: "24 Jam",
-    rawMaterials: "Kapas, Zat Pewarna Kimia",
-    waterSource: "PDAM & Sumur Bor",
-    powerSource: "PLN 150 kVA",
-    kbli: "13111",
-    investment: 8500000000,
+    operationalHours: "08:00 - 17:00",
+    rawMaterials: "Serat Kapas, Pewarna Tekstil",
+    waterSource: "PDAM",
+    powerSource: "PLN",
+    kbli: "13121",
+    investment: 6000000000,
     landArea: 6000,
-    employees: 120,
+    employees: 150,
     lat: "-6.9147",
     lng: "107.6098",
-    address: "Jl. Rancaekek KM 15, Kec. Cicadas, Bandung",
-    docType: "UKL-UPL",
+    address: "Jl. Rancaekek No. 12, Bandung",
+    docType: "UKL_UPL",
     status: "APPROVED",
     score: 85
   },
@@ -209,85 +263,59 @@ const initialCompanies: Company[] = [
     companyName: "Bengkel Jaya Motor",
     nib: "9120301294112",
     npwp: "02.345.678.9-402.000",
-    picName: "Agus Pratama",
-    picPhone: "08129876543",
+    picName: "Budi",
+    picPhone: "081234567890",
     picRole: "Pemilik",
     investmentType: "PMDN",
     yearBuilt: "2020",
-    buildingArea: 150,
-    operationalHours: "08:00 - 17:00",
-    rawMaterials: "Sparepart, Oli, Grease",
-    waterSource: "Sumur Gali",
-    powerSource: "PLN 2200 VA",
-    kbli: "45201",
-    investment: 350000000,
-    landArea: 200,
-    employees: 8,
+    buildingArea: 200,
+    operationalHours: "09:00 - 19:00",
+    rawMaterials: "Sparepart Motor, Oli",
+    waterSource: "Sumur Bor",
+    powerSource: "PLN",
+    kbli: "45404",
+    investment: 300000000,
+    landArea: 300,
+    employees: 5,
     lat: "-6.9034",
     lng: "107.6189",
-    address: "Jl. Ir. H. Djuanda No. 120, Kec. Coblong, Bandung",
+    address: "Jl. Suropati No. 45, Bandung",
     docType: "SPPL",
-    status: "REVIEW"
+    status: "REVIEW",
+    score: undefined
   },
   {
     id: "COM-003",
     companyName: "Restoran Sunda Nikmat",
     nib: "9120301294553",
     npwp: "03.456.789.0-403.000",
-    picName: "Siti Aminah",
-    picPhone: "08771234567",
+    picName: "Asep",
+    picPhone: "087823456789",
     picRole: "Manajer Operasional",
     investmentType: "PMDN",
-    yearBuilt: "2015",
-    buildingArea: 400,
+    yearBuilt: "2018",
+    buildingArea: 800,
     operationalHours: "10:00 - 22:00",
-    rawMaterials: "Bahan Makanan, Minyak Goreng",
+    rawMaterials: "Bahan Pangan, Minyak Goreng",
     waterSource: "PDAM",
-    powerSource: "PLN 5500 VA",
+    powerSource: "PLN",
     kbli: "56101",
     investment: 1200000000,
-    landArea: 600,
-    employees: 25,
+    landArea: 1000,
+    employees: 24,
     lat: "-6.8245",
     lng: "107.6190",
-    address: "Jl. Raya Lembang No. 45, Kec. Lembang, Bandung",
+    address: "Jl. Lembang No. 102, Bandung Barat",
     docType: "SPPL",
     status: "APPROVED",
     score: 90
-  },
-  {
-    id: "COM-004",
-    companyName: "Pabrik Kimia Farma",
-    nib: "9120301294001",
-    npwp: "01.111.222.3-401.000",
-    picName: "Indra Wijaya",
-    picPhone: "081122334455",
-    picRole: "Kepala Pabrik",
-    investmentType: "PMDN",
-    yearBuilt: "2012",
-    buildingArea: 4000,
-    operationalHours: "24 Jam",
-    rawMaterials: "Bahan Aktif Obat, Alkohol",
-    waterSource: "PDAM",
-    powerSource: "PLN 300 kVA",
-    kbli: "21012",
-    investment: 15000000000,
-    landArea: 8000,
-    employees: 200,
-    lat: "-6.9388",
-    lng: "107.6255",
-    address: "Jl. Soekarno-Hatta No. 500, Bandung",
-    docType: "UKL-UPL",
-    status: "APPROVED",
-    score: 65
   }
 ];
 
 const initialWasteLogs: WasteLog[] = [
   { id: "W-001", companyId: "COM-002", companyName: "Bengkel Jaya Motor", type: "Oli Bekas", volume: 45, unit: "L", date: "2026-05-15", method: "Dinas", status: "Terverifikasi" },
   { id: "LOG-006", companyId: "COM-002", companyName: "PT. Tekstil Sejahtera", type: "Limbah Cair", volume: 150, unit: "m³", date: "2026-05-18", method: "Dinas", status: "Proses_Verifikasi" },
-  { id: "LOG-007", companyId: "COM-001", companyName: "PT. Eco Industri", type: "Limbah Domestik", volume: 300, unit: "kg", date: "2026-05-19", method: "Mandiri", status: "Terjadwal_Pickup" },
-  { id: "W-004", companyId: "COM-004", companyName: "Pabrik Kimia Farma", type: "Limbah Padat B3", volume: 85, unit: "kg", date: "2026-05-17", method: "Mandiri", status: "Terverifikasi" }
+  { id: "LOG-007", companyId: "COM-001", companyName: "PT. Eco Industri", type: "Limbah Domestik", volume: 300, unit: "kg", date: "2026-05-19", method: "Mandiri", status: "Terjadwal_Pickup" }
 ];
 
 const initialPickupRequests: PickupRequest[] = [
@@ -306,30 +334,12 @@ const initialPickupRequests: PickupRequest[] = [
     driverName: "Budi Santoso",
     invoiceId: "INV-001",
     address: "Jl. Ir. H. Djuanda No. 120, Kec. Coblong, Bandung"
-  },
-  {
-    id: "PICK-002",
-    companyId: "COM-003",
-    companyName: "Restoran Sunda Nikmat",
-    wasteType: "Minyak Jelantah",
-    volume: "15 L",
-    date: "2026-05-21",
-    status: "PRICED",
-    transporterId: "TRANS-001",
-    transporterName: "PT. Transport Limbah Indonesia",
-    cost: 150000,
-    plateNo: "D 5678 DLH",
-    driverName: "Agus Salim",
-    invoiceId: "INV-003",
-    address: "Jl. Raya Lembang No. 45, Kec. Lembang, Bandung"
   }
 ];
 
 const initialInvoices: Invoice[] = [
   { id: "INV-001", companyId: "COM-002", companyName: "Bengkel Jaya Motor", type: "Pengangkutan", amount: 450000, date: "2026-05-20", status: "SETTLED" },
-  { id: "INV-002", companyId: "COM-001", companyName: "PT. Tekstil Sejahtera", type: "Retribusi UKL-UPL", amount: 1250000, date: "2026-05-10", status: "SETTLED" },
-  { id: "INV-003", companyId: "COM-003", companyName: "Restoran Sunda Nikmat", type: "Pengangkutan", amount: 150000, date: "2026-05-20", status: "UNPAID" },
-  { id: "INV-004", companyId: "COM-004", companyName: "Pabrik Kimia Farma", type: "Denda Keterlambatan", amount: 250000, date: "2026-05-05", status: "UNPAID" }
+  { id: "INV-002", companyId: "COM-001", companyName: "PT. Tekstil Sejahtera", type: "Retribusi UKL-UPL", amount: 1250000, date: "2026-05-10", status: "SETTLED" }
 ];
 
 const initialInspections: Inspection[] = [
@@ -346,32 +356,6 @@ const initialInspections: Inspection[] = [
     notes: "TPS B3 sudah tertata rapi, saluran IPAL lancar.",
     bapSigned: true,
     checklist: { tpsB3: true, ipal: true, apar: true, noise: false, safetyEquipment: true }
-  },
-  {
-    id: "INSP-002",
-    companyId: "COM-002",
-    companyName: "Bengkel Jaya Motor",
-    inspectorId: "OFF-001",
-    inspectorName: "Heryanto, S.T.",
-    date: "2026-05-25",
-    score: null,
-    status: "Terjadwal",
-    location: "Kec. Coblong, Bandung",
-    checklist: { tpsB3: false, ipal: false, apar: false, noise: false, safetyEquipment: false }
-  },
-  {
-    id: "INSP-003",
-    companyId: "COM-004",
-    companyName: "Pabrik Kimia Farma",
-    inspectorId: "OFF-001",
-    inspectorName: "Heryanto, S.T.",
-    date: "2026-05-18",
-    score: 65,
-    status: "Selesai",
-    location: "Bandung",
-    notes: "TPS B3 kurang rapi, air IPAL mendekati ambang batas pH 9.",
-    bapSigned: true,
-    checklist: { tpsB3: true, ipal: true, apar: false, noise: false, safetyEquipment: false }
   }
 ];
 
@@ -382,22 +366,6 @@ const initialNotifications: SystemNotification[] = [
     message: "Volume limbah cair di PT. Tekstil Sejahtera melampaui debit normal 120m³.",
     type: "DANGER",
     timestamp: "2026-05-20T09:30:00Z",
-    read: false
-  },
-  {
-    id: "NTF-002",
-    title: "Jadwal Inspeksi Baru",
-    message: "Inspeksi terjadwal untuk Bengkel Jaya Motor pada 25 Mei 2026.",
-    type: "INFO",
-    timestamp: "2026-05-20T08:15:00Z",
-    read: false
-  },
-  {
-    id: "NTF-003",
-    title: "Pembayaran Diterima",
-    message: "Invoice INV-001 senilai Rp 450.000 telah dibayar oleh Bengkel Jaya Motor (Langsung disetor ke Kas Daerah).",
-    type: "SUCCESS",
-    timestamp: "2026-05-20T10:10:00Z",
     read: false
   }
 ];
@@ -438,6 +406,8 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
   notifications: initialNotifications,
   auditLogs: [], // Cleaned up mock data, purely fetched from API now
   transporters: [],
+  executiveAnalytics: null,
+  performanceAnalytics: null,
 
   setSelectedCompanyId: (id) => {
     set({ selectedCompanyId: id });
@@ -529,6 +499,38 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
       }
     } catch (e) {
       console.error("API fetchAuditLogs failed", e);
+    }
+  },
+
+  // FUNGSI BARU FAIL-SAFE: Mengambil seluruh data analitik eksekutif MoM dan delta kepatuhan [3]
+  fetchExecutiveAnalytics: async () => {
+    try {
+      const response = await apiService.analytics.getExecutive();
+      if (response && response.success) {
+        set({ executiveAnalytics: response.data });
+      } else {
+        set({ executiveAnalytics: defaultExecutiveAnalytics });
+      }
+    } catch (e) {
+      console.error("API fetchExecutiveAnalytics failed, using fallback", e);
+      set({ executiveAnalytics: defaultExecutiveAnalytics });
+      toast.error("Gagal memuat analitik eksekutif. Menampilkan data lokal.");
+    }
+  },
+
+  // FUNGSI BARU FAIL-SAFE: Mengambil analisis kinerja DLH dan monitoring bottleneck data [3]
+  fetchPerformanceAnalytics: async () => {
+    try {
+      const response = await apiService.analytics.getPerformance();
+      if (response && response.success) {
+        set({ performanceAnalytics: response.data });
+      } else {
+        set({ performanceAnalytics: defaultPerformanceAnalytics });
+      }
+    } catch (e) {
+      console.error("API fetchPerformanceAnalytics failed, using fallback", e);
+      set({ performanceAnalytics: defaultPerformanceAnalytics });
+      toast.error("Gagal memuat kinerja operasional. Menampilkan data lokal.");
     }
   },
 
@@ -1271,5 +1273,5 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
     set((state) => ({
       auditLogs: [newLog, ...state.auditLogs]
     }));
-  }
+  },
 }));
