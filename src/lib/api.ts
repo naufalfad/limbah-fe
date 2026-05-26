@@ -40,12 +40,12 @@ export const apiService = {
       const response = await api.get("/api/admin/transporters");
       return response.data;
     },
-    // FUNGSI BARU: Mengambil seluruh data user untuk Super Admin
+    // Mengambil seluruh data user untuk Super Admin
     getAllUsers: async () => {
       const response = await api.get("/api/admin/users");
       return response.data;
     },
-    // FUNGSI BARU: Mengubah hak akses / role dari user
+    // Mengubah hak akses / role dari user
     updateUserRole: async (id: string, role: string) => {
       const response = await api.patch(`/api/admin/users/${id}/role`, { role });
       return response.data;
@@ -169,6 +169,17 @@ export const apiService = {
     },
     create: async (payload: { user: string, role: string, action: string }) => {
       const response = await api.post("/api/audit-logs", payload);
+      return response.data;
+    }
+  },
+  // BLOK BARU: Sistem pemanggil analitik eksekutif terpusat dari Backend
+  analytics: {
+    getExecutive: async () => {
+      const response = await api.get("/api/analytics/executive");
+      return response.data;
+    },
+    getPerformance: async () => {
+      const response = await api.get("/api/analytics/performance");
       return response.data;
     }
   }

@@ -14,11 +14,12 @@ export default function GisSidebar() {
     const { openPanel, activePanels, closePanelsToTheRight } = useGisUIStore();
     const { currentUser } = useSijagaStore();
 
-    // Deteksi jika role yang masuk adalah Petugas Lapangan atau Transporter (Information Expert)
+    // Deteksi jika role yang masuk adalah Petugas Lapangan, Transporter, atau Auditor (Information Expert) [3]
     const isOfficer = currentUser?.role === "PETUGAS_LAPANGAN";
     const isTransporter = currentUser?.role === "PENGANGKUT";
+    const isAuditor = currentUser?.role === "AUDITOR"; // DETEKSI BARU: Khusus pimpinan/auditor eksekutif [3]
 
-    // Menyusun navigasi item secara reaktif sesuai role yang aktif (Adaptive GFW UI)
+    // Menyusun navigasi item secara reaktif sesuai role yang aktif (Adaptive GFW UI) [3]
     const navigationItems = useMemo(() => {
         const items = [
             {
@@ -45,8 +46,16 @@ export default function GisSidebar() {
                 icon: Truck,
                 title: "Live Pelacakan Armada"
             });
+        } else if (isAuditor) {
+            // OPTIMASI BARU: Jika Auditor / Pimpinan Eksekutif, berikan terminologi khusus kepatuhan daerah [3]
+            items.push({
+                type: "katalog-perusahaan" as GisPanelType,
+                label: "Kepatuhan",
+                icon: Building2,
+                title: "Pemantauan Kepatuhan Industri"
+            });
         } else {
-            // Jika Admin / Auditor biasa
+            // Jika Admin DLH atau Super Admin biasa
             items.push({
                 type: "katalog-perusahaan" as GisPanelType,
                 label: "Industri",
@@ -56,7 +65,7 @@ export default function GisSidebar() {
         }
 
         return items;
-    }, [isOfficer, isTransporter]);
+    }, [isOfficer, isTransporter, isAuditor]);
 
     // Helper cek status aktif
     const isPanelActive = (type: GisPanelType) => {

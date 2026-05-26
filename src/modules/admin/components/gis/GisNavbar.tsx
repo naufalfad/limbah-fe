@@ -1,5 +1,5 @@
 // src/modules/admin/components/gis/GisNavbar.tsx
-import React from "react";
+import React, { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronLeft, Leaf, Share2, RefreshCw } from "lucide-react";
 import { useSijagaStore } from "@/store/useSijagaStore";
@@ -16,9 +16,37 @@ export default function GisNavbar() {
     const { currentUser } = useSijagaStore();
     const { clearPanels, resetMapContext } = useGisUIStore();
 
-    // Helper untuk inisial nama
+    // Helper untuk inisial nama pimpinan / petugas secara dinamis (Fase 4) [3]
     const getInitials = (name: string) => {
         return name?.split(" ").map((n) => n[0]).join("").toUpperCase().substring(0, 2) || "AD";
+    };
+
+    // Helper penterjemah label hak akses eksekutif [3]
+    const getRoleLabel = (r: string) => {
+        const labels: Record<string, string> = {
+            SUPER_ADMIN: "SUPER ADMIN",
+            ADMIN_DLH: "VERIFIKATOR",
+            PETUGAS_LAPANGAN: "PETUGAS",
+            PERUSAHAAN: "PERUSAHAAN",
+            PENGANGKUT: "PENGANGKUT",
+            AUDITOR: "AUDITOR"
+        };
+        return labels[r] || r;
+    };
+
+    // FUNGSI BARU: Evaluasi Rute Kembali Berdasarkan Otoritas Sesi (Information Expert) [3]
+    const handleBackClick = () => {
+        const role = currentUser?.role;
+        const routes: Record<string, string> = {
+            SUPER_ADMIN: "/super-admin",
+            ADMIN_DLH: "/admin",
+            PETUGAS_LAPANGAN: "/officer/inspections",
+            PENGANGKUT: "/transporter",
+            AUDITOR: "/auditor",
+        };
+
+        const destination = routes[role || ""] || "/";
+        navigate(destination);
     };
 
     const handleLogoClick = () => {
@@ -30,17 +58,17 @@ export default function GisNavbar() {
     return (
         <nav className="absolute top-0 left-0 right-0 h-16 px-6 flex items-center justify-between bg-white border-b border-slate-200 z-50 pointer-events-auto">
 
-            {/* KIRI: Tombol Back & Branding */}
+            {/* KIRI: Tombol Back Dinamis (Fail-Safe Navigation) & Branding [3] */}
             <div className="flex items-center gap-5">
                 <button
-                    onClick={() => navigate('/admin')}
+                    onClick={handleBackClick}
                     className="group flex items-center gap-2 text-slate-500 hover:text-emerald-700 transition-all rounded-none outline-none"
                 >
                     <div className="p-1.5 group-hover:bg-slate-100 transition-colors rounded-none">
                         <ChevronLeft size={20} />
                     </div>
                     <span className="text-[10px] font-bold uppercase tracking-widest hidden md:block">
-                        Dashboard
+                        Kembali
                     </span>
                 </button>
 
@@ -90,17 +118,17 @@ export default function GisNavbar() {
 
                 <div className="h-6 w-px bg-slate-200 mx-2 hidden sm:block"></div>
 
-                {/* Profile Label (Tanpa Border Luar, Menyatu dengan background) */}
+                {/* Profile Label Dinamis: Menyerap identitas sesi secara penuh (Fase 4) [3] */}
                 <div className="flex items-center gap-3 pl-2 pr-2 py-1 group cursor-default">
                     <div className="w-8 h-8 bg-emerald-100 flex items-center justify-center text-[11px] font-black text-emerald-700 rounded-none">
-                        {getInitials(currentUser?.name || "Admin")}
+                        {getInitials(currentUser?.name || "AD")}
                     </div>
                     <div className="hidden sm:flex flex-col items-start text-left">
                         <span className="text-[10px] font-black text-slate-800 uppercase tracking-tight line-clamp-1 max-w-[100px]">
                             {currentUser?.name || "Admin DLH"}
                         </span>
                         <span className="text-[8px] text-emerald-600 font-bold uppercase tracking-widest">
-                            Verifikator
+                            {getRoleLabel(currentUser?.role || "ADMIN_DLH")}
                         </span>
                     </div>
                 </div>

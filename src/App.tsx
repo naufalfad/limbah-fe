@@ -1,3 +1,4 @@
+// src/App.tsx
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Toaster } from "sonner";
 
@@ -36,6 +37,7 @@ import OfficerGISPage from "./modules/inspections/pages/OfficerGISPage";
 
 // Auditor / Pimpinan
 import AuditorDashboardPage from "./modules/dashboard/pages/AuditorDashboardPage";
+import AuditorGISPage from "./modules/dashboard/pages/AuditorGISPage"; // Impor Command Center Spasial Pimpinan
 
 // Super Admin
 import SuperAdminPage from "./modules/admin/pages/SuperAdminPage";
@@ -77,8 +79,10 @@ function App() {
         <Route path="/officer/inspections" element={<OfficerInspectionsPage />} />
         <Route path="/officer/gis" element={<OfficerGISPage />} />
 
-        {/* Auditor */}
+        {/* Auditor / Pimpinan */}
         <Route path="/auditor" element={<AuditorDashboardPage />} />
+        {/* SOLUSI DECOUPLING: Mengubah rute menjadi /auditor-gis agar terpisah mutlak dari parameter dinamis /auditor/:tab */}
+        <Route path="/auditor-gis" element={<AuditorGISPage />} />
         <Route path="/auditor/:tab" element={<AuditorDashboardPage />} />
 
         {/* Super Admin */}

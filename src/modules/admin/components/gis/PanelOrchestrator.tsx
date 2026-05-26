@@ -4,13 +4,13 @@ import { X, Map as MapIcon } from "lucide-react";
 import { useGisUIStore } from "@/store/useGisUIStore";
 import { GisPanelType } from "@/types/gis";
 
-// Mengimpor Sub-Panel GIS GFW
+// Mengimpor Sub-Panel GFW Spasial (Cohesive Modules)
 import LayerPanel from "./panels/LayerPanel";
 import CompanyPanel from "./panels/CompanyPanel";
 import DetailPanel from "./panels/DetailPanel";
 import PatrolTaskPanel from "./panels/PatrolTaskPanel";
 
-// MODULAR: Mengimpor laci taktis telemetri dari modul transport
+// MODULAR: Mengimpor laci taktis telemetri live dari modul transport
 import ActiveFleetPanel from "@/modules/transport/components/gis/panels/ActiveFleetPanel";
 
 /**
@@ -30,7 +30,7 @@ export default function PanelOrchestrator() {
         return () => window.removeEventListener("resize", handleResize);
     }, []);
 
-    // Sumbu X: Base width 280px (Ultra Slim)
+    // Sumbu X: Base width 280px (Ultra Slim untuk ruang peta maksimal)
     const PANEL_WIDTH = isMobile ? (typeof window !== 'undefined' ? window.innerWidth - 64 : 280) : 280;
     const PANEL_GAP = 0; // Zero Gap Policy (Flush)
 
@@ -76,14 +76,14 @@ export default function PanelOrchestrator() {
                                 <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest leading-none">
                                     {panel.type.replace("-", " ")}
                                 </span>
-                                <h3 className="text-[11px] font-bold text-slate-800 truncate max-w-[200px] tracking-tight mt-1 uppercase">
+                                <h3 className="text-[11px] font-bold text-slate-800 truncate max-w-[200px] tracking-tight mt-1 uppercase leading-none">
                                     {panel.title}
                                 </h3>
                             </div>
 
                             <button
                                 onClick={() => closePanel(panel.id)}
-                                className="p-1 rounded-none bg-transparent hover:bg-slate-200 text-slate-400 hover:text-rose-500 transition-colors active:scale-95"
+                                className="p-1 rounded-none bg-transparent hover:bg-slate-200 text-slate-400 hover:text-rose-500 transition-colors active:scale-95 outline-none"
                                 title="Tutup Panel"
                             >
                                 <X size={16} strokeWidth={2.5} />
@@ -104,24 +104,30 @@ export default function PanelOrchestrator() {
     );
 }
 
+// Fungsi Delegasi Rendering Konten Panel secara Modular (GRASP - High Cohesion) [3]
 function renderPanelContent(type: GisPanelType, data: any) {
     switch (type) {
-        case "layer-kewajiban": return <LayerPanel />;
-        case "katalog-perusahaan": return <CompanyPanel />;
-        case "tugas-patroli": return <PatrolTaskPanel />;
-        case "armada-tracking": return <ActiveFleetPanel />; // <-- MODULAR: Mengarahkan laci ke modul transport
-        case "detil-perusahaan": return <DetailPanel companyData={data} />;
+        case "layer-kewajiban":
+            return <LayerPanel />;
+        case "katalog-perusahaan":
+            return <CompanyPanel />;
+        case "tugas-patroli":
+            return <PatrolTaskPanel />;
+        case "armada-tracking":
+            return <ActiveFleetPanel />; // <-- MODULAR: Mengarahkan laci ke modul transport
+        case "detil-perusahaan":
+            return <DetailPanel companyData={data} />;
         case "tentang":
             return (
-                <div className="p-6 text-center space-y-3 text-slate-500">
-                    <MapIcon size={32} className="mx-auto text-emerald-600/40" />
+                <div className="p-6 text-center space-y-3 text-slate-500 font-sans">
+                    <MapIcon size={32} className="mx-auto text-emerald-600/40 animate-pulse" />
                     <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">PANTAU LIMBAH GIS</p>
-                        <p className="text-[11px] mt-2 font-medium">Sistem Pemetaan Geospasial Kepatuhan Lingkungan v1.0</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-600 leading-none">PANTAU LIMBAH GIS</p>
+                        <p className="text-[11px] mt-2 font-medium leading-relaxed">Sistem Pemetaan Geospasial Kepatuhan Lingkungan v1.0</p>
                     </div>
                 </div>
             );
         default:
-            return <div className="p-4 text-xs">Modul belum dibuat.</div>;
+            return <div className="p-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Modul sedang dikonstruksi...</div>;
     }
 }
