@@ -79,7 +79,7 @@ function TrackingMapController({ truckPos }: { truckPos: [number, number] }) {
 }
 
 export default function TrackingMap() {
-    const { pickupRequests } = useSijagaStore();
+    const { pickupRequests, companies } = useSijagaStore();
     const activeOrders = pickupRequests.filter(p => p.status === "ON_THE_ROAD" || p.status === "LOADED" || p.status === "PAID");
     const [selectedOrder, setSelectedOrder] = useState<any>(null);
 
@@ -105,6 +105,20 @@ export default function TrackingMap() {
         return () => window.removeEventListener('map-truck-update', handleGpsUpdate);
     }, []);
 
+    // Resolusi Koordinat Pabrik Pengirim secara Dinamis [3]
+    const company = companies.find(c => c.id === selectedOrder?.companyId);
+    let companyCoords: [number, number] = DEFAULT_CENTER;
+    if (company && company.lat && company.lng) {
+        const parsedLat = parseFloat(company.lat);
+        const parsedLng = parseFloat(company.lng);
+        if (!isNaN(parsedLat) && !isNaN(parsedLng)) {
+            companyCoords = [parsedLat, parsedLng];
+        }
+    }
+
+    // Sambungkan titik rute dari pabrik riil menuju titik tengah (simulasi)
+    const dynamicRoutePoints = [companyCoords, ...routePoints];
+
     return (
         <div className="absolute inset-0 z-0 bg-slate-100">
             <MapContainer
@@ -117,8 +131,8 @@ export default function TrackingMap() {
 
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
 
-                {/* Jalur Rute Polylines */}
-                <Polyline positions={routePoints} color="#059669" weight={4} dashArray="5, 10" />
+                {/* Jalur Rute Polylines Dinamis */}
+                <Polyline positions={dynamicRoutePoints} color="#059669" weight={4} dashArray="5, 10" />
 
                 {/* Marker Truk Bergerak */}
                 <Marker position={truckPos} icon={TruckIcon}>
@@ -131,11 +145,12 @@ export default function TrackingMap() {
                 </Marker>
 
                 {/* Titik Muat Limbah (Start) */}
-                <Marker position={DEFAULT_CENTER}>
+                <Marker position={companyCoords}>
                     <Popup>
                         <div className="text-left font-sans p-1">
-                            <h4 className="font-black text-slate-800 text-xs leading-none">Titik Muat Limbah</h4>
-                            <p className="text-[10px] text-slate-500 font-bold mt-1.5">{selectedOrder?.companyName || "Industri Payer"}</p>
+                            <h4 className="font-black text-slate-800 text-xs leading-none">Lokasi Pabrik (Penjemputan)</h4>
+                            <p className="text-[10px] text-slate-500 font-bold mt-1.5">{selectedOrder?.companyName || "Pabrik Pemesan"}</p>
+                            {company && <p className="text-[9px] text-slate-400 mt-1">{company.address}</p>}
                         </div>
                     </Popup>
                 </Marker>

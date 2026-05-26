@@ -17,12 +17,13 @@ import TrackingMap from "../components/gis/TrackingMap"; // Komponen peta murni 
  * 3. Kecepatan, sisa jarak, pH, & suhu tangki terintegrasi di dalam laci kiri [3].
  */
 export default function TransporterTracking() {
-  const { fetchPickupRequests } = useSijagaStore();
+  const { fetchPickupRequests, fetchCompanies } = useSijagaStore();
 
-  // Memastikan database manifest pengangkutan diambil saat masuk halaman ini (Information Expert) [3]
+  // Memastikan database manifest dan data perusahaan ditarik saat masuk halaman ini
   useEffect(() => {
     fetchPickupRequests();
-  }, [fetchPickupRequests]);
+    fetchCompanies();
+  }, [fetchPickupRequests, fetchCompanies]);
 
   return (
     // Memenuhi 100% viewport layar tanpa dibungkus DashboardLayout untuk sensasi Command Center penuh

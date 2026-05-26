@@ -14,7 +14,7 @@ import EvidenceUploadModal from "../components/EvidenceUploadModal";
 
 export default function TransporterDashboard() {
   const { pickupRequests, currentUser, fetchPickupRequests, updatePickupStatus } = useSijagaStore();
-  const transporterId = currentUser?.transporterId || "TRANS-001";
+  const transporterId = currentUser?.id;
 
   // State Pengendali Modal Penawaran Harga [3]
   const [selectedRequest, setSelectedRequest] = useState<any>(null);

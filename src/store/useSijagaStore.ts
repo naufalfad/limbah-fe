@@ -723,6 +723,27 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
 
     const comp = get().companies.find((c) => c.id === id);
     if (comp) {
+      // Auto-generate invoice if APPROVED (Offline)
+      if (status === "APPROVED" && comp.status !== "APPROVED") {
+        const isUklUpl = comp.docType === "UKL-UPL" || comp.docType === "UKL_UPL";
+        const invoiceType = isUklUpl ? "Retribusi UKL-UPL" : "Retribusi SPPL";
+        const amount = isUklUpl ? 1500000 : 500000;
+        
+        const existingInvoice = get().invoices.find(i => i.companyId === id && i.type.includes("Retribusi"));
+        if (!existingInvoice) {
+          const newInvoice = {
+            id: `INV-${String(get().invoices.length + 1).padStart(3, "0")}`,
+            companyId: id,
+            companyName: comp.companyName,
+            type: invoiceType,
+            amount: amount,
+            date: new Date().toISOString().split("T")[0],
+            status: "UNPAID" as const
+          };
+          set((state) => ({ invoices: [...state.invoices, newInvoice] }));
+        }
+      }
+
       const user = get().currentUser;
       get().addAuditLog(user?.email || "SYSTEM", user?.role || "ADMIN_DLH", `Mengubah status perusahaan ${comp.companyName} menjadi ${status}`);
       get().addNotification(

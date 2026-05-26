@@ -11,7 +11,7 @@ interface IncomingBidsProps {
 
 export default function IncomingBids({ onSelectRequest }: IncomingBidsProps) {
     const { pickupRequests, currentUser } = useSijagaStore();
-    const transporterId = currentUser?.transporterId || "TRANS-001";
+    const transporterId = currentUser?.id;
 
     // Memfilter penugasan berstatus PENDING (menunggu penawaran harga)
     const pendingBids = useMemo(() => {

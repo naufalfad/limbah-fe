@@ -21,7 +21,7 @@ export default function ActiveManifests({
 }: ActiveManifestsProps) {
     const navigate = useNavigate();
     const { pickupRequests, currentUser } = useSijagaStore();
-    const transporterId = currentUser?.transporterId || "TRANS-001";
+    const transporterId = currentUser?.id;
 
     // Memfilter order aktif untuk transporter ini (selain PENDING dan COMPLETED)
     const activePickups = useMemo(() => {

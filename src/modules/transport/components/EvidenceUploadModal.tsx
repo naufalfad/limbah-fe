@@ -70,14 +70,14 @@ export default function EvidenceUploadModal({ isOpen, onClose, evidenceRequest }
         try {
             const photoPayload = evidencePhotos.length > 0 ? JSON.stringify(evidencePhotos) : "[]";
 
-            // Serialisasi data multi-part menjadi JSON String agar lolos type-checking compiler [3]
-            const payloadString = JSON.stringify({
+            // Mengirimkan objek payload asli, bukan diserialisasi (karena api.ts menggunakan spread operator ...payload)
+            const payloadObject = {
                 evidencePhoto: photoPayload,
                 actualVolume,
                 transportReport
-            });
+            };
 
-            await updatePickupStatus(evidenceRequest.id, "COMPLETED", payloadString);
+            await updatePickupStatus(evidenceRequest.id, "COMPLETED", payloadObject);
 
             // Reset State & Tutup Dialog [3]
             setEvidencePhotos([]);
