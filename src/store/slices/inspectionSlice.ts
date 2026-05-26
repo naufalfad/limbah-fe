@@ -63,9 +63,9 @@ export const createInspectionSlice: StateCreator<
     return newInspection;
   },
 
-  submitInspectionResult: async (id, score, notes, checklist) => {
+  submitInspectionResult: async (id, score, notes, checklist, photo) => {
     try {
-      const response = await apiService.inspections.submit(id, score, notes, checklist);
+      const response = await apiService.inspections.submit(id, score, notes, checklist, photo);
       if (response && response.success) {
         const updatedInsp: Inspection = response.inspection;
         set((state) => ({
@@ -82,7 +82,7 @@ export const createInspectionSlice: StateCreator<
     // --- FALLBACK OFFLINE ---
     set((state) => ({
       inspections: state.inspections.map((insp) =>
-        insp.id === id ? { ...insp, score, notes, checklist, status: "Selesai", bapSigned: true } : insp
+        insp.id === id ? { ...insp, score, notes, checklist, photo, status: "Selesai", bapSigned: true } : insp
       )
     }));
 

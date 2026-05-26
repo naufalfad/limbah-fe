@@ -16,8 +16,9 @@ export default function CompletedAudits() {
     // Memfilter laporan BAP yang "Selesai" untuk petugas yang login
     const completedAudits = useMemo(() => {
         const officerId = currentUser?.officerId || "OFF-001";
+        const userId = currentUser?.id;
         return inspections.filter(
-            (i) => i.inspectorId === officerId && i.status === "Selesai"
+            (i) => (i.inspectorId === officerId || i.inspectorId === userId) && i.status === "Selesai"
         );
     }, [inspections, currentUser]);
 

@@ -182,7 +182,17 @@ export default function DocumentStatusPage() {
           </div>
 
           {/* Status Alert Banner */}
-          {company.status === "APPROVED" && !isPaymentPending ? (
+          {company.status === "SUSPENDED" ? (
+            <div className="p-4 bg-rose-50 border border-rose-200 rounded-none flex items-start gap-3">
+              <AlertCircle className="text-rose-600 shrink-0 mt-0.5 animate-bounce" size={16} />
+              <div>
+                <h4 className="font-black text-rose-950 text-[10px] uppercase tracking-widest leading-none">Peringatan Keras: Sertifikat Izin Ditangguhkan / Dicabut</h4>
+                <p className="text-[9px] font-semibold text-rose-700 mt-1.5 leading-normal">
+                  Sertifikat registrasi lingkungan hidup perusahaan Anda telah **DITANGGUHKAN / DICABUT** sementara oleh Dinas Lingkungan Hidup (DLH). Hal ini disebabkan adanya indikasi pelanggaran aturan lingkungan atau ketidakpatuhan operasional limbah. Silakan hubungi kantor DLH setempat untuk verifikasi pemulihan status izin Anda.
+                </p>
+              </div>
+            </div>
+          ) : company.status === "APPROVED" && !isPaymentPending ? (
             <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-none flex items-start gap-3">
               <CheckCircle2 className="text-emerald-600 shrink-0 mt-0.5" size={16} />
               <div>
@@ -216,22 +226,52 @@ export default function DocumentStatusPage() {
               </div>
             </div>
           ) : company.status === "REVIEW" ? (
-            <div className="p-4 bg-amber-50 border border-amber-200 rounded-none flex items-start gap-3">
-              <Clock className="text-amber-600 shrink-0 mt-0.5 animate-pulse" size={16} />
-              <div>
-                <h4 className="font-black text-amber-950 text-[10px] uppercase tracking-widest leading-none">Sedang Ditinjau Petugas Dinas</h4>
-                <p className="text-[9px] font-semibold text-amber-700 mt-1.5 leading-normal">
-                  Petugas DLH sedang meninjau isian teknis dan validasi zonasi KBLI usaha Anda pada peta GIS. Mohon tunggu maksimal 1-3 hari kerja.
-                </p>
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-none flex flex-col items-start gap-3">
+              <div className="flex items-start gap-3">
+                <Clock className="text-amber-600 shrink-0 mt-0.5 animate-pulse" size={16} />
+                <div>
+                  <h4 className="font-black text-amber-950 text-[10px] uppercase tracking-widest leading-none">Dokumen Perlu Direvisi oleh Pelaku Usaha</h4>
+                  <p className="text-[9px] font-semibold text-amber-700 mt-1.5 leading-normal">
+                    Petugas verifikator DLH meminta Anda melakukan perbaikan atau revisi dokumen lingkungan/data teknis usaha Anda agar memenuhi standar penapisan.
+                  </p>
+                  <div className="mt-3">
+                    <Button
+                      onClick={() => navigate("/company/register?edit=true")}
+                      className="h-8 bg-amber-600 hover:bg-amber-700 text-white rounded-none text-[9px] font-black uppercase tracking-widest shadow-none flex items-center gap-1.5"
+                    >
+                      Revisi Dokumen Sekarang
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : company.status === "REJECTED" ? (
+            <div className="p-4 bg-rose-50 border border-rose-200 rounded-none flex flex-col items-start gap-3">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="text-rose-600 shrink-0 mt-0.5" size={16} />
+                <div>
+                  <h4 className="font-black text-rose-950 text-[10px] uppercase tracking-widest leading-none">Pendaftaran Dokumen Ditolak</h4>
+                  <p className="text-[9px] font-semibold text-rose-700 mt-1.5 leading-normal">
+                    Pendaftaran dokumen lingkungan Anda ditolak karena belum memenuhi kriteria legalitas atau teknis perlindungan lingkungan. Anda dipersilakan melakukan pengeditan berkas dan mengajukannya kembali.
+                  </p>
+                  <div className="mt-3">
+                    <Button
+                      onClick={() => navigate("/company/register?edit=true")}
+                      className="h-8 bg-rose-600 hover:bg-rose-700 text-white rounded-none text-[9px] font-black uppercase tracking-widest shadow-none flex items-center gap-1.5"
+                    >
+                      Perbaiki & Ajukan Kembali
+                    </Button>
+                  </div>
+                </div>
               </div>
             </div>
           ) : (
             <div className="p-4 bg-slate-50 border border-slate-200 rounded-none flex items-start gap-3">
-              <AlertCircle className="text-slate-400 shrink-0 mt-0.5" size={16} />
+              <Clock className="text-slate-400 shrink-0 mt-0.5 animate-pulse" size={16} />
               <div>
-                <h4 className="font-black text-slate-800 text-[10px] uppercase tracking-widest leading-none">Menunggu Proses Antrian</h4>
+                <h4 className="font-black text-slate-800 text-[10px] uppercase tracking-widest leading-none">Sedang Ditinjau Petugas Dinas</h4>
                 <p className="text-[9px] font-semibold text-slate-500 mt-1.5 leading-normal">
-                  Pendaftaran Anda telah masuk antrian sistem. Petugas akan segera memproses validasi berkas identitas usaha Anda.
+                  Pendaftaran dokumen lingkungan Anda telah dikirim dan berada dalam antrean peninjauan petugas DLH. Proses verifikasi berkas memakan waktu 1-3 hari kerja.
                 </p>
               </div>
             </div>

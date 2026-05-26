@@ -16,74 +16,49 @@ import { useSijagaStore } from '@/store/useSijagaStore';
 import { toast } from "sonner";
 
 export default function TransactionManagement() {
-  const { invoices, pickupRequests, fetchInvoices, fetchPickupRequests } = useSijagaStore();
+  const { invoices, fetchInvoices } = useSijagaStore();
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     fetchInvoices();
-    fetchPickupRequests();
-  }, []);
+  }, [fetchInvoices]);
 
-  // Map invoices to transaction list with calculated status and transporter
+  // Map invoices to transaction list
   const transactions = invoices.map(inv => {
-    const matchedPickup = pickupRequests.find(p => p.invoiceId === inv.id);
-    let calculatedStatus: "UNPAID" | "ESCROW" | "SETTLED" | "REFUNDED" = "UNPAID";
-
-    if (inv.status === "UNPAID") {
-      calculatedStatus = "UNPAID";
-    } else if (inv.status === "SETTLED") {
-      if (matchedPickup) {
-        if (matchedPickup.status === "COMPLETED") {
-          calculatedStatus = "SETTLED";
-        } else {
-          calculatedStatus = "ESCROW";
-        }
-      } else {
-        calculatedStatus = "SETTLED";
-      }
-    } else if (inv.status === "REFUNDED") {
-      calculatedStatus = "REFUNDED";
-    }
-
-    const transporter = matchedPickup ? (matchedPickup.transporterName ?? "PT. Transport Limbah Indonesia") : "Kas Daerah Pemda";
-    const type = inv.type || (matchedPickup ? `${matchedPickup.wasteType} Transport` : "Retribusi SPPL");
     return {
       id: inv.id,
       company: inv.companyName,
-      transporter,
       amountNum: inv.amount,
       amount: `Rp ${inv.amount.toLocaleString()}`,
-      status: calculatedStatus,
+      status: inv.status,
       date: inv.date || new Date().toISOString().split("T")[0],
-      type
+      type: inv.type || "Retribusi SPPL"
     };
   });
 
   // Calculate finance metrics
-  const totalPerputaran = transactions.reduce((sum, trx) => sum + trx.amountNum, 0);
-  const totalEscrow = transactions.filter(trx => trx.status === "ESCROW").reduce((sum, trx) => sum + trx.amountNum, 0);
   const totalSettled = transactions.filter(trx => trx.status === "SETTLED").reduce((sum, trx) => sum + trx.amountNum, 0);
+  const totalUnpaid = transactions.filter(trx => trx.status === "UNPAID").reduce((sum, trx) => sum + trx.amountNum, 0);
 
   // Filtered transactions by search query
   const filteredTransactions = transactions.filter(trx => {
     const query = searchTerm.toLowerCase();
     return trx.id.toLowerCase().includes(query) ||
       trx.company.toLowerCase().includes(query) ||
-      trx.transporter.toLowerCase().includes(query) ||
       trx.type.toLowerCase().includes(query);
   });
 
   return (
     <DashboardLayout role="ADMIN_DLH">
-      <div className="space-y-4 pb-6 text-left"> {/* DIET: space-y-8 -> space-y-4 */}
+      <div className="space-y-4 pb-6 text-left">
 
         {/* --- HEADER --- */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase">
-              Monitoring <span className="text-emerald-600">Transaksi Jasa</span>
+              Monitoring <span className="text-emerald-600">List Pembayaran</span>
             </h1>
-            <p className="text-slate-500 text-xs font-medium mt-1">Pusat kendali pembayaran jasa pengangkutan limbah industri.</p>
+            <p className="text-slate-500 text-xs font-medium mt-1">Pusat pemantauan pembayaran retribusi dan tagihan dari perusahaan langsung ke Kas Daerah DLH.</p>
           </div>
           <Button
             size="sm"
@@ -95,25 +70,19 @@ export default function TransactionManagement() {
         </div>
 
         {/* --- FINANCIAL STATS (DENSE) --- */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FinanceCard
-            label="Total Perputaran Dana"
-            value={`Rp ${totalPerputaran.toLocaleString()}`}
-            icon={<ArrowRightLeft size={16} className="text-blue-500" />}
-            trend="Perputaran Kas"
-          />
-          <FinanceCard
-            label="Dana Tertahan (Escrow)"
-            value={`Rp ${totalEscrow.toLocaleString()}`}
-            icon={<Wallet size={16} className="text-amber-500" />}
-            trend="Dalam Pengangkutan"
-            isWarning
-          />
-          <FinanceCard
-            label="Settlement Berhasil"
+            label="Pembayaran Berhasil (Masuk Kas)"
             value={`Rp ${totalSettled.toLocaleString()}`}
             icon={<CheckCircle2 size={16} className="text-emerald-500" />}
-            trend="Masuk Kas Daerah"
+            trend="Sudah Diselesaikan"
+          />
+          <FinanceCard
+            label="Tagihan Belum Dibayar"
+            value={`Rp ${totalUnpaid.toLocaleString()}`}
+            icon={<Wallet size={16} className="text-amber-500" />}
+            trend="Menunggu Pembayaran"
+            isWarning
           />
         </div>
 
@@ -122,7 +91,7 @@ export default function TransactionManagement() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
             <Input
-              placeholder="Cari ID Transaksi, Perusahaan, atau Pengangkut..."
+              placeholder="Cari ID Transaksi, Perusahaan, atau Jenis Tagihan..."
               className="h-9 pl-9 rounded-none border-slate-200 bg-slate-50 text-xs font-medium"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -145,17 +114,16 @@ export default function TransactionManagement() {
               <TableRow className="border-b border-slate-200 h-10">
                 <TableHead className="pl-4 font-black text-slate-500 uppercase text-[9px] tracking-widest">Transaksi</TableHead>
                 <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest">Perusahaan (Payer)</TableHead>
-                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest">Pengangkut (Payee)</TableHead>
-                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest text-center">Nominal Jasa</TableHead>
-                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest text-center">Status</TableHead>
+                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest text-center">Nominal Tagihan</TableHead>
+                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest text-center">Status Pembayaran</TableHead>
                 <TableHead className="pr-4 text-right font-black text-slate-500 uppercase text-[9px] tracking-widest">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredTransactions.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 font-bold text-slate-400 text-xs">
-                    Tidak ada data transaksi yang ditemukan.
+                  <TableCell colSpan={5} className="text-center py-8 font-bold text-slate-400 text-xs">
+                    Tidak ada data pembayaran yang ditemukan.
                   </TableCell>
                 </TableRow>
               ) : (
@@ -171,9 +139,6 @@ export default function TransactionManagement() {
                       <p className="font-bold text-xs text-slate-800 leading-tight">{trx.company}</p>
                       <span className="text-[9px] font-black text-slate-400 bg-slate-100 px-1.5 py-0.5 uppercase">{trx.type}</span>
                     </TableCell>
-                    <TableCell>
-                      <p className="font-medium text-xs text-slate-600">{trx.transporter}</p>
-                    </TableCell>
                     <TableCell className="text-center font-black text-emerald-700 text-sm italic tracking-tight">
                       {trx.amount}
                     </TableCell>
@@ -185,7 +150,7 @@ export default function TransactionManagement() {
                         variant="ghost"
                         size="icon-xs"
                         className="rounded-none hover:bg-emerald-50 text-emerald-600 h-7 w-7"
-                        onClick={() => toast.info(`Transaksi ${trx.id} senilai ${trx.amount} selesai.`)}
+                        onClick={() => toast.info(`Membuka rincian invoice ${trx.id}`)}
                       >
                         <ArrowUpRight size={14} />
                       </Button>
@@ -230,22 +195,19 @@ function FinanceCard({ label, value, icon, trend, isWarning }: any) {
 function TransactionBadge({ status }: { status: string }) {
   const styles: any = {
     SETTLED: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    ESCROW: "bg-blue-50 text-blue-700 border-blue-200 animate-pulse",
     UNPAID: "bg-slate-50 text-slate-500 border-slate-200",
     REFUNDED: "bg-rose-50 text-rose-700 border-rose-200",
   };
 
   const labels: any = {
-    SETTLED: "CAIR (RKUD)",
-    ESCROW: "DANA ESCROW",
-    UNPAID: "UNPAID",
+    SETTLED: "LUNAS (KAS DAERAH)",
+    UNPAID: "BELUM DIBAYAR",
     REFUNDED: "REFUNDED",
   };
 
   return (
     <Badge className={cn("px-2.5 py-0.5 rounded-none text-[9px] font-black border uppercase tracking-widest whitespace-nowrap border-none", styles[status])}>
-      {status === 'ESCROW' && <Clock size={8} className="mr-1 inline-block align-middle" />}
-      <span className="align-middle">{labels[status]}</span>
+      <span className="align-middle">{labels[status] || status}</span>
     </Badge>
   );
 }

@@ -63,6 +63,12 @@ export const apiService = {
       });
       return response.data;
     },
+    update: async (id: string, formData: FormData) => {
+      const response = await api.put(`/api/companies/${id}`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      return response.data;
+    },
     updateStatus: async (id: string, status: string) => {
       const response = await api.patch(`/api/companies/${id}/status`, { status });
       return response.data;
@@ -133,8 +139,8 @@ export const apiService = {
       const response = await api.post("/api/inspections", payload);
       return response.data;
     },
-    submit: async (id: string, score: number, notes: string, checklist: any) => {
-      const response = await api.post(`/api/inspections/${id}/submit`, { score, notes, checklist });
+    submit: async (id: string, score: number, notes: string, checklist: any, photo?: string) => {
+      const response = await api.post(`/api/inspections/${id}/submit`, { score, notes, checklist, photo });
       return response.data;
     }
   },
