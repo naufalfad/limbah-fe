@@ -32,6 +32,30 @@ export default function AuditEvaluationModal({ isOpen, onClose, selectedInsp }: 
     const [isSigned, setIsSigned] = useState(false);
     const [signatureData, setSignatureData] = useState<string | null>(null);
 
+    // Photo Upload State
+    const [photoFile, setPhotoFile] = useState<File | null>(null);
+    const [photoBase64, setPhotoBase64] = useState<string | null>(null);
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setPhotoFile(file);
+
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setPhotoBase64(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleRemovePhoto = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
+        setPhotoFile(null);
+        setPhotoBase64(null);
+    };
+
     if (!selectedInsp) return null;
 
     // Hitung skor kepatuhan secara dinamis (0 - 100)
@@ -48,13 +72,19 @@ export default function AuditEvaluationModal({ isOpen, onClose, selectedInsp }: 
 
         setLoading(true);
         try {
-            await submitInspectionResult(selectedInsp.id, calculatedScore, notes, {
-                tpsB3,
-                ipal,
-                apar,
-                noise,
-                safetyEquipment,
-            });
+            await submitInspectionResult(
+                selectedInsp.id,
+                calculatedScore,
+                notes,
+                {
+                    tpsB3,
+                    ipal,
+                    apar,
+                    noise,
+                    safetyEquipment,
+                },
+                photoBase64 || undefined
+            );
             toast.success(`Evaluasi Kepatuhan Selesai. Skor: ${calculatedScore}/100.`);
             onClose();
         } catch (err) {
@@ -126,12 +156,41 @@ export default function AuditEvaluationModal({ isOpen, onClose, selectedInsp }: 
                         </div>
                         <div className="space-y-1.5 text-left">
                             <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Dokumentasi Sidak</label>
-                            <div className="border border-slate-200 bg-slate-100 rounded-none p-4 flex flex-col items-center justify-center text-center h-[90px] relative overflow-hidden group cursor-default">
-                                <div className="relative z-10 text-slate-600 flex flex-col items-center gap-1.5">
-                                    <Camera size={16} />
-                                    <span className="text-[9px] font-black uppercase tracking-widest block leading-none">BAP_EVIDENCE.JPG</span>
+                            <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                id="bap-photo-upload"
+                                onChange={handleFileChange}
+                            />
+                            {photoBase64 ? (
+                                <div className="border border-slate-200 bg-slate-100 rounded-none h-[90px] relative overflow-hidden group">
+                                    <img
+                                        src={photoBase64}
+                                        alt="Evidence Preview"
+                                        className="w-full h-full object-cover"
+                                    />
+                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                        <button
+                                            type="button"
+                                            onClick={handleRemovePhoto}
+                                            className="bg-red-600 hover:bg-red-700 text-white font-black text-[8px] tracking-widest uppercase px-3 py-1.5 rounded-none shadow-md flex items-center gap-1"
+                                        >
+                                            <X size={10} /> HAPUS FOTO
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
+                            ) : (
+                                <label
+                                    htmlFor="bap-photo-upload"
+                                    className="border border-dashed border-slate-300 bg-white rounded-none p-4 flex flex-col items-center justify-center text-center h-[90px] relative overflow-hidden group cursor-pointer hover:bg-slate-50 hover:border-slate-450 transition-colors"
+                                >
+                                    <div className="relative z-10 text-slate-500 group-hover:text-emerald-600 flex flex-col items-center gap-1.5 transition-colors">
+                                        <Camera size={18} />
+                                        <span className="text-[9px] font-black uppercase tracking-widest block leading-none">UNGGAH FOTO BAP (JPG/PNG)</span>
+                                    </div>
+                                </label>
+                            )}
                         </div>
                     </div>
 

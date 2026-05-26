@@ -79,6 +79,11 @@ type RegistrationFormValues = z.infer<typeof registrationSchema>;
 export default function RegistrationPage() {
   const currentUser = useSijagaStore((state) => state.currentUser);
   const addCompany = useSijagaStore((state) => state.addCompany);
+  const { companies, selectedCompanyId, updateCompany } = useSijagaStore();
+
+  const query = new URLSearchParams(window.location.search);
+  const isEdit = query.get("edit") === "true";
+  const existingCompany = companies.find(c => c.id === selectedCompanyId) || companies[0];
 
   const [currentStep, setCurrentStep] = useState(1);
   const [docType, setDocType] = useState<"SPPL" | "UKL-UPL" | null>(null);
@@ -95,6 +100,37 @@ export default function RegistrationPage() {
   });
 
   const { watch, handleSubmit } = methods;
+
+  // Pre-fill form values in edit/reversion mode
+  useEffect(() => {
+    if (isEdit && existingCompany) {
+      methods.reset({
+        companyName: existingCompany.companyName,
+        nib: existingCompany.nib,
+        npwp: existingCompany.npwp,
+        picName: existingCompany.picName,
+        picPhone: existingCompany.picPhone,
+        picRole: existingCompany.picRole,
+        kbli: existingCompany.kbli,
+        investment: existingCompany.investment,
+        landArea: existingCompany.landArea,
+        employees: existingCompany.employees,
+        buildingArea: existingCompany.buildingArea,
+        lat: existingCompany.lat,
+        lng: existingCompany.lng,
+        address: existingCompany.address,
+        investmentType: existingCompany.investmentType,
+        yearBuilt: existingCompany.yearBuilt,
+        operationalHours: existingCompany.operationalHours,
+        rawMaterials: existingCompany.rawMaterials,
+        waterSource: existingCompany.waterSource,
+        powerSource: existingCompany.powerSource,
+        wasteInfo: existingCompany.wasteInfo || "",
+        hasTps: existingCompany.hasTps || false,
+      });
+      setDocType(existingCompany.docType === "UKL_UPL" ? "UKL-UPL" : existingCompany.docType as any);
+    }
+  }, [isEdit, existingCompany, methods]);
 
   // Logika Penapisan Otomatis ESG (Smart Assessment)
   const runAssessment = () => {
@@ -113,15 +149,17 @@ export default function RegistrationPage() {
 
   const onSubmit = async (data: RegistrationFormValues) => {
     // Validasi berkas legalitas wajib sebelum dikirim ke API [3]
-    if (!nibFile) {
-      toast.error("Dokumen NIB wajib diunggah.");
-      setCurrentStep(1);
-      return;
-    }
-    if (!npwpFile) {
-      toast.error("Dokumen NPWP wajib diunggah.");
-      setCurrentStep(1);
-      return;
+    if (!isEdit) {
+      if (!nibFile) {
+        toast.error("Dokumen NIB wajib diunggah.");
+        setCurrentStep(1);
+        return;
+      }
+      if (!npwpFile) {
+        toast.error("Dokumen NPWP wajib diunggah.");
+        setCurrentStep(1);
+        return;
+      }
     }
 
     setLoading(true);
@@ -139,14 +177,22 @@ export default function RegistrationPage() {
       // Memasukkan rekomendasi dokumen lingkungan dari assessment
       formData.append("docType", docType || "SPPL");
 
-      // Memasukkan binary berkas fisik ke FormData
-      formData.append("nibDoc", nibFile);
-      formData.append("npwpDoc", npwpFile);
+      // Memasukkan binary berkas fisik ke FormData (opsional jika dalam mode edit)
+      if (nibFile) {
+        formData.append("nibDoc", nibFile);
+      }
+      if (npwpFile) {
+        formData.append("npwpDoc", npwpFile);
+      }
       if (siteplanFile) {
         formData.append("siteplanDoc", siteplanFile);
       }
 
-      await addCompany(formData);
+      if (isEdit && existingCompany) {
+        await updateCompany(existingCompany.id, formData);
+      } else {
+        await addCompany(formData);
+      }
       navigate("/company");
     } catch (error: any) {
       const serverMsg =
@@ -253,21 +299,23 @@ export default function RegistrationPage() {
                         {/* NIB */}
                         <FileUploadBox
                           label="Scan NIB"
-                          required
+                          required={!isEdit}
                           accept=".pdf,.jpg,.jpeg,.png"
                           file={nibFile}
                           onFileChange={setNibFile}
                           hint="PDF / JPG / PNG, maks 5 MB"
+                          existingUrl={isEdit ? existingCompany?.docNibUrl || undefined : undefined}
                         />
 
                         {/* NPWP */}
                         <FileUploadBox
                           label="Scan NPWP"
-                          required
+                          required={!isEdit}
                           accept=".pdf,.jpg,.jpeg,.png"
                           file={npwpFile}
                           onFileChange={setNpwpFile}
                           hint="PDF / JPG / PNG, maks 5 MB"
+                          existingUrl={isEdit ? existingCompany?.docNpwpUrl || undefined : undefined}
                         />
 
                         {/* Siteplan */}
@@ -278,6 +326,7 @@ export default function RegistrationPage() {
                           file={siteplanFile}
                           onFileChange={setSiteplanFile}
                           hint="Opsional — denah lokasi usaha"
+                          existingUrl={isEdit ? existingCompany?.docSiteplanUrl || undefined : undefined}
                         />
                       </div>
 
@@ -427,9 +476,9 @@ export default function RegistrationPage() {
                         <FileText size={12} /> Ringkasan Dokumen yang Akan Dikirim
                       </h4>
                       <div className="space-y-1.5">
-                        <FileStatusRow label="NIB" file={nibFile} required />
-                        <FileStatusRow label="NPWP" file={npwpFile} required />
-                        <FileStatusRow label="Siteplan / Layout" file={siteplanFile} required={false} />
+                        <FileStatusRow label="NIB" file={nibFile} required={!isEdit} existingUrl={isEdit ? existingCompany?.docNibUrl || undefined : undefined} />
+                        <FileStatusRow label="NPWP" file={npwpFile} required={!isEdit} existingUrl={isEdit ? existingCompany?.docNpwpUrl || undefined : undefined} />
+                        <FileStatusRow label="Siteplan / Layout" file={siteplanFile} required={false} existingUrl={isEdit ? existingCompany?.docSiteplanUrl || undefined : undefined} />
                       </div>
                     </div>
 
@@ -473,9 +522,10 @@ interface FileUploadBoxProps {
   file: File | null;
   onFileChange: (f: File | null) => void;
   hint?: string;
+  existingUrl?: string;
 }
 
-function FileUploadBox({ label, required, accept, file, onFileChange, hint }: FileUploadBoxProps) {
+function FileUploadBox({ label, required, accept, file, onFileChange, hint, existingUrl }: FileUploadBoxProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleClick = () => inputRef.current?.click();
@@ -534,6 +584,19 @@ function FileUploadBox({ label, required, accept, file, onFileChange, hint }: Fi
             <X size={12} />
           </button>
         </div>
+      ) : existingUrl ? (
+        <div
+          className="relative rounded-none border border-amber-500 bg-amber-50/20 p-3 flex items-center gap-2.5 cursor-pointer hover:bg-amber-50/50 transition-all group"
+          onClick={handleClick}
+        >
+          <div className="w-10 h-10 rounded-none bg-amber-600 flex items-center justify-center shrink-0">
+            <FileText size={18} className="text-white" />
+          </div>
+          <div className="min-w-0 flex-1 text-left">
+            <p className="text-[9px] font-black text-amber-800 uppercase tracking-widest leading-none">BERKAS TERSEDIA DI SERVER</p>
+            <p className="text-[8px] text-amber-600 font-bold mt-1 leading-none">Klik untuk mengganti berkas</p>
+          </div>
+        </div>
       ) : (
         <div
           onClick={handleClick}
@@ -555,7 +618,7 @@ function FileUploadBox({ label, required, accept, file, onFileChange, hint }: Fi
   );
 }
 
-function FileStatusRow({ label, file, required }: { label: string; file: File | null; required: boolean }) {
+function FileStatusRow({ label, file, required, existingUrl }: { label: string; file: File | null; required: boolean; existingUrl?: string }) {
   return (
     <div className="flex items-center justify-between text-[11px] font-bold">
       <span className="text-slate-500">
@@ -564,6 +627,10 @@ function FileStatusRow({ label, file, required }: { label: string; file: File | 
       {file ? (
         <span className="flex items-center gap-1 text-emerald-600 text-[10px]">
           <CheckCircle2 size={11} /> {file.name}
+        </span>
+      ) : existingUrl ? (
+        <span className="flex items-center gap-1 text-amber-600 text-[10px]">
+          <CheckCircle2 size={11} /> Berkas Tersimpan di Server
         </span>
       ) : (
         <span className={cn("text-[10px] font-bold uppercase tracking-wider", required ? "text-rose-500" : "text-slate-400 italic")}>

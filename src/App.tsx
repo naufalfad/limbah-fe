@@ -22,6 +22,7 @@ import GISMonitoring from "./modules/admin/GISMonitoring";
 import TransactionManagement from "./modules/admin/TransactionManagement";
 import InspectionManagement from "./modules/admin/InspectionManagement";
 import AdminPickupManagement from "./modules/admin/AdminPickupManagement";
+import CompanyManagement from "./modules/admin/CompanyManagement";
 
 // Perusahaan
 import CompanyDashboard from "./modules/companies/pages/CompanyDashboard";
@@ -68,6 +69,7 @@ function App() {
            ========================================== */}
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin/registrations" element={<RegistrationList />} />
+        <Route path="/admin/companies" element={<CompanyManagement />} />
         <Route path="/admin/waste" element={<WasteMonitoring />} />
         <Route path="/admin/gis" element={<GISMonitoring />} />
         <Route path="/admin/payments" element={<TransactionManagement />} />

@@ -16,8 +16,9 @@ export default function ScheduledAudits({ onStartAudit }: ScheduledAuditsProps) 
     // Memfilter penugasan aktif (Terjadwal) untuk petugas yang login
     const pendingAudits = useMemo(() => {
         const officerId = currentUser?.officerId || "OFF-001";
+        const userId = currentUser?.id;
         return inspections.filter(
-            (i) => i.inspectorId === officerId && i.status === "Terjadwal"
+            (i) => (i.inspectorId === officerId || i.inspectorId === userId) && i.status === "Terjadwal"
         );
     }, [inspections, currentUser]);
 

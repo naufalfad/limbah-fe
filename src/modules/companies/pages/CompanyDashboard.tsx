@@ -1,19 +1,20 @@
-// src/modules/companies/pages/CompanyDashboard.tsx
 import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import { useSijagaStore } from "@/store/useSijagaStore";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Trash2, CreditCard, ShieldCheck, Clock,
-  Plus, Sparkles, ChevronRight, Loader2, Activity
+  Plus, Sparkles, ChevronRight, Loader2, Activity, ClipboardList
 } from "lucide-react";
 
 // Mengimpor Komponen Modular Taktis GFW [3]
 import CompanyHeader from "../components/CompanyHeader";
 import GFWStatCard from "../components/GFWStatCard";
-import PickupRequestTable from "../components/tables/PickupRequestTable";
+import WasteLogbookTable from "../components/tables/WasteLogbookTable";
+import WasteLogbookForm from "../components/forms/WasteLogbookForm";
 
 export default function CompanyDashboard() {
   const navigate = useNavigate();
@@ -32,6 +33,7 @@ export default function CompanyDashboard() {
   } = useSijagaStore();
 
   const [loading, setLoading] = useState(true);
+  const [isLogbookDialogOpen, setIsLogbookDialogOpen] = useState(false);
 
   // Inisialisasi data master saat pertama kali masuk (Information Expert) [3]
   useEffect(() => {
@@ -176,21 +178,23 @@ export default function CompanyDashboard() {
         {/* 3. SPLIT PANEL CONTENT GRID */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
 
-          {/* SISI KIRI (75%): Tabel Tracking Pengangkutan */}
+          {/* SISI KIRI (75%): Tabel Database Logbook */}
           <div className="lg:col-span-8 space-y-3">
             <div className="bg-slate-50 border border-slate-200 p-3.5 flex justify-between items-center rounded-none">
               <div>
-                <h3 className="font-black text-xs text-slate-800 uppercase tracking-widest leading-none">Tracking Pengangkutan</h3>
-                <p className="text-[9px] text-slate-400 font-bold uppercase mt-1 leading-none">Status penjemputan limbah b3 secara real-time [3]</p>
+                <h3 className="font-black text-xs text-slate-800 uppercase tracking-widest leading-none flex items-center gap-1.5">
+                  <ClipboardList size={14} className="text-emerald-700" /> Database Logbook Historis
+                </h3>
+                <p className="text-[9px] text-slate-400 font-bold uppercase mt-1 leading-none">Pencatatan limbah berkala [3]</p>
               </div>
               <Button
-                onClick={() => navigate("/company/pickup")}
+                onClick={() => setIsLogbookDialogOpen(true)}
                 className="bg-slate-900 hover:bg-emerald-600 h-8 text-[9px] font-black uppercase tracking-widest rounded-none shadow-none px-4"
               >
-                <Plus size={12} className="mr-1" /> Request Baru
+                <Plus size={12} className="mr-1" /> Catat Limbah
               </Button>
             </div>
-            <PickupRequestTable />
+            <WasteLogbookTable />
           </div>
 
           {/* SISI KANAN (25%): Menu Cepat Taktis & EWS Check */}
@@ -220,6 +224,26 @@ export default function CompanyDashboard() {
           </div>
 
         </div>
+
+        {/* MODULAR INPUT DIALOG UNTUK LOGBOOK */}
+        {isLogbookDialogOpen && (
+          <Dialog open={isLogbookDialogOpen} onOpenChange={setIsLogbookDialogOpen}>
+            <DialogContent className="sm:max-w-[480px] rounded-none bg-white border border-slate-200 text-left p-6 z-[9999]">
+              <DialogHeader className="border-b pb-3">
+                <DialogTitle className="text-xs font-black tracking-widest text-slate-800 uppercase flex items-center gap-2">
+                  Catat Limbah Baru
+                </DialogTitle>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1">
+                  Isi volume limbah beserta metode pengelolaan lingkungan [3]
+                </p>
+              </DialogHeader>
+
+              <div className="py-2">
+                <WasteLogbookForm onSuccess={() => setIsLogbookDialogOpen(false)} />
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
 
       </div>
     </DashboardLayout>

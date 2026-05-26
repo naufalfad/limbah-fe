@@ -34,11 +34,14 @@ export interface Company {
   lng: string;
   address: string;
   docType: "SPPL" | "UKL-UPL" | "UKL_UPL" | "AMDAL";
-  status: "PENDING" | "REVIEW" | "APPROVED" | "REJECTED";
+  status: "PENDING" | "REVIEW" | "APPROVED" | "REJECTED" | "SUSPENDED";
   score?: number;
   wasteInfo?: string;
   hasTps?: boolean;
   certificateActiveUntil?: string;
+  docNibUrl?: string;
+  docNpwpUrl?: string;
+  docSiteplanUrl?: string;
 }
 
 export interface WasteLog {
@@ -126,16 +129,22 @@ export interface AuditLog {
 // Slice Interfaces
 export interface AuthSlice {
   currentUser: User | null;
+  companies: Company[];
   selectedCompanyId: string | null;
+  users: User[];
+  
   setSelectedCompanyId: (id: string | null) => void;
-  login: (email: string, password: string, role?: UserRole) => Promise<User | null>;
+  login: (email: string, password: string, role?: string) => Promise<User | null>;
   logout: () => Promise<void>;
+  fetchUsers: () => Promise<void>;
+  updateUserRole: (id: string, role: string) => Promise<void>;
 }
 
 export interface CompanySlice {
   companies: Company[];
   fetchCompanies: () => Promise<void>;
   addCompany: (formData: FormData) => Promise<void>;
+  updateCompany: (id: string, formData: FormData) => Promise<void>;
   updateCompanyStatus: (id: string, status: Company["status"]) => Promise<void>;
   createRetribusiInvoice: (id: string) => Promise<void>;
   downloadCompanyCertificate: (id: string, companyName: string) => Promise<void>;
@@ -169,7 +178,7 @@ export interface InspectionSlice {
   inspections: Inspection[];
   fetchInspections: () => Promise<void>;
   scheduleInspection: (inspection: Omit<Inspection, "id" | "status" | "score" | "bapSigned">) => Promise<Inspection | undefined>;
-  submitInspectionResult: (id: string, score: number, notes: string, checklist: Inspection["checklist"]) => Promise<void>;
+  submitInspectionResult: (id: string, score: number, notes: string, checklist: Inspection["checklist"], photo?: string) => Promise<void>;
 }
 
 export interface NotificationSlice {
@@ -183,6 +192,7 @@ export interface NotificationSlice {
 export interface AuditSlice {
   auditLogs: AuditLog[];
   addAuditLog: (user: string, role: string, action: string) => Promise<void>;
+  fetchAuditLogs: () => Promise<void>;
 }
 
 

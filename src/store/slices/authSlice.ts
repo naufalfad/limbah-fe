@@ -1,5 +1,5 @@
 import { StateCreator } from "zustand";
-import { SijagaState, AuthSlice, User } from "../types";
+import { SijagaState, AuthSlice, User, UserRole } from "../types";
 import { apiService } from "../../lib/api";
 import { initialCompanies } from "../mockData";
 
@@ -22,6 +22,7 @@ export const getInitialAuthState = () => {
     currentUser: null,
     companies: initialCompanies,
     selectedCompanyId: null,
+    users: [],
   };
 };
 
@@ -34,10 +35,36 @@ export const createAuthSlice: StateCreator<
   AuthSlice
 > = (set, get) => ({
   currentUser: initialAuth.currentUser,
+  companies: initialAuth.companies,
   selectedCompanyId: initialAuth.selectedCompanyId,
+  users: initialAuth.users || [],
 
   setSelectedCompanyId: (id) => {
     set({ selectedCompanyId: id });
+  },
+
+  fetchUsers: async () => {
+    try {
+      const data = await apiService.admin.getAllUsers();
+      if (data && data.success) {
+        set({ users: data.users });
+      }
+    } catch (error) {
+      console.error("Failed to fetch users:", error);
+    }
+  },
+
+  updateUserRole: async (id, role) => {
+    try {
+      const data = await apiService.admin.updateUserRole(id, role);
+      if (data && data.success) {
+        set((state) => ({
+          users: state.users.map(u => u.id === id ? { ...u, role: role as UserRole } : u)
+        }));
+      }
+    } catch (error) {
+      console.error("Failed to update user role:", error);
+    }
   },
 
   login: async (email, password, role) => {

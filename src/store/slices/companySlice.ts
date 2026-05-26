@@ -121,6 +121,50 @@ export const createCompanySlice: StateCreator<
     );
   },
 
+  updateCompany: async (id: string, formData: FormData) => {
+    const companyName = formData.get("companyName") as string || "Unknown Company";
+    const docType = formData.get("docType") as string || "SPPL";
+
+    try {
+      const response = await apiService.companies.update(id, formData);
+      if (response && response.success) {
+        const updatedComp: Company = response.company;
+        set((state) => {
+          const updatedCompanies = state.companies.map((c) => c.id === id ? updatedComp : c);
+          const updatedUser = state.currentUser ? {
+            ...state.currentUser,
+            companies: state.currentUser.companies?.map((c) => c.id === id ? updatedComp : c) || []
+          } : null;
+
+          if (updatedUser) {
+            localStorage.setItem("sijaga_user", JSON.stringify(updatedUser));
+          }
+
+          return {
+            companies: updatedCompanies,
+            currentUser: updatedUser,
+            selectedCompanyId: state.selectedCompanyId || id
+          };
+        });
+        toast.success("Revisi berkas perusahaan berhasil dikirim ke DLH!");
+        const userEmail = get().currentUser?.email || "USER";
+        get().addAuditLog(userEmail, "PERUSAHAAN", `Mengirim revisi berkas registrasi: ${companyName}`);
+        get().addNotification(
+          "Revisi Berkas Dikirim",
+          `Revisi dokumen ${docType} untuk perusahaan ${companyName} telah berhasil diajukan.`,
+          "INFO"
+        );
+        return;
+      }
+    } catch (error: any) {
+      if (error.response) {
+        throw error;
+      }
+      console.warn("Revisi perusahaan gagal.", error);
+      throw error;
+    }
+  },
+
   updateCompanyStatus: async (id, status) => {
     try {
       const response = await apiService.companies.updateStatus(id, status);
@@ -178,7 +222,7 @@ export const createCompanySlice: StateCreator<
       get().addNotification(
         "Pemberitahuan Status Registrasi",
         `Dokumen lingkungan ${comp.companyName} berstatus: ${status}`,
-        status === "APPROVED" ? "SUCCESS" : status === "REJECTED" ? "DANGER" : "WARNING"
+        status === "APPROVED" ? "SUCCESS" : (status === "REJECTED" || status === "SUSPENDED") ? "DANGER" : "WARNING"
       );
     }
   },
