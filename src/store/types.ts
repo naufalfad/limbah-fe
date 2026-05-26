@@ -185,5 +185,44 @@ export interface AuditSlice {
   addAuditLog: (user: string, role: string, action: string) => Promise<void>;
 }
 
+
+// Tipe Data untuk Pelaporan Masyarakat
+export interface CitizenReport {
+  id: string;
+  trackingId: string;
+  reporterName?: string | null;
+  reporterContact?: string | null;
+  incidentType: string;
+  description: string;
+  lat: string;
+  lng: string;
+  evidencePhoto: string;
+  status: 'PENDING' | 'VERIFIED' | 'INVESTIGATING' | 'RESOLVED' | 'REJECTED';
+  adminNotes?: string | null;
+  inspectionId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Kontrak untuk Report Slice
+export interface ReportSlice {
+  // State
+  publicReportTrackData: CitizenReport | null;
+  adminReports: CitizenReport[];
+  isReportLoading: boolean;
+
+  // Actions (Public)
+  submitCitizenReport: (payload: any) => Promise<{ success: boolean; trackingId?: string }>;
+  trackCitizenReport: (trackingId: string) => Promise<CitizenReport | null>;
+  clearPublicReportData: () => void;
+
+  // Actions (Admin)
+  fetchAdminReports: (status?: string) => Promise<void>;
+  verifyCitizenReport: (id: string, payload: any) => Promise<boolean>;
+  rejectCitizenReport: (id: string, adminNotes: string) => Promise<boolean>;
+}
+
 // Combined State
-export interface SijagaState extends AuthSlice, CompanySlice, WasteSlice, PickupSlice, InvoiceSlice, InspectionSlice, NotificationSlice, AuditSlice {}
+export interface SijagaState extends AuthSlice, CompanySlice, WasteSlice, PickupSlice, InvoiceSlice, InspectionSlice, NotificationSlice, AuditSlice, ReportSlice { }
+// Combined State
+

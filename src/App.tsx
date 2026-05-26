@@ -6,6 +6,10 @@ import { Toaster } from "sonner";
 import LandingPage from "./modules/landing/LandingPage";
 import RegistrationPage from "./modules/companies/pages/RegistrationPage";
 
+// PUBLIC CITIZEN PAGES (INJEKSI BARU: Migrasi dari Modals ke Halaman Dedikatif)
+import ReportPage from "./modules/landing/pages/ReportPage";
+import TrackPage from "./modules/landing/pages/TrackPage";
+
 // Auth
 import LoginPage from "./modules/auth/pages/LoginPage";
 import UserRegisterPage from "./modules/auth/pages/UserRegisterPage";
@@ -47,12 +51,21 @@ function App() {
       <Toaster position="top-right" richColors />
 
       <Routes>
-        {/* Public & Auth */}
+        {/* ==========================================
+            Public & Auth Routes (Gerbang Terbuka)
+           ========================================== */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<UserRegisterPage />} />
 
-        {/* Admin DLH */}
+        {/* RUTE DEDIKATIF PENGADUAN WARGA (GRASP: Protected Variations) */}
+        <Route path="/lapor" element={<ReportPage />} />
+        <Route path="/lacak" element={<TrackPage />} />
+        <Route path="/lacak/:trackingId" element={<TrackPage />} />
+
+        {/* ==========================================
+            Admin DLH Routes (Terproteksi)
+           ========================================== */}
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin/registrations" element={<RegistrationList />} />
         <Route path="/admin/waste" element={<WasteMonitoring />} />
@@ -61,7 +74,9 @@ function App() {
         <Route path="/admin/pickups" element={<AdminPickupManagement />} />
         <Route path="/admin/inspections" element={<InspectionManagement />} />
 
-        {/* Perusahaan */}
+        {/* ==========================================
+            Perusahaan Routes (Terproteksi)
+           ========================================== */}
         <Route path="/company" element={<CompanyDashboard />} />
         <Route path="/company/register" element={<RegistrationPage />} />
         <Route path="/company/logbook" element={<WasteLogbookPage />} />
@@ -69,25 +84,35 @@ function App() {
         <Route path="/company/payments" element={<DigitalPaymentPage />} />
         <Route path="/company/documents" element={<DocumentStatusPage />} />
 
-        {/* Transporter */}
+        {/* ==========================================
+            Transporter Routes (Terproteksi)
+           ========================================== */}
         <Route path="/transporter" element={<TransporterDashboard />} />
         <Route path="/transporter/tracking" element={<TransporterTracking />} />
 
-        {/* Petugas Lapangan */}
+        {/* ==========================================
+            Petugas Lapangan (Officer) Routes
+           ========================================== */}
         <Route path="/officer/inspections" element={<OfficerInspectionsPage />} />
         <Route path="/officer/gis" element={<OfficerGISPage />} />
 
-        {/* Auditor / Pimpinan */}
+        {/* ==========================================
+            Auditor / Pimpinan Routes (Terproteksi)
+           ========================================== */}
         <Route path="/auditor" element={<AuditorDashboardPage />} />
         {/* SOLUSI DECOUPLING: Mengubah rute menjadi /auditor-gis agar terpisah mutlak dari parameter dinamis /auditor/:tab */}
         <Route path="/auditor-gis" element={<AuditorGISPage />} />
         <Route path="/auditor/:tab" element={<AuditorDashboardPage />} />
 
-        {/* Super Admin */}
+        {/* ==========================================
+            Super Admin Routes (Terproteksi)
+           ========================================== */}
         <Route path="/super-admin" element={<SuperAdminPage />} />
         <Route path="/super-admin/:tab" element={<SuperAdminPage />} />
 
-        {/* 404 Route */}
+        {/* ==========================================
+            404 Route (Fail-Safe)
+           ========================================== */}
         <Route
           path="*"
           element={

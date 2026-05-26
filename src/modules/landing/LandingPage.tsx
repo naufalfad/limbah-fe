@@ -1,14 +1,28 @@
-import React from 'react';
+// src/modules/landing/LandingPage.tsx
+import React, { useState, useEffect } from 'react';
 import {
   ShieldCheck, Leaf, BarChart3, MapPin,
-  ArrowRight, CheckCircle, Building2,
-  Zap, Globe, ChevronRight,
+  ArrowRight, Zap, Globe, ChevronRight, AlertTriangle, Search
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useNavigate } from 'react-router-dom'; // INPORT BARU: Menggantikan modal controller dengan router navigation
 
 export default function LandingPage() {
+  const navigate = useNavigate();
+
+  // Tetap membaca jejak lokal perangkat warga untuk memberikan badge pelacakan instan
+  const [localReportId, setLocalReportId] = useState<string | null>(null);
+
+  // Cek silent tracking token dari localStorage saat render pertama (GRASP: Information Expert)
+  useEffect(() => {
+    const savedId = localStorage.getItem('pantau_limbah_report_id');
+    if (savedId) {
+      setLocalReportId(savedId);
+    }
+  }, []);
+
   return (
     <div className="min-h-screen bg-white text-slate-900 selection:bg-emerald-100 selection:text-emerald-900">
 
@@ -29,10 +43,33 @@ export default function LandingPage() {
             <a href="#statistik" className="hover:text-emerald-600 transition-colors">Data</a>
           </div>
           <div className="flex items-center gap-4">
-            <Button onClick={() => window.location.href = '/login'} variant="ghost" className="font-bold text-slate-600">MASUK</Button>
+
+            {/* CTA 1: Tombol Lacak Resi Pengaduan Cepat (Auto-Redirect ke ID Terakhir jika ada) */}
             <Button
-              onClick={() => window.location.href = '/register'}
-              className="bg-slate-900 hover:bg-emerald-700 text-white px-6 rounded-full font-bold shadow-xl shadow-slate-200 transition-all hover:scale-105"
+              onClick={() => {
+                if (localReportId) {
+                  navigate(`/lacak/${localReportId}`);
+                } else {
+                  navigate('/lacak');
+                }
+              }}
+              variant="outline"
+              className="font-bold border-slate-200 text-slate-700 hover:bg-slate-50 relative rounded-full px-5 text-xs tracking-wider uppercase h-10"
+            >
+              <Search size={14} className="mr-2 text-slate-400" />
+              Lacak Pengaduan
+              {localReportId && (
+                <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                </span>
+              )}
+            </Button>
+
+            <Button onClick={() => navigate('/login')} variant="ghost" className="font-bold text-slate-600 text-xs tracking-wider uppercase">MASUK</Button>
+            <Button
+              onClick={() => navigate('/register')}
+              className="bg-slate-900 hover:bg-emerald-700 text-white px-6 rounded-full font-bold shadow-xl shadow-slate-200 transition-all hover:scale-105 text-xs tracking-wider uppercase"
             >
               DAFTAR SEKARANG
             </Button>
@@ -61,11 +98,20 @@ export default function LandingPage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
               <Button
-                onClick={() => window.location.href = '/register'}
-                className="h-16 px-10 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-lg group transition-all shadow-2xl shadow-emerald-200"
+                onClick={() => navigate('/register')}
+                className="h-16 px-8 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black text-sm group transition-all shadow-2xl shadow-slate-200 uppercase tracking-wider"
               >
                 MULAI REGISTRASI <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" />
               </Button>
+
+              {/* CTA 2: Tombol Akses Utama Pengaduan Darurat Masyarakat (DILENGKAPI REDIRECT HALAMAN) */}
+              <Button
+                onClick={() => navigate('/lapor')}
+                className="h-16 px-8 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white font-black text-sm group transition-all shadow-2xl shadow-amber-200/50 uppercase tracking-wider"
+              >
+                <AlertTriangle className="mr-2 animate-pulse" size={18} /> LAPOR PELANGGARAN LIMBAH
+              </Button>
+
               <div className="flex items-center gap-4 px-6 py-4 rounded-2xl bg-slate-50 border border-slate-100">
                 <div className="flex -space-x-3">
                   {[1, 2, 3].map(i => (
@@ -161,7 +207,7 @@ export default function LandingPage() {
                 <StepItem num="03" title="Reporting & Monitoring" desc="Lakukan pelaporan limbah harian/bulanan melalui dashboard." />
               </div>
               <Button
-                onClick={() => window.location.href = '/register'}
+                onClick={() => navigate('/register')}
                 className="bg-slate-900 text-white h-14 px-8 rounded-xl font-bold group"
               >
                 Daftarkan Usaha Sekarang <ChevronRight className="ml-2 group-hover:translate-x-1 transition-transform" />
@@ -207,6 +253,7 @@ export default function LandingPage() {
           </p>
         </div>
       </footer>
+
     </div>
   );
 }
