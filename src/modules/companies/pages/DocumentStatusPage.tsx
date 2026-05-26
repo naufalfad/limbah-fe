@@ -21,23 +21,35 @@ import { apiService } from "@/lib/api";
 import CompanyHeader from "../components/CompanyHeader";
 
 export default function DocumentStatusPage() {
-  const { currentUser, companies, selectedCompanyId, downloadCompanyCertificate, invoices } = useSijagaStore();
+  const { currentUser, companies, selectedCompanyId, downloadCompanyCertificate, invoices, createRetribusiInvoice } = useSijagaStore();
   const navigate = useNavigate();
 
   // State Pengendali Preview Sertifikat Nyata (PDF) [3]
   const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isCreatingInvoice, setIsCreatingInvoice] = useState(false);
 
   // Mengidentifikasi entitas perusahaan terdaftar
   const company = companies.find(c => c.id === selectedCompanyId) ||
     companies.find(c => c.id === currentUser?.companyId) ||
     companies[0];
 
-  // Cek Status Pembayaran Retribusi (Payment Barrier)
+  // Cek Status Pembayaran Retribusi (Payment Barrier) - Gunakan invoice retribusi terbaru
   const isUklUpl = company?.docType === "UKL-UPL" || company?.docType === "UKL_UPL";
   const retribusiType = isUklUpl ? "Retribusi UKL-UPL" : "Retribusi SPPL";
-  const retribusiInvoice = invoices.find(i => i.companyId === company?.id && i.type === retribusiType);
-  const isPaymentPending = company?.status === "APPROVED" && (!retribusiInvoice || retribusiInvoice.status !== "SETTLED");
+  
+  const companyRetribusiInvoices = invoices.filter(
+    i => i.companyId === company?.id && (i.type === "Retribusi UKL-UPL" || i.type === "Retribusi SPPL" || i.type.includes("Retribusi"))
+  );
+  
+  const latestRetribusiInvoice = companyRetribusiInvoices.sort((a, b) => {
+    if (a.date !== b.date) {
+      return b.date.localeCompare(a.date);
+    }
+    return b.id.localeCompare(a.id);
+  })[0];
+  
+  const isPaymentPending = company?.status === "APPROVED" && (!latestRetribusiInvoice || latestRetribusiInvoice.status !== "SETTLED");
 
   const handlePreviewPdf = async () => {
     if (!company) return;
@@ -62,6 +74,10 @@ export default function DocumentStatusPage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleCreateInvoiceAndPay = async () => {
+    navigate("/company/payments");
   };
 
   if (!company) {
@@ -121,16 +137,14 @@ export default function DocumentStatusPage() {
 
           {company.status === "APPROVED" && (
             <Button
-              disabled={isDownloading || isPaymentPending}
+              disabled={isDownloading}
               onClick={handlePreviewPdf}
               className={`w-full sm:w-auto h-9 font-black text-[9px] uppercase tracking-widest gap-1.5 shadow-none rounded-none px-4 ${
-                isPaymentPending 
-                  ? "bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300" 
-                  : "bg-emerald-600 hover:bg-emerald-700 text-white"
+                "bg-emerald-600 hover:bg-emerald-700 text-white"
               }`}
             >
               {isDownloading ? <Loader2 size={12} className="animate-spin" /> : <Eye size={12} />} 
-              {isPaymentPending ? "TERKUNCI" : isDownloading ? "MEMUAT BERKAS..." : "LIHAT SERTIFIKAT"}
+              {isDownloading ? "MEMUAT BERKAS..." : "LIHAT SERTIFIKAT"}
             </Button>
           )}
         </div>
@@ -175,24 +189,29 @@ export default function DocumentStatusPage() {
                 <h4 className="font-black text-emerald-950 text-[10px] uppercase tracking-widest leading-none">Dokumen Wajib Lingkungan Anda Aktif</h4>
                 <p className="text-[9px] font-semibold text-emerald-700 mt-1.5 leading-normal">
                   Sertifikat registrasi digital Anda telah resmi ditandatangani secara elektronik. Anda berhak melakukan operasional usaha sesuai regulasi pengawasan lingkungan.
+                  {company.certificateActiveUntil && ` (Masa Berlaku s.d. ${new Date(company.certificateActiveUntil).toLocaleDateString("id-ID")})`}
                 </p>
               </div>
             </div>
           ) : company.status === "APPROVED" && isPaymentPending ? (
-            <div className="p-4 bg-rose-50 border border-rose-200 rounded-none flex items-start gap-3">
-              <AlertCircle className="text-rose-600 shrink-0 mt-0.5 animate-pulse" size={16} />
-              <div className="w-full">
-                <h4 className="font-black text-rose-950 text-[10px] uppercase tracking-widest leading-none">Tindakan Diperlukan: Pembayaran Retribusi</h4>
-                <p className="text-[9px] font-semibold text-rose-700 mt-1.5 leading-normal">
-                  Pendaftaran dokumen lingkungan Anda telah disetujui. Silakan selesaikan tagihan retribusi administrasi untuk mengaktifkan dan mengunduh sertifikat Anda.
-                </p>
-                <div className="mt-3">
-                  <Button
-                    onClick={() => navigate("/company/payments")}
-                    className="h-8 bg-rose-600 hover:bg-rose-700 text-white rounded-none text-[9px] font-black uppercase tracking-widest shadow-none"
-                  >
-                    Bayar Retribusi Sekarang
-                  </Button>
+            <div className="p-4 bg-rose-50 border border-rose-200 rounded-none flex flex-col items-start gap-3">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="text-rose-600 shrink-0 mt-0.5 animate-pulse" size={16} />
+                <div className="w-full">
+                  <h4 className="font-black text-rose-950 text-[10px] uppercase tracking-widest leading-none">Peringatan: Tagihan Retribusi Belum Dibayar</h4>
+                  <p className="text-[9px] font-semibold text-rose-700 mt-1.5 leading-normal">
+                    Dokumen Anda telah disetujui dan sertifikat sudah dapat diunduh. Namun, Anda memiliki tagihan retribusi yang harus segera diselesaikan untuk memperpanjang masa aktif izin Anda.
+                    {company.certificateActiveUntil && ` (Masa Berlaku s.d. ${new Date(company.certificateActiveUntil).toLocaleDateString("id-ID")})`}
+                  </p>
+                  <div className="mt-3">
+                    <Button
+                      disabled={isCreatingInvoice}
+                      onClick={handleCreateInvoiceAndPay}
+                      className="h-8 bg-rose-600 hover:bg-rose-700 text-white rounded-none text-[9px] font-black uppercase tracking-widest shadow-none gap-2 flex items-center"
+                    >
+                      Bayar Tagihan Retribusi
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>

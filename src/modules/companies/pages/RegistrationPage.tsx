@@ -172,6 +172,15 @@ export default function RegistrationPage() {
 
   if (!currentUser || currentUser.role !== "PERUSAHAAN") return null;
 
+  const onErrors = (errors: any) => {
+    const firstError = Object.values(errors)[0] as any;
+    if (firstError && firstError.message) {
+      toast.error(`Gagal Mengirim: ${firstError.message}`);
+    } else {
+      toast.error("Mohon periksa kembali kelengkapan data di langkah sebelumnya.");
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto py-6 px-4 text-left font-sans">
 
@@ -204,7 +213,7 @@ export default function RegistrationPage() {
         {/* FORM GRID */}
         <div className="lg:col-span-3">
           <FormProvider {...methods}>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={handleSubmit(onSubmit, onErrors)} className="space-y-4">
 
               {/* STEP 1: IDENTITAS & UPLOAD DOKUMEN (GFW HIGH DENSITY) */}
               {currentStep === 1 && (
@@ -223,7 +232,7 @@ export default function RegistrationPage() {
                       <div className="space-y-1.5">
                         <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Status Penanaman Modal</Label>
                         <select
-                          onChange={(e) => methods.setValue("investmentType", e.target.value as any)}
+                          {...methods.register("investmentType")}
                           className="h-10 w-full rounded-none border border-slate-300 bg-white px-3 text-xs font-bold uppercase tracking-wider text-slate-700 focus:outline-none focus:border-emerald-600 focus:ring-0 cursor-pointer"
                         >
                           <option value="PMDN">PMDN (Dalam Negeri)</option>
@@ -299,7 +308,7 @@ export default function RegistrationPage() {
                       <div className="space-y-1.5">
                         <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">KBLI (Bidang Usaha)</Label>
                         <select
-                          onChange={(e) => methods.setValue("kbli", e.target.value)}
+                          {...methods.register("kbli")}
                           className="h-10 w-full rounded-none border border-slate-300 bg-white px-3 text-xs font-bold uppercase tracking-wider text-slate-700 focus:outline-none focus:border-emerald-600 focus:ring-0 cursor-pointer"
                         >
                           <option value="">Pilih KBLI...</option>
@@ -318,7 +327,7 @@ export default function RegistrationPage() {
                       <div className="grid grid-cols-3 gap-2 col-span-1 md:col-span-2">
                         <FormGroup label="Sumber Air" name="waterSource" placeholder="PDAM/Sumur" />
                         <FormGroup label="Sumber Listrik" name="powerSource" placeholder="PLN/Genset" />
-                        <FormGroup label="Penggunaan BBM" name="powerSource" placeholder="Solar/Gas/Nihil" />
+                        <FormGroup label="Penggunaan BBM" name="wasteInfo" placeholder="Solar/Gas/Nihil" />
                       </div>
                     </div>
                     <div className="flex justify-between pt-3 border-t gap-2">

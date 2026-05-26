@@ -72,6 +72,10 @@ export const apiService = {
         responseType: "blob"
       });
       return response.data;
+    },
+    createRetribusiInvoice: async (id: string) => {
+      const response = await api.post(`/api/companies/${id}/retribusi-invoice`);
+      return response.data;
     }
   },
   waste: {
