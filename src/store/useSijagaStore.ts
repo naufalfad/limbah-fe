@@ -13,6 +13,7 @@ export interface User {
   companyId?: string; // Fallback backward-compatibility
   transporterId?: string;
   officerId?: string;
+  createdAt?: string;
 }
 
 export interface Company {
@@ -130,6 +131,7 @@ interface SijagaState {
   // Core State
   currentUser: User | null;
   selectedCompanyId: string | null;
+  users: User[]; // Data pengguna terpusat untuk Super Admin
   companies: Company[];
   wasteLogs: WasteLog[];
   pickupRequests: PickupRequest[];
@@ -143,8 +145,10 @@ interface SijagaState {
   setSelectedCompanyId: (id: string | null) => void;
   login: (email: string, password: string, role?: UserRole) => Promise<User | null>;
   logout: () => Promise<void>;
-  
+
   // API Fetchers
+  fetchUsers: () => Promise<void>;
+  updateUserRole: (id: string, role: UserRole) => Promise<void>;
   fetchCompanies: () => Promise<void>;
   fetchWasteLogs: (companyId?: string) => Promise<void>;
   fetchPickupRequests: (companyId?: string) => Promise<void>;
@@ -152,6 +156,7 @@ interface SijagaState {
   fetchInspections: () => Promise<void>;
   fetchNotifications: () => Promise<void>;
   readNotification: (id: string) => Promise<void>;
+  fetchAuditLogs: () => Promise<void>; // Fungsi fetch murni dari API
 
   addCompany: (formData: FormData) => Promise<void>;
   updateCompanyStatus: (id: string, status: Company["status"]) => Promise<void>;
@@ -171,7 +176,7 @@ interface SijagaState {
   addAuditLog: (user: string, role: string, action: string) => Promise<void>;
 }
 
-// Initial Mock Data (used as offline fallbacks)
+// Initial Mock Data (used as offline fallbacks for companies/pickups)
 const initialCompanies: Company[] = [
   {
     id: "COM-001",
@@ -397,11 +402,6 @@ const initialNotifications: SystemNotification[] = [
   }
 ];
 
-const initialAuditLogs: AuditLog[] = [
-  { id: "LOG-001", timestamp: "2026-05-20T08:00:00Z", user: "super@sijaga.id", role: "SUPER_ADMIN", action: "Konfigurasi payment gateway dimodifikasi ke Sandbox Mode." },
-  { id: "LOG-002", timestamp: "2026-05-20T09:12:00Z", user: "admin@dlh.go.id", role: "ADMIN_DLH", action: "Menyetujui dokumen UKL-UPL PT. Tekstil Sejahtera." }
-];
-
 const getInitialAuthState = () => {
   try {
     const savedUser = localStorage.getItem("sijaga_user");
@@ -429,13 +429,14 @@ const initialAuth = getInitialAuthState();
 export const useSijagaStore = create<SijagaState>((set, get) => ({
   currentUser: initialAuth.currentUser,
   selectedCompanyId: initialAuth.selectedCompanyId,
+  users: [],
   companies: initialAuth.companies,
   wasteLogs: initialWasteLogs,
   pickupRequests: initialPickupRequests,
   invoices: initialInvoices,
   inspections: initialInspections,
   notifications: initialNotifications,
-  auditLogs: initialAuditLogs,
+  auditLogs: [], // Cleaned up mock data, purely fetched from API now
   transporters: [],
 
   setSelectedCompanyId: (id) => {
@@ -444,35 +445,23 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
 
   login: async (email, password, role) => {
     try {
-      /**
-       * 1. Eksekusi API Login
-       * Mengirim email dan password ke backend.
-       * Backend akan memvalidasi kredensial dan mengembalikan data User + Role + Token.
-       */
       const data = await apiService.auth.login(email, password, role);
 
       if (data && data.success) {
-        // 2. Persistensi Token & Profil
         const token = data.token;
         localStorage.setItem("sijaga_token", token);
 
-        // 3. Mapping Data User dari Backend
-        // Data user sekarang mengandung 'role' asli dari database.
         const apiUser = data.user;
         const apiCompanies = apiUser.companies || [];
 
         localStorage.setItem("sijaga_user", JSON.stringify(apiUser));
 
-        // 4. Update State Global
         set({
           currentUser: apiUser,
           companies: apiCompanies,
-          // Set default company ID jika user adalah role PERUSAHAAN
           selectedCompanyId: apiUser.companyId || (apiCompanies.length > 0 ? apiCompanies[0].id : null),
         });
 
-        // 5. Audit Log Real-time
-        // Kita menggunakan apiUser.role yang didapat dari database, bukan inputan manual.
         get().addAuditLog(apiUser.email, apiUser.role, "Melakukan login ke sistem (Autentikasi Terintegrasi).");
 
         return apiUser;
@@ -480,10 +469,6 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
 
       return null;
     } catch (error: any) {
-      /**
-       * Error Handling:
-       * Jika gagal (401, 500, dll), kita lempar error agar LoginPage dapat memproses toast pesan.
-       */
       console.error("Login Failure:", error.response?.data?.message || error.message);
       throw error;
     }
@@ -504,6 +489,47 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
     localStorage.removeItem("token");
     localStorage.removeItem("sijaga_user");
     set({ currentUser: null, selectedCompanyId: null });
+  },
+
+  // FUNGSI BARU: Mengambil seluruh pengguna terdaftar
+  fetchUsers: async () => {
+    try {
+      const response = await apiService.admin.getAllUsers();
+      if (response && response.success) {
+        set({ users: response.users || [] });
+      }
+    } catch (e) {
+      console.error("API fetchUsers failed", e);
+      toast.error("Gagal memuat data pengguna.");
+    }
+  },
+
+  // FUNGSI BARU: Mengubah hak akses pengguna
+  updateUserRole: async (id: string, role: UserRole) => {
+    try {
+      const response = await apiService.admin.updateUserRole(id, role);
+      if (response && response.success) {
+        set((state) => ({
+          users: state.users.map((u) => (u.id === id ? { ...u, role } : u))
+        }));
+        toast.success(`Berhasil! Hak akses pengguna diubah menjadi ${role}`);
+      }
+    } catch (e) {
+      console.error("API updateUserRole failed", e);
+      toast.error("Gagal mengubah hak akses pengguna.");
+    }
+  },
+
+  // FUNGSI BARU: Mengambil histori log secara nyata
+  fetchAuditLogs: async () => {
+    try {
+      const response = await apiService.auditLogs.getAll();
+      if (response && response.success) {
+        set({ auditLogs: response.logs || [] });
+      }
+    } catch (e) {
+      console.error("API fetchAuditLogs failed", e);
+    }
   },
 
   fetchCompanies: async () => {
@@ -728,7 +754,7 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
         const isUklUpl = comp.docType === "UKL-UPL" || comp.docType === "UKL_UPL";
         const invoiceType = isUklUpl ? "Retribusi UKL-UPL" : "Retribusi SPPL";
         const amount = isUklUpl ? 1500000 : 500000;
-        
+
         const existingInvoice = get().invoices.find(i => i.companyId === id && i.type.includes("Retribusi"));
         if (!existingInvoice) {
           const newInvoice = {
@@ -757,7 +783,7 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
   downloadCompanyCertificate: async (id, companyName) => {
     try {
       const blob = await apiService.companies.downloadCertificatePdf(id);
-      
+
       // Buat URL Object sementara di memori browser
       const url = window.URL.createObjectURL(new Blob([blob]));
       const link = document.createElement('a');
@@ -765,10 +791,10 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
       // Beri nama file yang aman (hapus karakter aneh)
       link.setAttribute('download', `Sertifikat_${companyName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
       document.body.appendChild(link);
-      
+
       // Paksa browser memicu download
       link.click();
-      
+
       // Bersihkan memori
       link.parentNode?.removeChild(link);
       window.URL.revokeObjectURL(url);
@@ -842,7 +868,7 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
     } catch (e) {
       console.warn("API verifyWasteLog failed, fallback to local state", e);
     }
-    
+
     // Fallback offline
     set((state) => ({
       wasteLogs: state.wasteLogs.map(log => log.id === id ? { ...log, status } : log)
@@ -874,7 +900,7 @@ export const useSijagaStore = create<SijagaState>((set, get) => ({
     // --- FALLBACK OFFLINE ---
     const newId = `PICK-${String(get().pickupRequests.length + 1).padStart(3, "0")}`;
     const newInvId = `INV-${String(get().invoices.length + 1).padStart(3, "0")}`;
-    
+
     // Auto-calculate for offline fallback
     const parsedVol = parseFloat(requestData.volume.replace(/[^0-9.]/g, '')) || 0;
     const calcCost = parsedVol > 0 ? parsedVol * 10000 : 50000;
