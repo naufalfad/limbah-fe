@@ -7,8 +7,6 @@ import {
   ChevronRight, Search, Truck, ClipboardList, BarChart4,
   Users, Key, Layers, Activity, AlertTriangle, CheckCircle, Info
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useSijagaStore } from "@/store/useSijagaStore";
 
@@ -60,7 +58,7 @@ export default function DashboardLayout({ children, noPadding = false }: any) {
   const navigate = useNavigate();
 
   // Read state from Zustand
-  const { currentUser, logout, notifications, readAllNotifications, selectedCompanyId, setSelectedCompanyId } = useSijagaStore();
+  const { currentUser, logout, notifications, readAllNotifications } = useSijagaStore();
 
   // If no user is logged in, redirect to login page (safeguard)
   React.useEffect(() => {
