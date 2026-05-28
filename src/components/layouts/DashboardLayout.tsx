@@ -21,13 +21,12 @@ const MENU_CONFIG = {
   ],
   ADMIN_DLH: [
     { label: "Overview", icon: <LayoutDashboard size={18} />, path: "/admin" },
+    { label: "Triage Pengaduan", icon: <AlertTriangle size={18} />, path: "/admin/reports" }, // INJEKSI BARU: Menu kurasi aduan masyarakat [3]
     { label: "Registrasi SPPL/UKL", icon: <ShieldCheck size={18} />, path: "/admin/registrations" },
     { label: "Daftar Perusahaan", icon: <Building2 size={18} />, path: "/admin/companies" },
     { label: "Monitoring Limbah", icon: <Trash2 size={18} />, path: "/admin/waste" },
     { label: "GIS Geospasial", icon: <Map size={18} />, path: "/admin/gis" },
     { label: "List Pembayaran", icon: <CreditCard size={18} />, path: "/admin/payments" },
-    // { label: "Penugasan Armada", icon: <Truck size={18} />, path: "/admin/pickups" }, // BERHASIL DI-MERGE (size disesuaikan ke 18)
-    // { label: "Inspeksi Lapangan", icon: <ClipboardList size={18} />, path: "/admin/inspections" },
   ],
   PETUGAS_LAPANGAN: [
     { label: "Jadwal Inspeksi", icon: <ClipboardList size={18} />, path: "/officer/inspections" },
@@ -36,7 +35,6 @@ const MENU_CONFIG = {
   PERUSAHAAN: [
     { label: "Dashboard", icon: <LayoutDashboard size={18} />, path: "/company" },
     { label: "Logbook Limbah", icon: <Trash2 size={18} />, path: "/company/logbook" },
-    // { label: "Request Pickup", icon: <Truck size={18} />, path: "/company/pickup" },
     { label: "Pembayaran Digital", icon: <CreditCard size={18} />, path: "/company/payments" },
     { label: "Dokumen Lingkungan", icon: <ShieldCheck size={18} />, path: "/company/documents" },
   ],

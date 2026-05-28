@@ -1,7 +1,8 @@
 // src/modules/admin/components/gis/panels/LayerPanel.tsx
 import React from "react";
-import { Layers, Map as MapIcon, Sun, Moon, Info, Settings2, ShieldCheck, Factory, Waves } from "lucide-react";
+import { Layers, Map as MapIcon, Sun, Moon, Info, Settings2, ShieldCheck, Factory, Waves, AlertTriangle } from "lucide-react";
 import { useGisUIStore } from "@/store/useGisUIStore";
+import { useSijagaStore } from "@/store/useSijagaStore"; // INJEKSI: Mengambil konteks user saat ini
 
 /**
  * LayerPanel - GFW Paradigm (High-Density Data & Solid UI)
@@ -15,10 +16,25 @@ export default function LayerPanel() {
         activeBaseMap, setActiveBaseMap
     } = useGisUIStore();
 
+    const { currentUser } = useSijagaStore(); // Mengambil data pengguna login
+
+    // UI Polymorphism: Sesuaikan terminologi layer pengaduan berdasarkan Otoritas Role (GRASP)
+    let complaintLabel = "Aduan Masyarakat";
+    let complaintDesc = "Krisis Spasial Warga";
+
+    if (currentUser?.role === "PETUGAS_LAPANGAN") {
+        complaintLabel = "Aduan Ditugaskan";
+        complaintDesc = "Target Investigasi Anda";
+    } else if (currentUser?.role === "AUDITOR") {
+        complaintLabel = "Krisis Aduan Daerah";
+        complaintDesc = "Pantauan Eksekutif";
+    }
+
     const layerKewajiban = [
         { id: "layer-amdal", label: "AMDAL", desc: "Risiko Tinggi", color: "bg-red-500", icon: ShieldCheck },
         { id: "layer-uklupl", label: "UKL-UPL", desc: "Risiko Menengah", color: "bg-amber-500", icon: ShieldCheck },
         { id: "layer-sppl", label: "SPPL", desc: "Risiko Rendah", color: "bg-emerald-500", icon: ShieldCheck },
+        { id: "layer-complaints", label: complaintLabel, desc: complaintDesc, color: "bg-rose-500", icon: AlertTriangle },
     ];
 
     const layerOverlay = [
@@ -33,7 +49,7 @@ export default function LayerPanel() {
     ];
 
     return (
-        <div className="flex flex-col h-full bg-white pb-10">
+        <div className="flex flex-col h-full bg-white pb-10 font-sans">
 
             {/* SECTION 1: LAYER KEWAJIBAN & OVERLAY */}
             <div className="flex flex-col">
@@ -48,19 +64,19 @@ export default function LayerPanel() {
                     {[...layerKewajiban, ...layerOverlay].map((layer, index) => {
                         const isActive = activeLayers.includes(layer.id);
                         // Tambah garis pemisah ekstra jika pindah dari Kewajiban ke Overlay
-                        const isSeparator = index === 3;
+                        const isSeparator = index === 4; // Bergeser ke index 4 karena layer-complaints nambah di atasnya
 
                         return (
                             <React.Fragment key={layer.id}>
                                 {isSeparator && (
-                                    <div className="px-4 py-1.5 bg-slate-50 border-y border-slate-200">
+                                    <div className="px-4 py-1.5 bg-slate-50 border-y border-slate-200 mt-2">
                                         <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Environment Overlay</p>
                                     </div>
                                 )}
 
                                 <button
                                     onClick={() => toggleLayer(layer.id)}
-                                    className="group flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-white hover:bg-slate-50 transition-colors text-left w-full"
+                                    className="group flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-white hover:bg-slate-50 transition-colors text-left w-full outline-none"
                                 >
                                     <div className="flex items-center gap-3">
                                         {/* Custom UI Toggle Switch */}
@@ -104,7 +120,7 @@ export default function LayerPanel() {
                         max="100"
                         value={mapOpacity}
                         onChange={(e) => setMapOpacity(parseInt(e.target.value))}
-                        className="w-full h-1.5 bg-slate-200 rounded-none appearance-none cursor-pointer accent-emerald-600"
+                        className="w-full h-1.5 bg-slate-200 rounded-none appearance-none cursor-pointer accent-emerald-600 outline-none"
                     />
                     <div className="flex justify-between text-[9px] font-bold text-slate-400 uppercase tracking-widest">
                         <span>Transparan</span>
@@ -127,7 +143,7 @@ export default function LayerPanel() {
                             <button
                                 key={map.id}
                                 onClick={() => setActiveBaseMap(map.id)}
-                                className="group flex items-center justify-between px-4 py-2.5 border-b border-slate-200 bg-white hover:bg-slate-50 transition-colors text-left w-full"
+                                className="group flex items-center justify-between px-4 py-2.5 border-b border-slate-200 bg-white hover:bg-slate-50 transition-colors text-left w-full outline-none"
                             >
                                 <div className="flex items-center gap-3">
                                     <div className={`relative inline-flex h-3.5 w-7 shrink-0 items-center rounded-full transition-colors duration-200 ease-in-out ${isActive ? 'bg-emerald-500' : 'bg-slate-300'}`}>

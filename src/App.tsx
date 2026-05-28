@@ -23,6 +23,7 @@ import TransactionManagement from "./modules/admin/TransactionManagement";
 import InspectionManagement from "./modules/admin/InspectionManagement";
 import AdminPickupManagement from "./modules/admin/AdminPickupManagement";
 import CompanyManagement from "./modules/admin/CompanyManagement";
+import CitizenReportManagement from "./modules/admin/CitizenReportManagement"; // INJEKSI BARU: Komponen triage pengaduan warga [3]
 
 // Perusahaan
 import CompanyDashboard from "./modules/companies/pages/CompanyDashboard";
@@ -68,6 +69,7 @@ function App() {
             Admin DLH Routes (Terproteksi)
            ========================================== */}
         <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin/reports" element={<CitizenReportManagement />} /> {/* INJEKSI BARU: Rute halaman Triage Pengaduan [3] */}
         <Route path="/admin/registrations" element={<RegistrationList />} />
         <Route path="/admin/companies" element={<CompanyManagement />} />
         <Route path="/admin/waste" element={<WasteMonitoring />} />

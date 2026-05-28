@@ -38,7 +38,8 @@ export const useGisUIStore = create<GisUIState>((set) => ({
     // Inisialisasi State Default
     activePanels: [],
 
-    // Default layer nyala semua persis seperti komponen lama lu
+    // PERUBAHAN ARSITEKTUR: Mencabut 'layer-complaints' dari default array.
+    // Menghindari polusi visual. Visibilitas akan ditentukan manual via Panel Layer oleh Aktor [3].
     activeLayers: ['layer-amdal', 'layer-uklupl', 'layer-sppl', 'overlay-das', 'overlay-rtrw'],
 
     mapOpacity: 80,

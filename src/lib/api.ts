@@ -1,3 +1,4 @@
+// src/lib/api.ts
 import axios from "axios";
 
 const API_URL = "http://localhost:5000";
@@ -38,6 +39,11 @@ export const apiService = {
   admin: {
     getTransporters: async () => {
       const response = await api.get("/api/admin/transporters");
+      return response.data;
+    },
+    // Pemanggil API khusus mengambil daftar petugas lapangan (PETUGAS_LAPANGAN) [3]
+    getOfficers: async () => {
+      const response = await api.get("/api/admin/officers");
       return response.data;
     },
     // Mengambil seluruh data user untuk Super Admin
@@ -139,8 +145,22 @@ export const apiService = {
       const response = await api.post("/api/inspections", payload);
       return response.data;
     },
-    submit: async (id: string, score: number, notes: string, checklist: any, photo?: string) => {
-      const response = await api.post(`/api/inspections/${id}/submit`, { score, notes, checklist, photo });
+    // FASE 1 ARSITEKTUR: Menyelaraskan Parameter Payload dengan Zod Schema Backend [3]
+    submit: async (
+      id: string,
+      score: number | null,
+      notes: string,
+      checklist: any,
+      photo?: string,
+      correctedCompanyId?: string
+    ) => {
+      const response = await api.post(`/api/inspections/${id}/submit`, {
+        score,
+        notes,
+        checklist,
+        photo,
+        correctedCompanyId // INJEKSI FIX: Mengubah dari 'companyId' agar dikenali Backend
+      });
       return response.data;
     }
   },
@@ -172,7 +192,7 @@ export const apiService = {
       return response.data;
     }
   },
-  // BLOK BARU: Sistem pemanggil analitik eksekutif terpusat dari Backend
+  // Sistem pemanggil analitik eksekutif terpusat dari Backend
   analytics: {
     getExecutive: async () => {
       const response = await api.get("/api/analytics/executive");

@@ -64,7 +64,7 @@ export const createReportSlice: StateCreator<
         set({ publicReportTrackData: null });
     },
 
-    // --- ACTIONS (PROTECTED ADMIN) ---
+    // --- ACTIONS (PROTECTED ADMIN / PETUGAS LAPANGAN) ---
 
     fetchAdminReports: async (status?: string) => {
         try {
@@ -96,6 +96,27 @@ export const createReportSlice: StateCreator<
         } catch (error: any) {
             console.error('Error verifying report:', error);
             toast.error(error.response?.data?.message || 'Gagal memverifikasi laporan');
+            return false;
+        } finally {
+            set({ isReportLoading: false });
+        }
+    },
+
+    investigateCitizenReport: async (id: string) => {
+        try {
+            set({ isReportLoading: true });
+
+            // Mengirimkan PATCH request ke backend terproteksi
+            await api.patch(`${REPORT_API_URL}/admin/${id}/investigate`);
+
+            toast.success('Penyelidikan lapangan (patroli) resmi diaktifkan.');
+
+            // Mengambil data ulang agar tabel ter-refresh secara real-time
+            await get().fetchAdminReports();
+            return true;
+        } catch (error: any) {
+            console.error('Error starting investigation:', error);
+            toast.error(error.response?.data?.message || 'Gagal memulai penyelidikan');
             return false;
         } finally {
             set({ isReportLoading: false });

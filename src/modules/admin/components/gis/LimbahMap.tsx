@@ -1,6 +1,15 @@
 // src/modules/admin/components/gis/LimbahMap.tsx
 import React, { useEffect, useMemo } from 'react';
-import { MapContainer, TileLayer, Polygon, FeatureGroup, useMap, useMapEvents } from 'react-leaflet';
+import {
+    MapContainer,
+    TileLayer,
+    Polygon,
+    FeatureGroup,
+    Marker,
+    Popup,
+    useMap,
+    useMapEvents
+} from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useSijagaStore } from '@/store/useSijagaStore';
@@ -18,10 +27,59 @@ let DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// FIXED: Ubah tipe data dari L.LatLngExpression menjadi tuple eksplisit [number, number]
 const DEFAULT_CENTER: [number, number] = [-6.9147, 107.6098];
 
-// Map Events Handler: Nangkep interaksi zoom/klik dari tombol MapHUD & Sinyal Spasial
+// ============================================================================
+// 1. ICON GENERATORS
+// ============================================================================
+
+// A. Ikon Berkedip (Khusus Triage Admin & Auditor untuk memantau titik krisis)
+const createPulsingIcon = (status: string) => {
+    let colorClass = "bg-rose-600";
+    let ringClass = "bg-rose-500 animate-ping";
+
+    if (status === "RESOLVED") {
+        colorClass = "bg-teal-600";
+        ringClass = "bg-teal-400";
+    } else if (status === "INVESTIGATING") {
+        colorClass = "bg-indigo-600";
+        ringClass = "bg-indigo-400 animate-pulse";
+    }
+
+    return L.divIcon({
+        html: `
+            <div style="position: relative; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+                <span class="absolute inline-flex h-6 w-6 rounded-full ${ringClass} opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-4.5 w-4.5 ${colorClass} border-2 border-white shadow-md flex items-center justify-center">
+                    <span class="w-1.5 h-1.5 rounded-full bg-white"></span>
+                </span>
+            </div>
+        `,
+        className: "custom-pulsing-marker-wrapper",
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+    });
+};
+
+// B. Ikon Statis Solid (Khusus Operasional Inspektur Lapangan) - Tanpa Animasi
+const createStaticTaskIcon = (isUnknown: boolean) => {
+    const bgColor = isUnknown ? "bg-rose-500" : "bg-emerald-500";
+    return L.divIcon({
+        html: `
+            <div style="width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 9999px; border: 3px solid white; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);" class="${bgColor}">
+                <div style="width: 8px; height: 8px; border-radius: 9999px; background-color: white;"></div>
+            </div>
+        `,
+        className: "custom-static-task-marker",
+        iconSize: [28, 28],
+        iconAnchor: [14, 14],
+    });
+};
+
+// ============================================================================
+// 2. MAP EVENT CONTROLLERS
+// ============================================================================
+
 function ExternalMapController() {
     const map = useMap();
 
@@ -30,11 +88,10 @@ function ExternalMapController() {
         const handleZoomOut = () => map.zoomOut();
         const handleResetView = () => map.setView(DEFAULT_CENTER, 12, { animate: true });
 
-        // LOGIKA PENERBANGAN LOKASI ( GFWS Decoupled Event )
         const handleFlyToCoords = (e: Event) => {
             const customEvent = e as CustomEvent<{ lat: number; lng: number }>;
             const { lat, lng } = customEvent.detail;
-            map.flyTo([lat, lng], 14, { animate: true, duration: 1.5 });
+            map.flyTo([lat, lng], 16, { animate: true, duration: 1.5 });
         };
 
         window.addEventListener('map-zoom-in', handleZoomIn);
@@ -52,69 +109,134 @@ function ExternalMapController() {
     return null;
 }
 
-// Map Click Handler: Buat unselect panel detail kalau user ngeklik ruang kosong di peta
 function MapEventsHandler() {
-    const { closePanel, selectedCompanyId } = useGisUIStore();
+    const { closePanel } = useGisUIStore();
     useMapEvents({
         click: () => {
-            if (selectedCompanyId) {
-                // Cari dan tutup panel detail yang ID/type-nya detil-perusahaan
-                closePanel("detil-perusahaan");
-            }
+            // Tutup semua panel melayang jika area kosong peta diklik
+            closePanel("detil-perusahaan");
+            closePanel("detail-tugas");
         }
     });
     return null;
 }
 
+// ============================================================================
+// 3. MAIN COMPONENT
+// ============================================================================
+
 export default function LimbahMap() {
-    const { companies } = useSijagaStore();
+    const { companies, adminReports, fetchAdminReports, currentUser, inspections } = useSijagaStore();
     const {
         activeLayers, activeBaseMap, mapOpacity,
         selectedCompanyId, setSelectedCompanyId, openPanel, closePanelsToTheRight
     } = useGisUIStore();
 
-    // Mapping Perusahaan (Simulasi Koordinat & Poligon bounding box dari data asli)
+    useEffect(() => {
+        if (adminReports.length === 0) fetchAdminReports();
+    }, [adminReports.length, fetchAdminReports]);
+
+    const isOfficer = currentUser?.role === "PETUGAS_LAPANGAN";
+
+    // ------------------------------------------------------------------------
+    // DATA LAYER A: POLIGON INDUSTRI (Hanya untuk Admin & Auditor)
+    // ------------------------------------------------------------------------
     const companyPolygons = useMemo(() => {
-        return companies
-            .filter(c => c.status === "APPROVED")
-            .map(c => {
-                const lat = parseFloat(c.lat);
-                const lng = parseFloat(c.lng);
-                const offset = 0.0008; // Sekitar 80-100 meter bounding box
+        if (isOfficer) return []; // Inspektur tidak butuh poligon transparan
 
-                // FIXED: Sekarang DEFAULT_CENTER adalah [number, number], sehingga TS tidak akan error
-                const poly: [number, number][] = isNaN(lat) || isNaN(lng)
-                    ? [DEFAULT_CENTER, DEFAULT_CENTER, DEFAULT_CENTER, DEFAULT_CENTER]
-                    : [
-                        [lat - offset, lng - offset],
-                        [lat + offset, lng - offset],
-                        [lat + offset, lng + offset],
-                        [lat - offset, lng + offset],
-                    ];
+        let contextualCompanies = currentUser?.role === "AUDITOR"
+            ? companies.filter(c => c.status === "APPROVED")
+            : companies;
 
-                // Format data sesuai warna GFW
-                let style = { color: '#22c55e', fillColor: '#22c55e', layerId: 'layer-sppl' }; // Emerald
-                if (c.docType === 'AMDAL') style = { color: '#ef4444', fillColor: '#ef4444', layerId: 'layer-amdal' }; // Red
-                if (c.docType === 'UKL-UPL' || c.docType === 'UKL_UPL') style = { color: '#f59e0b', fillColor: '#f59e0b', layerId: 'layer-uklupl' }; // Amber
+        return contextualCompanies.map(c => {
+            const lat = parseFloat(c.lat);
+            const lng = parseFloat(c.lng);
+            const offset = 0.0008;
 
-                return { ...c, polygon: poly, style };
-            });
-    }, [companies]);
+            const poly: [number, number][] = isNaN(lat) || isNaN(lng)
+                ? [DEFAULT_CENTER, DEFAULT_CENTER, DEFAULT_CENTER, DEFAULT_CENTER]
+                : [
+                    [lat - offset, lng - offset], [lat + offset, lng - offset],
+                    [lat + offset, lng + offset], [lat - offset, lng + offset],
+                ];
 
-    // Handler klik pada Poligon Perusahaan
+            let style = { color: '#22c55e', fillColor: '#22c55e', layerId: 'layer-sppl' };
+            if (c.status === "PENDING" || c.status === "REVIEW") style = { color: '#3b82f6', fillColor: '#3b82f6', layerId: 'layer-sppl' };
+            else if (c.status === "SUSPENDED" || c.status === "REJECTED") style = { color: '#64748b', fillColor: '#64748b', layerId: 'layer-sppl' };
+            else {
+                if (c.docType === 'AMDAL') style = { color: '#ef4444', fillColor: '#ef4444', layerId: 'layer-amdal' };
+                else if (c.docType === 'UKL-UPL' || c.docType === 'UKL_UPL') style = { color: '#f59e0b', fillColor: '#f59e0b', layerId: 'layer-uklupl' };
+            }
+            return { ...c, polygon: poly, style };
+        });
+    }, [companies, currentUser, isOfficer]);
+
+    // ------------------------------------------------------------------------
+    // DATA LAYER B: TITIK TUGAS SOLID (Hanya untuk Inspektur Lapangan)
+    // ------------------------------------------------------------------------
+    const officerTasks = useMemo(() => {
+        if (!isOfficer) return [];
+
+        const userId = currentUser?.id;
+        const officerId = currentUser?.officerId;
+
+        // Ambil penugasan milik inspektur yang masih "Terjadwal"
+        const activeTasks = inspections.filter(
+            (i) => (i.inspectorId === userId || i.inspectorId === officerId) && i.status === "Terjadwal"
+        );
+
+        return activeTasks.map(task => {
+            let lat = NaN, lng = NaN;
+            const isUnknown = task.companyId === "COM-UNKNOWN";
+
+            // Ekstraksi koordinat cerdas
+            if (isUnknown && task.location.includes(",")) {
+                const coords = task.location.split(",");
+                lat = parseFloat(coords[0]);
+                lng = parseFloat(coords[1]);
+            } else {
+                const comp = companies.find((c) => c.id === task.companyId);
+                if (comp) {
+                    lat = parseFloat(comp.lat);
+                    lng = parseFloat(comp.lng);
+                }
+            }
+
+            return { ...task, lat, lng, isUnknown };
+        }).filter(t => !isNaN(t.lat) && !isNaN(t.lng));
+    }, [inspections, currentUser, companies, isOfficer]);
+
+
+    // ------------------------------------------------------------------------
+    // EVENT HANDLERS
+    // ------------------------------------------------------------------------
     const handlePolygonClick = (c: any, e: L.LeafletMouseEvent) => {
-        e.originalEvent.stopPropagation(); // Mencegah MapEventsHandler ikut kepanggil
-
-        // Auto-pan peta ke tengah objek yang di klik
-        const map = e.target._map;
-        map.flyToBounds(e.target.getBounds(), { padding: [100, 100], duration: 1.5 });
-
+        e.originalEvent.stopPropagation();
+        e.target._map.flyToBounds(e.target.getBounds(), { padding: [100, 100], duration: 1.5 });
         setSelectedCompanyId(c.id);
-        closePanelsToTheRight(-1); // Bersihkan panel detail sebelumnya jika ada
+        closePanelsToTheRight(-1);
         openPanel("detil-perusahaan", `Detail: ${c.companyName}`, c);
     };
 
-    // Switch BaseMap URL
+    const handleReportClick = (report: any, e: L.LeafletMouseEvent) => {
+        e.originalEvent.stopPropagation();
+        e.target._map.flyTo([parseFloat(report.lat), parseFloat(report.lng)], 16, { animate: true, duration: 1.5 });
+        setSelectedCompanyId(null);
+        closePanelsToTheRight(-1);
+        openPanel("detail-tugas", `Investigasi: ${report.trackingId}`, report);
+    };
+
+    const handleTaskMarkerClick = (task: any, e: L.LeafletMouseEvent) => {
+        e.originalEvent.stopPropagation();
+        e.target._map.flyTo([task.lat, task.lng], 16, { animate: true, duration: 1.5 });
+
+        if (!task.isUnknown) setSelectedCompanyId(task.companyId);
+        else setSelectedCompanyId(null);
+
+        closePanelsToTheRight(-1);
+        openPanel("detail-tugas", `Sidak: ${task.id}`, task);
+    };
+
     const getTileUrl = () => {
         switch (activeBaseMap) {
             case 'satellite': return "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
@@ -124,15 +246,12 @@ export default function LimbahMap() {
         }
     };
 
-    const opacityRatio = mapOpacity / 100;
-
     return (
-        // Pastikan ini absolut dan index rendah (Z-0) agar berada di bawah UI GFW
         <div className="absolute inset-0 z-0 bg-slate-100">
             <MapContainer
                 center={DEFAULT_CENTER}
                 zoom={12}
-                zoomControl={false} // Dimatikan karena pakai MapHUD kustom
+                zoomControl={false}
                 style={{ height: '100%', width: '100%' }}
             >
                 <ExternalMapController />
@@ -140,13 +259,10 @@ export default function LimbahMap() {
 
                 <TileLayer url={getTileUrl()} />
 
-                {/* LAYER: PERUSAHAAN TERDAFTAR (Sesuai Toggle) */}
-                {companyPolygons.map(c => {
-                    // Render hanya jika layer-nya sedang diaktifkan di panel
+                {/* RENDER 1: POLIGON INDUSTRI (ADMIN / AUDITOR) */}
+                {!isOfficer && companyPolygons.map(c => {
                     if (!activeLayers.includes(c.style.layerId)) return null;
-
                     const isSelected = selectedCompanyId === c.id;
-
                     return (
                         <Polygon
                             key={c.id}
@@ -154,7 +270,7 @@ export default function LimbahMap() {
                             pathOptions={{
                                 color: isSelected ? '#ffffff' : c.style.color,
                                 fillColor: c.style.fillColor,
-                                fillOpacity: isSelected ? 0.7 : (0.4 * opacityRatio),
+                                fillOpacity: isSelected ? 0.7 : (0.4 * (mapOpacity / 100)),
                                 weight: isSelected ? 3 : 2,
                                 dashArray: c.style.layerId === 'layer-amdal' ? '6,4' : undefined,
                             }}
@@ -163,7 +279,35 @@ export default function LimbahMap() {
                     );
                 })}
 
-                {/* LAYER OVERLAY: DAS & SUNGAI */}
+                {/* RENDER 2: PIN PENGADUAN KELIP KELIP (ADMIN / AUDITOR TRIAGE) */}
+                {!isOfficer && activeLayers.includes("layer-complaints") &&
+                    adminReports.map((report) => {
+                        const latNum = parseFloat(report.lat);
+                        const lngNum = parseFloat(report.lng);
+                        if (isNaN(latNum) || isNaN(lngNum)) return null;
+
+                        return (
+                            <Marker
+                                key={report.id}
+                                position={[latNum, lngNum]}
+                                icon={createPulsingIcon(report.status)}
+                                eventHandlers={{ click: (e) => handleReportClick(report, e) }}
+                            />
+                        );
+                    })
+                }
+
+                {/* RENDER 3: PIN TUGAS SOLID (HANYA UNTUK INSPEKTUR) */}
+                {isOfficer && officerTasks.map((task) => (
+                    <Marker
+                        key={`task-${task.id}`}
+                        position={[task.lat, task.lng]}
+                        icon={createStaticTaskIcon(task.isUnknown)}
+                        eventHandlers={{ click: (e) => handleTaskMarkerClick(task, e) }}
+                    />
+                ))}
+
+                {/* LAYER OVERLAY: DAS & ZONASI (Tampil untuk semua role) */}
                 {activeLayers.includes("overlay-das") && (
                     <FeatureGroup>
                         {[
@@ -173,14 +317,13 @@ export default function LimbahMap() {
                             <Polygon
                                 key={`das-${i}`}
                                 positions={circleToPolygon(c.center, c.r, 36)}
-                                pathOptions={{ color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.1 * opacityRatio, weight: 1.5, dashArray: '4,4' }}
+                                pathOptions={{ color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.1 * (mapOpacity / 100), weight: 1.5, dashArray: '4,4' }}
                                 interactive={false}
                             />
                         ))}
                     </FeatureGroup>
                 )}
 
-                {/* LAYER OVERLAY: ZONASI INDUSTRI */}
                 {activeLayers.includes("overlay-rtrw") && (
                     <FeatureGroup>
                         {[
@@ -190,7 +333,7 @@ export default function LimbahMap() {
                             <Polygon
                                 key={`rtrw-${i}`}
                                 positions={circleToPolygon(c.center, c.r, 36)}
-                                pathOptions={{ color: '#f97316', fillColor: '#f97316', fillOpacity: 0.15 * opacityRatio, weight: 1.5, dashArray: '4,4' }}
+                                pathOptions={{ color: '#f97316', fillColor: '#f97316', fillOpacity: 0.15 * (mapOpacity / 100), weight: 1.5, dashArray: '4,4' }}
                                 interactive={false}
                             />
                         ))}
@@ -202,7 +345,7 @@ export default function LimbahMap() {
     );
 }
 
-// Helper: Bikin lingkaran pseudo-polygon (seperti kode bawaan)
+// Helper: Lingkaran pseudo-polygon
 function circleToPolygon(center: [number, number], radiusM: number, numPoints: number): [number, number][] {
     const earthRadius = 6371000;
     const lat = (center[0] * Math.PI) / 180;

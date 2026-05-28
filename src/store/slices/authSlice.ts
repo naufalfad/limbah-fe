@@ -1,3 +1,4 @@
+// src/store/slices/authSlice.ts
 import { StateCreator } from "zustand";
 import { SijagaState, AuthSlice, User, UserRole } from "../types";
 import { apiService } from "../../lib/api";
@@ -13,6 +14,8 @@ export const getInitialAuthState = () => {
         currentUser: user as User,
         companies: companiesList.length > 0 ? companiesList : initialCompanies,
         selectedCompanyId: user.companyId || (companiesList.length > 0 ? companiesList[0].id : null),
+        users: [],
+        officers: [], // Inisialisasi state luring default
       };
     }
   } catch (e) {
@@ -23,6 +26,7 @@ export const getInitialAuthState = () => {
     companies: initialCompanies,
     selectedCompanyId: null,
     users: [],
+    officers: [], // Inisialisasi state luring default
   };
 };
 
@@ -38,6 +42,7 @@ export const createAuthSlice: StateCreator<
   companies: initialAuth.companies,
   selectedCompanyId: initialAuth.selectedCompanyId,
   users: initialAuth.users || [],
+  officers: [], // INJEKSI STATE: Daftar petugas lapangan (PETUGAS_LAPANGAN) terisolasi [3]
 
   setSelectedCompanyId: (id) => {
     set({ selectedCompanyId: id });
@@ -51,6 +56,18 @@ export const createAuthSlice: StateCreator<
       }
     } catch (error) {
       console.error("Failed to fetch users:", error);
+    }
+  },
+
+  // INJEKSI BARU: Implementasi kueri terisolasi mengambil petugas lapangan bersih dari BE [3]
+  fetchOfficers: async () => {
+    try {
+      const data = await apiService.admin.getOfficers();
+      if (data && data.success) {
+        set({ officers: data.officers || [] });
+      }
+    } catch (error) {
+      console.error("Failed to fetch officers:", error);
     }
   },
 

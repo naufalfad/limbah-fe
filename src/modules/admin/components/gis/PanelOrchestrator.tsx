@@ -9,6 +9,7 @@ import LayerPanel from "./panels/LayerPanel";
 import CompanyPanel from "./panels/CompanyPanel";
 import DetailPanel from "./panels/DetailPanel";
 import PatrolTaskPanel from "./panels/PatrolTaskPanel";
+import TaskDetailPanel from "./panels/TaskDetailPanel"; // INJEKSI FASE 2: Panel Detail Tugas
 
 // MODULAR: Mengimpor laci taktis telemetri live dari modul transport
 import ActiveFleetPanel from "@/modules/transport/components/gis/panels/ActiveFleetPanel";
@@ -38,7 +39,8 @@ export default function PanelOrchestrator() {
         <div className="absolute top-16 bottom-0 left-16 z-30 pointer-events-none flex items-start">
             {activePanels.map((panel, index) => {
                 // Cek apakah ini panel detail yang harus melayang (Floating Panel)
-                const isFloating = panel.type === "detil-perusahaan";
+                // FASE 2: Memastikan panel 'detail-tugas' juga melayang
+                const isFloating = panel.type === "detil-perusahaan" || panel.type === "detail-tugas";
 
                 const xOffset = index * (PANEL_WIDTH + PANEL_GAP);
                 const floatingLeft = isMobile ? 16 : (index * PANEL_WIDTH) + 16;
@@ -117,6 +119,9 @@ function renderPanelContent(type: GisPanelType, data: any) {
             return <ActiveFleetPanel />; // <-- MODULAR: Mengarahkan laci ke modul transport
         case "detil-perusahaan":
             return <DetailPanel companyData={data} />;
+        case "detail-tugas":
+            // FASE 2 INJEKSI: Meneruskan data tugas ke komponen panel baru
+            return <TaskDetailPanel taskData={data} />;
         case "tentang":
             return (
                 <div className="p-6 text-center space-y-3 text-slate-500 font-sans">

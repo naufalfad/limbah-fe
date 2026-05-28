@@ -1,3 +1,4 @@
+// src/store/slices/inspectionSlice.ts
 import { StateCreator } from "zustand";
 import { SijagaState, InspectionSlice, Inspection } from "../types";
 import { apiService } from "../../lib/api";
@@ -63,14 +64,30 @@ export const createInspectionSlice: StateCreator<
     return newInspection;
   },
 
-  submitInspectionResult: async (id, score, notes, checklist, photo) => {
+  // FASE 1 ARSITEKTUR: Menangkap parameter ke-6 (correctedCompanyId) & Handle Null Score
+  submitInspectionResult: async (id, score, notes, checklist, photo, correctedCompanyId) => {
     try {
-      const response = await apiService.inspections.submit(id, score, notes, checklist, photo);
+      // Mengirimkan data BAP (Polymorphic: bisa rutinitas, bisa pengaduan) ke API
+      const response = await apiService.inspections.submit(
+        id,
+        score ?? undefined as any, // Ubah null menjadi undefined agar tidak merusak payload axios jika perlu
+        notes,
+        checklist ?? undefined,
+        photo,
+        correctedCompanyId
+      );
+
       if (response && response.success) {
         const updatedInsp: Inspection = response.inspection;
         set((state) => ({
           inspections: state.inspections.map((insp) => insp.id === id ? updatedInsp : insp),
-          companies: state.companies.map((c) => c.id === updatedInsp.companyId ? { ...c, score } : c)
+          // DATA INTEGRITY GUARD: Hanya update skor ESG perusahaan jika BAP memiliki skor valid
+          companies: state.companies.map((c) => {
+            if (c.id === updatedInsp.companyId) {
+              return typeof score === 'number' ? { ...c, score } : c;
+            }
+            return c;
+          })
         }));
         toast.success("Hasil BAP Inspeksi lapangan berhasil diunggah!");
         return;
@@ -82,32 +99,60 @@ export const createInspectionSlice: StateCreator<
     // --- FALLBACK OFFLINE ---
     set((state) => ({
       inspections: state.inspections.map((insp) =>
-        insp.id === id ? { ...insp, score, notes, checklist, photo, status: "Selesai", bapSigned: true } : insp
+        insp.id === id ? {
+          ...insp,
+          score,
+          notes,
+          checklist: checklist ?? undefined,
+          photo,
+          status: "Selesai",
+          bapSigned: true,
+          // Update companyId di dalam state luring jika petugas melakukan koreksi sasaran
+          ...(correctedCompanyId && { companyId: correctedCompanyId })
+        } : insp
       )
     }));
 
     const insp = get().inspections.find((i) => i.id === id);
     if (!insp) return;
 
-    set((state) => ({
-      companies: state.companies.map((c) => (c.id === insp.companyId ? { ...c, score } : c))
-    }));
+    // Tentukan entitas sasaran luring
+    const targetCompanyId = correctedCompanyId || insp.companyId;
+
+    // DATA INTEGRITY GUARD: Update state perusahaan lokal HANYA JIKA score adalah angka
+    if (typeof score === 'number') {
+      set((state) => ({
+        companies: state.companies.map((c) => (c.id === targetCompanyId ? { ...c, score } : c))
+      }));
+    }
 
     toast.success("BAP Inspeksi disubmit (Offline)!");
     const user = get().currentUser;
-    get().addAuditLog(user?.email || "OFFICER", "PETUGAS_LAPANGAN", `Mengirimkan hasil inspeksi ${id} untuk ${insp.companyName} dengan skor ${score}`);
 
-    if (score < 60) {
-      get().addNotification(
-        "WARNING: Kepatuhan Lingkungan Rendah",
-        `Hasil inspeksi ${insp.companyName} menunjukkan skor kepatuhan kritis: ${score}/100. Rekomendasi teguran tertulis.`,
-        "WARNING"
-      );
+    // Pemisahan Logika Notifikasi & Log Audit berdasarkan jenis BAP
+    if (typeof score === 'number') {
+      get().addAuditLog(user?.email || "OFFICER", "PETUGAS_LAPANGAN", `Mengirimkan hasil inspeksi ${id} untuk ${insp.companyName} dengan skor ${score}`);
+
+      if (score < 60) {
+        get().addNotification(
+          "WARNING: Kepatuhan Lingkungan Rendah",
+          `Hasil inspeksi ${insp.companyName} menunjukkan skor kepatuhan kritis: ${score}/100. Rekomendasi teguran tertulis.`,
+          "WARNING"
+        );
+      } else {
+        get().addNotification(
+          "Hasil Inspeksi Disubmit",
+          `Evaluasi kepatuhan ${insp.companyName} selesai dengan hasil baik: ${score}/100.`,
+          "SUCCESS"
+        );
+      }
     } else {
+      // Skenario BAP Pengaduan Warga (Tanpa Skor)
+      get().addAuditLog(user?.email || "OFFICER", "PETUGAS_LAPANGAN", `Mengirimkan BAP penindakan pengaduan lapangan untuk ${insp.companyName} (${id})`);
       get().addNotification(
-        "Hasil Inspeksi Disubmit",
-        `Evaluasi kepatuhan ${insp.companyName} selesai dengan hasil baik: ${score}/100.`,
-        "SUCCESS"
+        "BAP Penindakan Selesai",
+        `BAP lapangan untuk ${insp.companyName} berhasil diamankan ke sistem.`,
+        "INFO"
       );
     }
   },

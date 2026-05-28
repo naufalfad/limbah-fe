@@ -1,6 +1,6 @@
 // src/modules/inspections/pages/OfficerInspectionsPage.tsx
 import React, { useState, useEffect, useMemo } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom"; // FASE 2 INJEKSI: Import useNavigate
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import { useSijagaStore } from "@/store/useSijagaStore";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -26,12 +26,15 @@ import AuditEvaluationModal from "../components/AuditEvaluationModal";
  */
 export default function OfficerInspectionsPage() {
   const location = useLocation();
+  const navigate = useNavigate(); // FASE 2 INJEKSI: Menggunakan native router navigator
+
   const {
     currentUser,
     inspections,
     companies,
     fetchCompanies,
     fetchInspections,
+    fetchAdminReports, // Sinkronisasi aduan tetap dijalankan agar data cache up-to-date
     scheduleInspection
   } = useSijagaStore();
 
@@ -42,33 +45,38 @@ export default function OfficerInspectionsPage() {
   useEffect(() => {
     fetchCompanies();
     fetchInspections();
-  }, [fetchCompanies, fetchInspections]);
+    fetchAdminReports();
+  }, [fetchCompanies, fetchInspections, fetchAdminReports]);
 
   // LOGIKA PRO-UX: Deteksi penugasan dari Peta GIS Patroli secara otomatis [3]
   useEffect(() => {
-    if (location.state && (location.state as any).preSelectedCompanyId) {
-      const companyId = (location.state as any).preSelectedCompanyId;
+    // FASE 2 FIX: Mencari spesifik berdasarkan ID Inspection, BUKAN Company ID
+    if (location.state && (location.state as any).preSelectedInspectionId) {
+      const inspectionId = (location.state as any).preSelectedInspectionId;
 
-      // Cari tugas inspeksi terjadwal yang cocok untuk industri tersebut [3]
+      // Cari tugas inspeksi terjadwal yang cocok [3]
       const matchedInsp = inspections.find(
-        (i) => i.companyId === companyId && i.status === "Terjadwal"
+        (i) => i.id === inspectionId && i.status === "Terjadwal"
       );
 
       if (matchedInsp) {
-        setSelectedInsp(matchedInsp);
-        setIsModalOpen(true);
-        toast.info(`Membuka form sidak otomatis untuk ${matchedInsp.companyName}`);
+        handleStartAudit(matchedInsp);
+        toast.info(`Membuka form sidak otomatis untuk target spasial yang dipilih.`);
       } else {
-        toast.warning("Tidak ada jadwal inspeksi aktif yang terdaftar untuk industri tersebut.");
+        toast.warning("Tidak ada jadwal inspeksi aktif yang terdaftar untuk titik tersebut.");
       }
 
-      // Bersihkan state rute agar tidak ter-trigger ulang saat halaman direfresh oleh petugas
-      window.history.replaceState({}, document.title);
+      // FASE 2 FIX: Hapus state navigasi secara native dari React Router (Memutus Infinite Loop)
+      navigate(location.pathname, { replace: true, state: {} });
     }
-  }, [location.state, inspections]);
+  }, [location.state, inspections, navigate, location.pathname]);
 
-  // Handler memulai audit secara manual dari daftar list [3]
+  // FASE 4 ARSITEKTUR: Memperbaiki The Stuck State Flaw
   const handleStartAudit = (insp: any) => {
+    // Kita mencabut eksekusi investigateCitizenReport() otomatis dari sini.
+    // Modal ini sekarang bertindak murni sebagai "Pure Fabrication" (UI Viewer).
+    // Transisi status ke INVESTIGATING atau RESOLVED hanya akan terjadi secara
+    // eksplisit di dalam AuditEvaluationModal.tsx, mencegah status "nyangkut".
     setSelectedInsp(insp);
     setIsModalOpen(true);
   };
@@ -76,6 +84,9 @@ export default function OfficerInspectionsPage() {
   const handleCloseModal = () => {
     setSelectedInsp(null);
     setIsModalOpen(false);
+    // Sinkronisasi ulang data setelah modal ditutup agar perubahan langsung ter-render
+    fetchInspections();
+    fetchAdminReports();
   };
 
   // --- LOGIKA MONITORING JATUH TEMPO INSPEKSI (30 HARI) [3] ---
@@ -141,7 +152,7 @@ export default function OfficerInspectionsPage() {
 
     try {
       await scheduleInspection(newInsp);
-      toast.success(`Inspeksi ${comp.companyName} dijadwalkan besok (${dateStr}).`);
+      // Notifikasi sudah di-handle di dalam action store
     } catch (e) {
       toast.error("Gagal membuat jadwal otomatis.");
     }
@@ -149,7 +160,7 @@ export default function OfficerInspectionsPage() {
 
   return (
     <DashboardLayout role="PETUGAS_LAPANGAN">
-      <div className="space-y-4 text-left"> {/* DIET: space-y-8 -> space-y-4 */}
+      <div className="space-y-4 text-left">
 
         {/* --- 1. HEADER UTAMA (DIET CARD) --- */}
         <div className="bg-white p-4 rounded-none border border-slate-200 shadow-sm">

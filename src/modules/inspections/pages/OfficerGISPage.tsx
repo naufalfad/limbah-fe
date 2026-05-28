@@ -12,18 +12,20 @@ import LimbahMap from "@/modules/admin/components/gis/LimbahMap";
 /**
  * OfficerGISPage - The Patrol Command Center (Petugas Lapangan Role)
  * Mengadopsi arsitektur Infinite Canvas (GFW Paradigm) 100% konsisten:
- * 1. Peta LimbahMap mendominasi dasar layar (Z-0).
+ * 1. Peta LimbahMap mendominasi dasar layar (Z-0) [3].
  * 2. Navbar, Sidebar, & HUD melayang tanpa rounded gemuk.
  * 3. Sidebar secara otomatis mendeteksi role Petugas Lapangan untuk memunculkan 
  *    laci "Tugas Patroli" alih-alih "Katalog Industri" [3].
  */
 export default function OfficerGISPage() {
-  const { fetchCompanies } = useSijagaStore();
+  // Menambahkan pemanggilan fetchAdminReports untuk sinkronisasi data pengaduan secara instan [3]
+  const { fetchCompanies, fetchAdminReports } = useSijagaStore();
 
-  // Memastikan data master spasial (perusahaan) diambil saat masuk halaman Patroli (Information Expert) [3]
+  // Memastikan data master spasial (perusahaan) & data pengaduan warga diambil bersamaan (Information Expert) [3]
   useEffect(() => {
     fetchCompanies();
-  }, [fetchCompanies]);
+    fetchAdminReports(); // Menjamin ketersediaan pin aduan warga pada peta saat halaman dimuat [3]
+  }, [fetchCompanies, fetchAdminReports]);
 
   return (
     // Memenuhi 100% layar (h-screen w-screen) tanpa menggunakan DashboardLayout bawaan untuk sensasi Command Center

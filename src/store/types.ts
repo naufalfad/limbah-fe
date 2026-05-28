@@ -1,3 +1,4 @@
+// src/store/types.ts
 export type UserRole = "SUPER_ADMIN" | "ADMIN_DLH" | "PETUGAS_LAPANGAN" | "PERUSAHAAN" | "PENGANGKUT" | "AUDITOR";
 
 export interface User {
@@ -132,11 +133,13 @@ export interface AuthSlice {
   companies: Company[];
   selectedCompanyId: string | null;
   users: User[];
-  
+  officers: User[]; // INJEKSI BARU: Menyimpan daftar petugas lapangan terpisah demi Least Privilege [3]
+
   setSelectedCompanyId: (id: string | null) => void;
   login: (email: string, password: string, role?: string) => Promise<User | null>;
   logout: () => Promise<void>;
   fetchUsers: () => Promise<void>;
+  fetchOfficers: () => Promise<void>; // INJEKSI BARU: Tanda tangan aksi pengambilan petugas lapangan [3]
   updateUserRole: (id: string, role: string) => Promise<void>;
 }
 
@@ -174,11 +177,22 @@ export interface InvoiceSlice {
   payInvoice: (id: string) => Promise<void>;
 }
 
+// Cari blok InspectionSlice dan timpa dengan kode ini:
+
 export interface InspectionSlice {
   inspections: Inspection[];
   fetchInspections: () => Promise<void>;
   scheduleInspection: (inspection: Omit<Inspection, "id" | "status" | "score" | "bapSigned">) => Promise<Inspection | undefined>;
-  submitInspectionResult: (id: string, score: number, notes: string, checklist: Inspection["checklist"], photo?: string) => Promise<void>;
+
+  // FASE 2 ARSITEKTUR: score dan checklist sekarang mengizinkan null (Polymorphism Form)
+  submitInspectionResult: (
+    id: string,
+    score: number | null,
+    notes: string,
+    checklist: Inspection["checklist"] | null,
+    photo?: string,
+    correctedCompanyId?: string
+  ) => Promise<void>;
 }
 
 export interface NotificationSlice {
@@ -229,10 +243,9 @@ export interface ReportSlice {
   // Actions (Admin)
   fetchAdminReports: (status?: string) => Promise<void>;
   verifyCitizenReport: (id: string, payload: any) => Promise<boolean>;
+  investigateCitizenReport: (id: string) => Promise<boolean>; // Ditambahkan konsisten
   rejectCitizenReport: (id: string, adminNotes: string) => Promise<boolean>;
 }
 
 // Combined State
 export interface SijagaState extends AuthSlice, CompanySlice, WasteSlice, PickupSlice, InvoiceSlice, InspectionSlice, NotificationSlice, AuditSlice, ReportSlice { }
-// Combined State
-
