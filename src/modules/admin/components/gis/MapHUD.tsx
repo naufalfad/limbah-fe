@@ -2,6 +2,8 @@
 import React from "react";
 import { Plus, Minus, Maximize, Map as MapIcon } from "lucide-react";
 import { useGisUIStore } from "@/store/useGisUIStore";
+import { useSijagaStore } from "@/store/useSijagaStore";
+import { cn } from "@/lib/utils";
 
 /**
  * MapHUD - Kontrol Navigasi & Legenda (Frameless)
@@ -10,21 +12,44 @@ import { useGisUIStore } from "@/store/useGisUIStore";
  */
 export default function MapHUD() {
     const { activeLayers } = useGisUIStore();
+    const { currentUser } = useSijagaStore();
 
-    // Custom events untuk Leaflet yang akan ditangkap oleh LimbahMap.tsx nanti
+    // Custom events untuk Leaflet yang akan ditangkap oleh LimbahMap.tsx
     const triggerZoomIn = () => window.dispatchEvent(new Event('map-zoom-in'));
     const triggerZoomOut = () => window.dispatchEvent(new Event('map-zoom-out'));
     const triggerResetView = () => window.dispatchEvent(new Event('map-reset-view'));
 
-    // Data statis untuk legenda sesuai status kewajiban lingkungan
-    const legendItems = [
-        { label: "Wajib AMDAL (Risiko Tinggi)", color: "bg-red-500", layerId: "layer-amdal" },
-        { label: "Wajib UKL-UPL (Menengah)", color: "bg-amber-500", layerId: "layer-uklupl" },
-        { label: "Wajib SPPL (Risiko Rendah)", color: "bg-emerald-500", layerId: "layer-sppl" },
-    ];
+    const isOfficer = currentUser?.role === "PETUGAS_LAPANGAN";
+
+    // FASE 2: Polimorfisme Data Legenda (Menyesuaikan Role)
+    type LegendItem = {
+        label: string;
+        color: string;
+        layerId: string;
+        shape: 'square' | 'circle' | 'pulsing';
+    };
+
+    let legendItems: LegendItem[] = [];
+
+    if (isOfficer) {
+        // Legenda Khusus Inspektur (Sesuai titik marker solid di LimbahMap)
+        legendItems = [
+            { label: "Tugas: Audit Rutin DLH", color: "bg-emerald-500", layerId: "always_active", shape: 'circle' },
+            { label: "Tugas: Penindakan Aduan", color: "bg-rose-500", layerId: "always_active", shape: 'circle' }
+        ];
+    } else {
+        // Legenda Khusus Admin & Auditor (Poligon Industri + Krisis Pengaduan)
+        legendItems = [
+            { label: "Wajib AMDAL (Risiko Tinggi)", color: "bg-red-500", layerId: "layer-amdal", shape: 'square' },
+            { label: "Wajib UKL-UPL (Menengah)", color: "bg-amber-500", layerId: "layer-uklupl", shape: 'square' },
+            { label: "Wajib SPPL (Risiko Rendah)", color: "bg-emerald-500", layerId: "layer-sppl", shape: 'square' },
+            { label: "Aduan: Triage / Verifikasi", color: "bg-rose-600", layerId: "layer-complaints", shape: 'pulsing' },
+            { label: "Aduan: Diinvestigasi Petugas", color: "bg-indigo-600", layerId: "layer-complaints", shape: 'pulsing' },
+            { label: "Aduan: Selesai Ditindak", color: "bg-teal-600", layerId: "layer-complaints", shape: 'pulsing' },
+        ];
+    }
 
     return (
-        // REVISI: Mengubah flex-col menjadi flex-row dan sejajar di bawah (items-end)
         <div className="absolute bottom-8 right-8 z-30 pointer-events-none flex flex-row items-end gap-4 select-none">
 
             {/* 1. KOTAK LEGENDA (Frameless Continuous List) */}
@@ -34,21 +59,38 @@ export default function MapHUD() {
                 <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 border-b border-slate-200">
                     <MapIcon size={12} className="text-emerald-700" />
                     <h4 className="text-[9px] font-black text-slate-700 uppercase tracking-widest">
-                        Legenda Kepatuhan
+                        {isOfficer ? "Legenda Sasaran Tugas" : "Legenda Kepatuhan"}
                     </h4>
                 </div>
 
                 {/* Isi Legenda (Flush List) */}
                 <div className="flex flex-col">
                     {legendItems.map((item, idx) => {
-                        const isActive = activeLayers.includes(item.layerId);
+                        const isActive = item.layerId === "always_active" || activeLayers.includes(item.layerId);
 
                         return (
                             <div
                                 key={idx}
-                                className={`flex items-center gap-3 px-3 py-2 border-b border-slate-100 last:border-0 transition-opacity ${isActive ? 'opacity-100' : 'opacity-30'}`}
+                                className={cn(
+                                    "flex items-center gap-3 px-3 py-2 border-b border-slate-100 last:border-0 transition-opacity",
+                                    isActive ? "opacity-100" : "opacity-30"
+                                )}
                             >
-                                <div className={`w-3 h-3 ${item.color} border border-slate-200 rounded-none shrink-0 shadow-inner`} />
+                                {/* Rendering Shape berdasarkan Tipe Data (Polymorphic Indicator) */}
+                                <div className="relative w-3 h-3 shrink-0 flex items-center justify-center">
+                                    {item.shape === 'pulsing' && (
+                                        <span className={cn(
+                                            "absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping",
+                                            item.color.replace('600', '400') // Efek glow lebih terang dari warna dasar
+                                        )} />
+                                    )}
+                                    <div className={cn(
+                                        "relative w-full h-full shadow-sm",
+                                        item.shape === 'square' ? "rounded-none border border-slate-200" : "rounded-full border border-white",
+                                        item.color
+                                    )} />
+                                </div>
+
                                 <span className="text-[10px] font-bold text-slate-600 tracking-tight leading-none">
                                     {item.label}
                                 </span>
