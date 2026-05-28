@@ -27,6 +27,8 @@ const MENU_CONFIG = {
     { label: "Monitoring Limbah", icon: <Trash2 size={18} />, path: "/admin/waste" },
     { label: "GIS Geospasial", icon: <Map size={18} />, path: "/admin/gis" },
     { label: "List Pembayaran", icon: <CreditCard size={18} />, path: "/admin/payments" },
+    { label: "Penugasan Armada", icon: <Truck size={18} />, path: "/admin/pickups" },
+    { label: "Inspeksi Lapangan", icon: <ClipboardList size={18} />, path: "/admin/inspections" },
   ],
   PETUGAS_LAPANGAN: [
     { label: "Jadwal Inspeksi", icon: <ClipboardList size={18} />, path: "/officer/inspections" },

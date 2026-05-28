@@ -12,12 +12,15 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CreateInspectionModal } from "./components/CreateInspectionModal";
+import { FollowUpModal } from "./components/FollowUpModal";
 import { useSijagaStore } from '@/store/useSijagaStore';
 import { toast } from "sonner";
 
 export default function InspectionManagement() {
   const { inspections, fetchInspections, fetchCompanies } = useSijagaStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isFollowUpModalOpen, setIsFollowUpModalOpen] = useState(false);
+  const [selectedInspection, setSelectedInspection] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
@@ -62,13 +65,13 @@ export default function InspectionManagement() {
             </h1>
             <p className="text-slate-500 text-xs font-medium mt-1">Audit fisik dan penilaian kepatuhan lingkungan hidup pelaku usaha.</p>
           </div>
-          <Button
+          {/* <Button
             onClick={() => setIsModalOpen(true)}
             size="sm"
             className="rounded-none font-bold bg-slate-900 hover:bg-emerald-600 h-10 px-6 text-xs uppercase tracking-widest shadow-md"
           >
             <Plus className="mr-1.5" size={14} /> INPUT HASIL INSPEKSI
-          </Button>
+          </Button> */}
         </div>
 
         {/* --- STATS SUMMARY (DENSE) --- */}
@@ -103,7 +106,7 @@ export default function InspectionManagement() {
                 <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest text-center">Tgl Inspeksi</TableHead>
                 <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest text-center">Skor Kepatuhan</TableHead>
                 <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest text-center">Status</TableHead>
-                <TableHead className="pr-4 text-right font-black text-slate-500 uppercase text-[9px] tracking-widest">Dokumen</TableHead>
+                <TableHead className="pr-4 text-right font-black text-slate-500 uppercase text-[9px] tracking-widest">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -150,20 +153,37 @@ export default function InspectionManagement() {
                         <ComplianceBadge status={complianceStatus} />
                       </TableCell>
                       <TableCell className="pr-4 text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="font-bold text-emerald-600 gap-1.5 hover:bg-emerald-50 rounded-none h-8 text-[9px] tracking-widest"
-                          onClick={() => {
-                            if (item.status === 'Selesai') {
-                              toast.info(`BAP Detail: ${item.notes || 'TPS B3 dan IPAL memenuhi standar.'}`);
-                            } else {
-                              toast.warning("BAP belum diterbitkan (Inspeksi Terjadwal).");
-                            }
-                          }}
-                        >
-                          <FileText size={12} /> BAP
-                        </Button>
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="font-bold text-emerald-600 gap-1.5 hover:bg-emerald-50 rounded-none h-8 text-[9px] tracking-widest"
+                            onClick={() => {
+                              if (item.status === 'Selesai') {
+                                toast.info(`BAP Detail: ${item.notes || 'TPS B3 dan IPAL memenuhi standar.'}`);
+                              } else {
+                                toast.warning("BAP belum diterbitkan (Inspeksi Terjadwal).");
+                              }
+                            }}
+                          >
+                            <FileText size={12} /> BAP
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="font-bold text-amber-600 gap-1.5 hover:bg-amber-50 rounded-none h-8 text-[9px] tracking-widest border-amber-200"
+                            onClick={() => {
+                              if (item.status === 'Selesai') {
+                                setSelectedInspection(item);
+                                setIsFollowUpModalOpen(true);
+                              } else {
+                                toast.warning("Tindak lanjut hanya bisa dilakukan setelah inspeksi selesai.");
+                              }
+                            }}
+                          >
+                            <AlertTriangle size={12} /> TINDAK LANJUT
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -175,6 +195,11 @@ export default function InspectionManagement() {
       </div>
 
       <CreateInspectionModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <FollowUpModal 
+        isOpen={isFollowUpModalOpen} 
+        onClose={() => setIsFollowUpModalOpen(false)} 
+        inspection={selectedInspection} 
+      />
     </DashboardLayout>
   );
 }

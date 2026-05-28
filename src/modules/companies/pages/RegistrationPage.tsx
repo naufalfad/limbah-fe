@@ -7,7 +7,7 @@ import {
   Building2, MapPin, Factory, FileStack,
   CheckCircle2, ChevronRight, ChevronLeft,
   Search, ShieldAlert, Map as MapIcon,
-  Loader2, UploadCloud, FileText, X, AlertCircle
+  Loader2, UploadCloud, FileText, X, AlertCircle, Download
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -93,6 +93,7 @@ export default function RegistrationPage() {
   const [nibFile, setNibFile] = useState<File | null>(null);
   const [npwpFile, setNpwpFile] = useState<File | null>(null);
   const [siteplanFile, setSiteplanFile] = useState<File | null>(null);
+  const [docTemplateFile, setDocTemplateFile] = useState<File | null>(null);
 
   const methods = useForm<RegistrationFormValues>({
     resolver: zodResolver(registrationSchema) as any,
@@ -160,6 +161,11 @@ export default function RegistrationPage() {
         setCurrentStep(1);
         return;
       }
+      if (!docTemplateFile) {
+        toast.error(`Dokumen Matriks ${docType} wajib diunggah.`);
+        setCurrentStep(4);
+        return;
+      }
     }
 
     setLoading(true);
@@ -186,6 +192,9 @@ export default function RegistrationPage() {
       }
       if (siteplanFile) {
         formData.append("siteplanDoc", siteplanFile);
+      }
+      if (docTemplateFile) {
+        formData.append("docTemplate", docTemplateFile);
       }
 
       if (isEdit && existingCompany) {
@@ -231,6 +240,16 @@ export default function RegistrationPage() {
     <div className="max-w-6xl mx-auto py-6 px-4 text-left font-sans">
 
       {/* HEADER */}
+      <div className="mb-4">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => navigate("/company")}
+          className="h-8 px-3 rounded-none font-bold text-[10px] border-slate-200 text-slate-500 hover:text-slate-700 uppercase tracking-widest flex items-center gap-1.5"
+        >
+          <ChevronLeft size={14} /> Kembali ke Dashboard
+        </Button>
+      </div>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-6 border-b pb-4 border-slate-200">
         <div className="space-y-1">
           <h1 className="text-2xl font-black text-slate-900 tracking-tighter uppercase leading-none">
@@ -419,17 +438,95 @@ export default function RegistrationPage() {
                 </div>
               )}
 
-              {/* STEP 4: DYNAMIC TEMPLATE FORM */}
+              {/* STEP 4: MATRIKS ISIAN TEKNIS (DOWNLOAD & UPLOAD) */}
               {currentStep === 4 && (
-                <Card className="bg-white border border-slate-200 rounded-none shadow-none overflow-hidden animate-in fade-in slide-in-from-right-4">
-                  <CardHeaderLayout title={`Template Isian Teknis ${docType}`} desc={`Lengkapi komitmen pengelolaan lingkungan formal sesuai standar ${docType}.`} />
-                  <CardContent className="p-4 md:p-6 space-y-6">
-                    {docType === "SPPL" ? <SPPLTemplate /> : <UKLUPTemplate />}
+                <Card className="bg-white border-2 border-slate-900 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] rounded-none overflow-hidden animate-in fade-in slide-in-from-right-4 text-left">
+                  <CardHeaderLayout 
+                    title={`Langkah 4: Matriks Isian Teknis ${docType}`} 
+                    desc={`Unduh template resmi ${docType} dari DLH, lengkapi, lalu unggah kembali dokumen tersebut.`} 
+                  />
+                  <CardContent className="p-6 space-y-6">
+                    {/* SECTION 1: DOWNLOAD TEMPLATE */}
+                    <div className="border border-slate-200 bg-slate-50 p-4 rounded-none space-y-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-none bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-700 shrink-0">
+                          <CheckCircle2 size={12} />
+                        </div>
+                        <h3 className="text-xs font-black text-slate-850 uppercase tracking-widest">1. Unduh Template Matriks Resmi</h3>
+                      </div>
+                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider leading-relaxed">
+                        Silakan unduh dokumen format resmi matriks <strong className="text-slate-800 font-black">{docType}</strong> berikut untuk diisi secara offline.
+                      </p>
+                      <div>
+                        <a
+                          href={docType === "UKL-UPL" ? "/templates/template-ukl-upl.xlsx" : "/templates/template-sppl.docx"}
+                          download={docType === "UKL-UPL" ? "Template_Matriks_UKL-UPL.xlsx" : "Template_Matriks_SPPL.docx"}
+                          className="inline-flex items-center gap-2 bg-slate-900 hover:bg-emerald-600 text-white font-black text-[10px] tracking-widest uppercase h-10 px-6 rounded-none transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,0.15)] border border-slate-900"
+                        >
+                          <Download className="w-3.5 h-3.5" /> UNDUH TEMPLATE MATRIKS ({docType})
+                        </a>
+                      </div>
+                    </div>
+
+                    {/* SECTION 2: FILE UPLOAD */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-none bg-rose-100 border border-rose-200 flex items-center justify-center text-rose-700 shrink-0">
+                          <CheckCircle2 size={12} />
+                        </div>
+                        <h3 className="text-xs font-black text-slate-850 uppercase tracking-widest">2. Unggah Matriks yang Telah Dilengkapi</h3>
+                      </div>
+                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider leading-relaxed">
+                        Pastikan seluruh data matriks telah terisi dengan benar. Unggah kembali file Anda dalam format spreadsheet (.xlsx, .xls) atau dokumen (.docx, .doc, .pdf).
+                      </p>
+
+                      <FileUploadBox
+                        label={`Berkas Matriks ${docType} *`}
+                        required={!isEdit}
+                        accept=".xlsx,.xls,.docx,.doc,.pdf"
+                        file={docTemplateFile}
+                        onFileChange={setDocTemplateFile}
+                        hint="Format Excel, Word, atau PDF, maks 5 MB"
+                        existingUrl={isEdit ? existingCompany?.docTemplateUrl || undefined : undefined}
+                      />
+                    </div>
+
+                    {/* METODE PEMBUANGAN / DETAIL LIMBAH */}
+                    <div className="space-y-3 pt-4 border-t border-slate-100">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-none bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700 shrink-0">
+                          <CheckCircle2 size={12} />
+                        </div>
+                        <h3 className="text-xs font-black text-slate-850 uppercase tracking-widest">3. Keterangan Tambahan Metode Pembuangan Limbah</h3>
+                      </div>
+                      <FormGroup 
+                        label="Uraian Metode Pembuangan / Informasi Limbah" 
+                        name="wasteInfo" 
+                        placeholder="Contoh: Limbah cair domestik dialirkan ke septik tank, oli bekas disimpan di TPS B3 berizin..." 
+                      />
+                    </div>
+
+                    {/* BUTTONS NAVIGATION */}
                     <div className="flex justify-between pt-4 border-t gap-2">
-                      <Button type="button" variant="outline" onClick={prevStep} className="h-10 px-6 rounded-none font-bold text-[10px] border-slate-200 text-slate-500 uppercase tracking-widest">
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        onClick={prevStep} 
+                        className="h-10 px-6 rounded-none font-bold text-[10px] border-slate-200 text-slate-500 uppercase tracking-widest"
+                      >
                         Kembali
                       </Button>
-                      <Button type="button" onClick={nextStep} className="bg-slate-900 hover:bg-emerald-600 h-10 px-6 rounded-none font-black text-[10px] uppercase tracking-widest text-white ml-auto">
+                      <Button 
+                        type="button" 
+                        onClick={() => {
+                          if (!isEdit && !docTemplateFile && !existingCompany?.docTemplateUrl) {
+                            toast.error(`Dokumen Matriks ${docType} wajib diunggah sebelum lanjut.`);
+                            return;
+                          }
+                          nextStep();
+                        }}
+                        className="bg-slate-900 hover:bg-emerald-600 h-10 px-6 rounded-none font-black text-[10px] uppercase tracking-widest text-white ml-auto"
+                      >
                         Lanjut ke Lokasi GIS
                       </Button>
                     </div>
@@ -479,6 +576,7 @@ export default function RegistrationPage() {
                         <FileStatusRow label="NIB" file={nibFile} required={!isEdit} existingUrl={isEdit ? existingCompany?.docNibUrl || undefined : undefined} />
                         <FileStatusRow label="NPWP" file={npwpFile} required={!isEdit} existingUrl={isEdit ? existingCompany?.docNpwpUrl || undefined : undefined} />
                         <FileStatusRow label="Siteplan / Layout" file={siteplanFile} required={false} existingUrl={isEdit ? existingCompany?.docSiteplanUrl || undefined : undefined} />
+                        <FileStatusRow label={`Matriks Isian Teknis ${docType}`} file={docTemplateFile} required={!isEdit} existingUrl={isEdit ? existingCompany?.docTemplateUrl || undefined : undefined} />
                       </div>
                     </div>
 

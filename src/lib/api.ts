@@ -88,6 +88,10 @@ export const apiService = {
     createRetribusiInvoice: async (id: string) => {
       const response = await api.post(`/api/companies/${id}/retribusi-invoice`);
       return response.data;
+    },
+    createManualAmdal: async (payload: { companyName: string; nib: string; npwp?: string; lat: string; lng: string; address: string }) => {
+      const response = await api.post("/api/companies/manual-amdal", payload);
+      return response.data;
     }
   },
   waste: {

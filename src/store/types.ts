@@ -43,6 +43,7 @@ export interface Company {
   docNibUrl?: string;
   docNpwpUrl?: string;
   docSiteplanUrl?: string;
+  docTemplateUrl?: string;
 }
 
 export interface WasteLog {
@@ -85,7 +86,7 @@ export interface Invoice {
   type: string; // Pengangkutan, Retribusi SPPL, Denda
   amount: number;
   date: string;
-  status: "UNPAID" | "SETTLED" | "REFUNDED"; // Escrow status removed
+  status: "UNPAID" | "SETTLED" | "REFUNDED";
 }
 
 export interface Inspection {
@@ -133,14 +134,14 @@ export interface AuthSlice {
   companies: Company[];
   selectedCompanyId: string | null;
   users: User[];
-  officers: User[]; // INJEKSI BARU: Menyimpan daftar petugas lapangan terpisah demi Least Privilege [3]
+  officers: User[];
 
   setSelectedCompanyId: (id: string | null) => void;
   login: (email: string, password: string, role?: string) => Promise<User | null>;
   logout: () => Promise<void>;
   fetchUsers: () => Promise<void>;
-  fetchOfficers: () => Promise<void>; // INJEKSI BARU: Tanda tangan aksi pengambilan petugas lapangan [3]
-  updateUserRole: (id: string, role: string) => Promise<void>;
+  fetchOfficers: () => Promise<void>;
+  updateUserRole: (id: string, role: UserRole) => Promise<void>;
 }
 
 export interface CompanySlice {
@@ -151,6 +152,7 @@ export interface CompanySlice {
   updateCompanyStatus: (id: string, status: Company["status"]) => Promise<void>;
   createRetribusiInvoice: (id: string) => Promise<void>;
   downloadCompanyCertificate: (id: string, companyName: string) => Promise<void>;
+  addManualAmdalCompany: (data: { companyName: string; nib: string; npwp?: string; lat: string; lng: string; address: string }) => Promise<void>;
 }
 
 export interface WasteSlice {
@@ -177,14 +179,11 @@ export interface InvoiceSlice {
   payInvoice: (id: string) => Promise<void>;
 }
 
-// Cari blok InspectionSlice dan timpa dengan kode ini:
-
 export interface InspectionSlice {
   inspections: Inspection[];
   fetchInspections: () => Promise<void>;
   scheduleInspection: (inspection: Omit<Inspection, "id" | "status" | "score" | "bapSigned">) => Promise<Inspection | undefined>;
 
-  // FASE 2 ARSITEKTUR: score dan checklist sekarang mengizinkan null (Polymorphism Form)
   submitInspectionResult: (
     id: string,
     score: number | null,
@@ -209,8 +208,6 @@ export interface AuditSlice {
   fetchAuditLogs: () => Promise<void>;
 }
 
-
-// Tipe Data untuk Pelaporan Masyarakat
 export interface CitizenReport {
   id: string;
   trackingId: string;
@@ -228,22 +225,17 @@ export interface CitizenReport {
   updatedAt: string;
 }
 
-// Kontrak untuk Report Slice
 export interface ReportSlice {
-  // State
   publicReportTrackData: CitizenReport | null;
   adminReports: CitizenReport[];
   isReportLoading: boolean;
 
-  // Actions (Public)
   submitCitizenReport: (payload: any) => Promise<{ success: boolean; trackingId?: string }>;
   trackCitizenReport: (trackingId: string) => Promise<CitizenReport | null>;
   clearPublicReportData: () => void;
-
-  // Actions (Admin)
   fetchAdminReports: (status?: string) => Promise<void>;
   verifyCitizenReport: (id: string, payload: any) => Promise<boolean>;
-  investigateCitizenReport: (id: string) => Promise<boolean>; // Ditambahkan konsisten
+  investigateCitizenReport: (id: string) => Promise<boolean>;
   rejectCitizenReport: (id: string, adminNotes: string) => Promise<boolean>;
 }
 
