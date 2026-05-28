@@ -14,7 +14,8 @@ import {
   Invoice,
   Inspection,
   SystemNotification,
-  AuditLog
+  AuditLog,
+  ReportSlice // INJEKSI BARU: Tipe antarmuka slice pelaporan
 } from "./types";
 
 // Re-export seluruh kontrak data agar tidak merusak impor di file komponen lain (Backward Compatibility)
@@ -39,6 +40,7 @@ import { createInvoiceSlice } from "./slices/invoiceSlice";
 import { createInspectionSlice } from "./slices/inspectionSlice";
 import { createNotificationSlice } from "./slices/notificationSlice";
 import { createAuditSlice } from "./slices/auditSlice";
+import { createReportSlice } from "./slices/reportSlice"; // INJEKSI BARU
 
 // 1. Interfaces Analitik Eksekutif Baru yang Kita Bangun
 export interface ExecutiveAnalyticsData {
@@ -71,8 +73,8 @@ export interface PerformanceAnalyticsData {
   documentComposition: { sppl: number; uklUpl: number };
 }
 
-// 2. Mengembangkan (Extend) SijagaState untuk Menampung Fitur Admin & Auditor Kita
-export interface SijagaState extends BaseSijagaState {
+// 2. Mengembangkan (Extend) SijagaState untuk Menampung Fitur Admin, Auditor & Pelaporan (ReportSlice)
+export interface SijagaState extends BaseSijagaState, ReportSlice { // INJEKSI: Extend ReportSlice ke State Induk
   users: User[];
   executiveAnalytics: ExecutiveAnalyticsData | null;
   performanceAnalytics: PerformanceAnalyticsData | null;
@@ -114,6 +116,7 @@ export const useSijagaStore = create<SijagaState>((set, get, store) => ({
   ...createInspectionSlice(set, get, store),
   ...createNotificationSlice(set, get, store),
   ...createAuditSlice(set, get, store),
+  ...createReportSlice(set, get, store), // INJEKSI BARU: Menyuntikkan slice pelaporan masyarakat
 
   // Suntikan State Baru Khusus Otoritas Admin & Auditor
   users: [],
