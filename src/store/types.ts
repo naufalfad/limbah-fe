@@ -42,6 +42,7 @@ export interface Company {
   docNibUrl?: string;
   docNpwpUrl?: string;
   docSiteplanUrl?: string;
+  docTemplateUrl?: string;
 }
 
 export interface WasteLog {
@@ -137,7 +138,7 @@ export interface AuthSlice {
   login: (email: string, password: string, role?: string) => Promise<User | null>;
   logout: () => Promise<void>;
   fetchUsers: () => Promise<void>;
-  updateUserRole: (id: string, role: string) => Promise<void>;
+  updateUserRole: (id: string, role: UserRole) => Promise<void>;
 }
 
 export interface CompanySlice {
@@ -148,6 +149,7 @@ export interface CompanySlice {
   updateCompanyStatus: (id: string, status: Company["status"]) => Promise<void>;
   createRetribusiInvoice: (id: string) => Promise<void>;
   downloadCompanyCertificate: (id: string, companyName: string) => Promise<void>;
+  addManualAmdalCompany: (data: { companyName: string; nib: string; npwp?: string; lat: string; lng: string; address: string }) => Promise<void>;
 }
 
 export interface WasteSlice {

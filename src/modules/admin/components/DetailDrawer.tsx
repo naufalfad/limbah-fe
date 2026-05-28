@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { useSijagaStore } from '@/store/useSijagaStore';
 import { toast } from 'sonner';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { DocPreviewer } from './DocPreviewer';
 
 // Map invalidator helper to ensure correct dimensions inside dynamically rendered tabs/modals
 function ResizeMap() {
@@ -229,6 +230,12 @@ export function DetailDrawer({ isOpen, onClose, data }: any) {
                         required={false}
                         onPreview={() => siteplanUrl && setPreviewDoc(siteplanUrl)}
                       />
+                      <DocPreviewRow
+                        label={`Matriks Isian Teknis (${docLabel})`}
+                        url={docUrl(data.docTemplateUrl)}
+                        required
+                        onPreview={() => data.docTemplateUrl && setPreviewDoc(docUrl(data.docTemplateUrl))}
+                      />
                     </div>
 
                   </div>
@@ -396,50 +403,43 @@ export function DetailDrawer({ isOpen, onClose, data }: any) {
       {/* Full-screen document preview overlay */}
       {previewDoc && (
         <Dialog open={!!previewDoc} onOpenChange={() => setPreviewDoc(null)}>
-          <DialogContent className="max-w-5xl w-[95vw] h-[90vh] p-0 rounded-3xl overflow-hidden flex flex-col bg-slate-950 border border-slate-800 shadow-2xl">
-            <div className="bg-slate-900 text-white px-6 py-4 flex justify-between items-center shrink-0 border-b border-slate-800">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-                  <FileText size={16} />
+          <DialogContent className="max-w-[95vw] lg:max-w-7xl w-full h-[90vh] p-0 overflow-hidden rounded-3xl border-none shadow-2xl flex flex-col bg-slate-950 z-50 text-left">
+            {/* THIN ULTRA-COMPACT HEADER */}
+            <div className="bg-slate-900 text-white px-5 h-12 flex justify-between items-center shrink-0 border-b border-slate-800">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                  <FileText size={14} />
                 </div>
-                <div>
-                  <p className="text-sm font-black tracking-wide text-slate-100">Pratinjau Dokumen Lampiran</p>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{data.companyName}</p>
+                <div className="truncate">
+                  <span className="text-xs font-black tracking-wider text-slate-100 uppercase mr-2 border-r border-slate-700 pr-2">PRATINJAU</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase truncate">{data.companyName}</span>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
+              
+              <div className="flex items-center gap-2 shrink-0">
                 <a 
                   href={previewDoc} 
                   target="_blank" 
                   rel="noreferrer" 
-                  className="flex items-center gap-1.5 bg-slate-800 hover:bg-emerald-600 text-slate-300 hover:text-white px-3 py-2 rounded-xl text-xs font-bold transition-all border border-slate-700 hover:border-emerald-500 shadow-sm"
+                  className="flex items-center gap-1.5 bg-slate-800 hover:bg-emerald-600 text-slate-300 hover:text-white px-3 h-8 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border border-slate-700 hover:border-emerald-500 shadow-sm"
                 >
-                  <Download size={14} /> Unduh Berkas
+                  <Download size={12} /> Unduh Berkas
                 </a>
-                <div className="w-px h-6 bg-slate-700 mx-1" />
+                <div className="w-px h-5 bg-slate-800 mx-0.5" />
                 <button 
                   onClick={() => setPreviewDoc(null)} 
-                  className="p-2 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 rounded-xl transition-all"
+                  className="p-1.5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 rounded-lg transition-all"
+                  title="Tutup"
                 >
-                  <X size={20} />
+                  <X size={18} />
                 </button>
               </div>
             </div>
-            {previewDoc.match(/\.(jpg|jpeg|png|webp)$/i) ? (
-              <div className="flex-1 overflow-hidden p-6 bg-slate-950/50 flex items-center justify-center relative backdrop-blur-md">
-                <img 
-                  src={previewDoc} 
-                  alt="Preview" 
-                  className="max-w-full max-h-full object-contain rounded-xl shadow-2xl ring-1 ring-white/10" 
-                />
-              </div>
-            ) : (
-              <iframe 
-                src={previewDoc} 
-                title="PDF" 
-                className="w-full flex-1 border-none bg-slate-100" 
-              />
-            )}
+            
+            {/* FULL-SIZE CANVAS PREVIEW */}
+            <div className="flex-1 flex flex-col overflow-hidden bg-slate-950">
+              <DocPreviewer fileUrl={previewDoc} />
+            </div>
           </DialogContent>
         </Dialog>
       )}

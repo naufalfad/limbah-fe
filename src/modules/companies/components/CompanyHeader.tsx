@@ -4,6 +4,7 @@ import { useSijagaStore } from "@/store/useSijagaStore";
 import { useNavigate } from "react-router-dom";
 import { Building2, MapPin, Shield, Plus, Factory } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 export default function CompanyHeader() {
     const navigate = useNavigate();
@@ -55,8 +56,8 @@ export default function CompanyHeader() {
                         </span>
                     </div>
 
-                    {companies.length > 1 ? (
-                        <div className="relative inline-block w-full max-w-sm">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full max-w-md">
+                        <div className="relative inline-block flex-1">
                             <select
                                 value={selectedCompanyId || ""}
                                 onChange={(e) => {
@@ -81,11 +82,15 @@ export default function CompanyHeader() {
                                 <span className="text-[8px]">▼</span>
                             </div>
                         </div>
-                    ) : (
-                        <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase leading-none truncate">
-                            {activeCompany.companyName}
-                        </h1>
-                    )}
+                        <Button
+                            onClick={() => navigate("/company/register")}
+                            size="sm"
+                            className="bg-slate-900 hover:bg-emerald-600 text-white font-black text-[9px] h-8 rounded-none shadow-none uppercase tracking-widest shrink-0 gap-1"
+                        >
+                            <Plus size={12} /> Tambah Perusahaan
+                        </Button>
+                    </div>
+
 
                     <div className="flex items-center gap-1.5 text-slate-500 text-[10px] font-bold uppercase tracking-wider truncate">
                         <MapPin size={11} className="text-slate-400 shrink-0" />

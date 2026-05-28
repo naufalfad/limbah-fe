@@ -294,4 +294,79 @@ export const createCompanySlice: StateCreator<
       throw e;
     }
   },
+
+  addManualAmdalCompany: async (payload) => {
+    try {
+      const response = await apiService.companies.createManualAmdal(payload);
+      if (response && response.success) {
+        const newComp: Company = response.company;
+        set((state) => ({
+          companies: [...state.companies, newComp]
+        }));
+        toast.success("Perusahaan wajib AMDAL berhasil didaftarkan secara manual!");
+        
+        const user = get().currentUser;
+        get().addAuditLog(user?.email || "SYSTEM", user?.role || "ADMIN_DLH", `Mendaftarkan wajib AMDAL manual: ${payload.companyName}`);
+        get().addNotification(
+          "Registrasi AMDAL Manual",
+          `Admin DLH telah mendaftarkan koordinat wajib AMDAL untuk ${payload.companyName} secara manual.`,
+          "SUCCESS"
+        );
+        return;
+      }
+    } catch (e: any) {
+      const serverMsg = e.response?.data?.error || e.response?.data?.message;
+      if (serverMsg) {
+        toast.error(`Gagal: ${serverMsg}`);
+        throw e;
+      }
+      console.warn("Gagal mendaftarkan AMDAL via API, menggunakan fallback offline.", e);
+    }
+
+    // --- FALLBACK OFFLINE ---
+    const newId = `COM-AMD-${String(get().companies.length + 1).padStart(3, "0")}`;
+    const activeUntilDate = new Date();
+    activeUntilDate.setFullYear(activeUntilDate.getFullYear() + 1);
+    const certificateActiveUntil = activeUntilDate.toISOString().split('T')[0];
+
+    const newCompany: Company = {
+      id: newId,
+      companyName: payload.companyName,
+      nib: payload.nib,
+      npwp: payload.npwp || "-",
+      picName: "Admin DLH Manual",
+      picPhone: "-",
+      picRole: "Admin",
+      investmentType: "PMDN",
+      yearBuilt: String(new Date().getFullYear()),
+      buildingArea: 0,
+      operationalHours: "-",
+      rawMaterials: "-",
+      waterSource: "-",
+      powerSource: "-",
+      kbli: "00000",
+      investment: 0,
+      landArea: 0,
+      employees: 0,
+      lat: payload.lat,
+      lng: payload.lng,
+      address: payload.address,
+      docType: "AMDAL",
+      status: "APPROVED",
+      certificateActiveUntil,
+    };
+
+    set((state) => ({
+      companies: [...state.companies, newCompany]
+    }));
+
+    toast.success("Perusahaan wajib AMDAL disimpan (Simulasi Offline)!");
+    const user = get().currentUser;
+    get().addAuditLog(user?.email || "SYSTEM", user?.role || "ADMIN_DLH", `Mendaftarkan wajib AMDAL manual (Offline): ${payload.companyName}`);
+    get().addNotification(
+      "Registrasi AMDAL Manual (Offline)",
+      `Admin DLH telah mendaftarkan koordinat wajib AMDAL untuk ${payload.companyName} secara manual (Offline).`,
+      "SUCCESS"
+    );
+  },
 });
