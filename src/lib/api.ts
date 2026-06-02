@@ -213,5 +213,12 @@ export const apiService = {
       });
       return response.data;
     }
+  },
+  // [NEW MODULE] AI Agent Spatial Forensic Services
+  agent: {
+    runForensicScan: async (payload: { lat: number; lng: number; zoom: number; windDirection: number; incidentType: string; description: string }) => {
+      const response = await api.post("/api/agent/forensic", payload); // Payload diperbarui menyertakan zoom [3]
+      return response.data;
+    }
   }
 };

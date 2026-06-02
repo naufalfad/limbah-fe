@@ -19,7 +19,7 @@ interface GisUIState {
 
     // FASE 4 INJEKSI: Koordinat & Zoom Global Berbasis Sumber Kebenaran Tunggal
     mapCenter: [number, number]; // Koordinat pusat peta saat ini
-    mapZoom: number;             // Skala zoom peta saat ini
+    mapZoom: number;             // Skala zoom peta saat ini (Sumber data untuk Scale-Guard AI) [3]
 
     // FASE 3 INJEKSI: State untuk Advanced Spatial Analytics (Kotawaringin Timur)
     activeAdminBoundary: 'none' | 'kecamatan' | 'desa';
@@ -47,7 +47,7 @@ interface GisUIState {
 
     // Aksi Pengubah Koordinat & Zoom Peta secara Global
     setMapCenter: (center: [number, number]) => void;
-    setMapZoom: (zoom: number) => void;
+    setMapZoom: (zoom: number) => void; // Aksi sinkronisasi zoom Leaflet ke Zustand Store [3]
 
     // Aksi untuk mengontrol Peta Administratif & Radius Dampak
     setActiveAdminBoundary: (boundary: 'none' | 'kecamatan' | 'desa') => void;
@@ -72,7 +72,7 @@ export const useGisUIStore = create<GisUIState>((set) => ({
 
     // Fokus otomatis dikunci ke wilayah Sampit, Kotawaringin Timur
     mapCenter: [-2.5337, 112.9515],
-    mapZoom: 9,
+    mapZoom: 9, // Zoom awal default
 
     // Inisialisasi State Spasial Lanjutan
     activeAdminBoundary: 'none',
@@ -86,17 +86,40 @@ export const useGisUIStore = create<GisUIState>((set) => ({
     // ======================================================================
     openPanel: (type, title, data = null) =>
         set((state) => {
-            // Aturan Singleton: Apakah yang mau dibuka adalah Panel Floating Detail?
+            const isAiPanel = type === "ai-copilot";
+            const isDetailCompany = type === "detil-perusahaan";
+            const isDetailTask = type === "detail-tugas";
             const isDetailPanel = type === "detil-perusahaan" || type === "detail-tugas" || type === "telemetri-lingkungan";
 
             let nextPanels = [...state.activePanels];
 
-            if (isDetailPanel) {
-                // Hapus panel detail/telemetri lama jika ada, agar tidak numpuk melayang di layar
-                nextPanels = nextPanels.filter((p) => p.type !== "detil-perusahaan" && p.type !== "detail-tugas" && p.type !== "telemetri-lingkungan");
+            // 1. EVALUASI ATURAN MUTUALLY EXCLUSIVE (SALING EKSKLUSIF) UNTUK EFISIENSI AREA PETAS [3]
+            if (isAiPanel) {
+                // AI COPILOT EXCLUSIVITY: AI Agent membutuhkan fokus penuh. Tutup semua laci di layar.
+                nextPanels = [];
+            } else if (isDetailCompany) {
+                // DETAIL INDUSTRI EXCLUSIVITY: Tutup menu kiri biasa, sisakan telemetri udara pasangan
+                nextPanels = nextPanels.filter((p) => p.type === "telemetri-lingkungan");
+            } else if (isDetailTask) {
+                // DETAIL TUGAS EXCLUSIVITY: Tugas sidak menutup semua panel lain agar mata fokus ke target
+                nextPanels = [];
             } else {
-                // Untuk panel menu (Kiri), hapus panel tipe sama agar tidak duplikat
-                nextPanels = nextPanels.filter((p) => p.type !== type);
+                // JIKA USER MEMBUKA MENU KIRI BIASA (Layers, Basemap, Katalog):
+                // A. Matikan paksa AI Copilot agar tidak tumpang tindih di kiri layar
+                nextPanels = nextPanels.filter((p) => p.type !== "ai-copilot");
+
+                // B. Bersihkan tumpukan floating details lama jika berpindah kembali ke menu utama
+                const isLeftMenu = type === "katalog-perusahaan" || type === "layer-kewajiban" || type === "basemap-gallery" || type === "tugas-patroli" || type === "armada-tracking" || type === "tentang";
+                if (isLeftMenu) {
+                    nextPanels = nextPanels.filter((p) => p.type !== "detil-perusahaan" && p.type !== "telemetri-lingkungan" && p.type !== "detail-tugas");
+                }
+
+                // C. Terapkan Singleton Standar untuk detail panel biasa
+                if (isDetailPanel) {
+                    nextPanels = nextPanels.filter((p) => p.type !== "detil-perusahaan" && p.type !== "detail-tugas" && p.type !== "telemetri-lingkungan");
+                } else {
+                    nextPanels = nextPanels.filter((p) => p.type !== type);
+                }
             }
 
             // Buat panel baru dengan ID unik berbasis waktu
@@ -204,7 +227,7 @@ export const useGisUIStore = create<GisUIState>((set) => ({
     setSelectedCompanyId: (id) => set({ selectedCompanyId: id }),
 
     setMapCenter: (center) => set({ mapCenter: center }),
-    setMapZoom: (zoom) => set({ mapZoom: zoom }),
+    setMapZoom: (zoom) => set({ mapZoom: zoom }), // Menyimpan nilai zoom level secara global
 
     setActiveAdminBoundary: (boundary) => set({ activeAdminBoundary: boundary }),
     setShowImpactRadius: (show) => set({ showImpactRadius: show }),
@@ -228,7 +251,7 @@ export const useGisUIStore = create<GisUIState>((set) => ({
             maskOpacity: 60,
             activeBaseMap: 'dark',
             mapCenter: [-2.5337, 112.9515],
-            mapZoom: 9,
+            mapZoom: 9, // Reset kembali ke skala default
             aqiCache: {},
         }),
 }));

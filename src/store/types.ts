@@ -146,6 +146,16 @@ export interface AqiData {
   cachedAt?: string;
 }
 
+// [NEW INTERFACE] Kontrak Data ketat untuk Output AI Agent Forensik
+export interface AiForensicResult {
+  culpritName: string;
+  culpritId: string;
+  confidenceScore: number;
+  analysis: string;
+  recommendedAction: "INSPECTION" | "WARNING_LETTER" | "MONITORING" | "MANUAL_INVESTIGATION";
+  evidencePoints: string[];
+}
+
 // Slice Interfaces
 export interface AuthSlice {
   currentUser: User | null;
@@ -254,7 +264,6 @@ export interface ReportSlice {
   fetchAdminReports: (status?: string) => Promise<void>;
 }
 
-// [NEW INTERFACE] Slice khusus pengelolaan kualitas udara (AQI) spasial
 export interface AqiSlice {
   currentAqiData: AqiData | null;
   isAqiLoading: boolean;
@@ -262,5 +271,12 @@ export interface AqiSlice {
   clearAqiData: () => void;
 }
 
-// Combined State
-export interface SijagaState extends AuthSlice, CompanySlice, WasteSlice, PickupSlice, InvoiceSlice, InspectionSlice, NotificationSlice, AuditSlice, ReportSlice, AqiSlice { }
+// [NEW INTERFACE] Laci Tipe Data khusus untuk AI Agent
+export interface AgentSlice {
+  aiForensicResult: AiForensicResult | null;
+  isAiLoading: boolean;
+  runAiForensicScan: (payload: { lat: number; lng: number; zoom: number; windDirection: number; incidentType: string; description: string }) => Promise<AiForensicResult | null>;
+}
+
+// Combined State (Menambahkan AgentSlice ke dalam kesatuan State Utama)
+export interface SijagaState extends AuthSlice, CompanySlice, WasteSlice, PickupSlice, InvoiceSlice, InspectionSlice, NotificationSlice, AuditSlice, ReportSlice, AqiSlice, AgentSlice { }

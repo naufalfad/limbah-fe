@@ -33,6 +33,7 @@
     "react-dom": "^19.2.6",
     "react-hook-form": "^7.76.0",
     "react-leaflet": "^5.0.0",
+    "react-leaflet-cluster": "^4.1.3",
     "react-router-dom": "^7.15.1",
     "recharts": "^3.8.1",
     "shadcn": "^4.7.0",
@@ -64,6 +65,7 @@
     "vite": "^8.0.12"
   }
 }
+
 
 --- FILE: src\lib\spatialAnalytics.ts ---
 // src/lib/spatialAnalytics.ts
@@ -203,14 +205,17 @@ export interface GridPoint extends SensorNode {
 // --- VIRTUAL BASELINE NODES (ANCHOR MITIGATION) ---
 // Untuk mencegah "Ghost Extrapolation" (Peta merah semua karena tidak ada sensor di pedalaman),
 // kita memasang sensor bayangan di perbatasan luar Kotawaringin Timur (Kotim).
-// Nilai AQI dikunci di 20 (Sangat Bersih/Hijau), sehingga area yang jauh dari pabrik akan tertarik memudar.
+// DIUPDATE: Menyesuaikan Bounding Box baru (-3.40 s/d -1.30 dan 112.00 s/d 113.60).
+// Membentuk cincin 8-titik simetris agar tarikan IDW (20 / Sangat Bersih) merata di seluruh pedalaman.
 const KOTIM_VIRTUAL_NODES: AqiNode[] = [
-    { lat: -1.50, lng: 112.00, aqi: 20 }, // Ujung Barat Laut (Pedalaman)
-    { lat: -1.50, lng: 113.50, aqi: 20 }, // Ujung Timur Laut (Pedalaman)
-    { lat: -2.50, lng: 112.00, aqi: 20 }, // Sayap Barat
-    { lat: -2.50, lng: 113.60, aqi: 20 }, // Sayap Timur
-    { lat: -3.30, lng: 112.00, aqi: 20 }, // Barat Daya (Pesisir Laut)
-    { lat: -3.30, lng: 113.50, aqi: 20 }, // Tenggara (Pesisir Laut)
+    { lat: -1.30, lng: 112.00, aqi: 20 }, // Barat Laut ekstrem (Pedalaman)
+    { lat: -1.30, lng: 112.80, aqi: 20 }, // Utara Tengah (Pedalaman Dalam)
+    { lat: -1.30, lng: 113.60, aqi: 20 }, // Timur Laut ekstrem (Pedalaman)
+    { lat: -2.35, lng: 112.00, aqi: 20 }, // Sayap Barat
+    { lat: -2.35, lng: 113.60, aqi: 20 }, // Sayap Timur
+    { lat: -3.40, lng: 112.00, aqi: 20 }, // Barat Daya ekstrem (Pesisir Laut)
+    { lat: -3.40, lng: 112.80, aqi: 20 }, // Selatan Tengah (Pesisir)
+    { lat: -3.40, lng: 113.60, aqi: 20 }, // Tenggara ekstrem (Pesisir Laut)
 ];
 
 // Parameter kekuatan tarikan gravitasi polusi (Power parameter).
@@ -234,8 +239,8 @@ const getDistanceSq = (lat1: number, lng1: number, lat2: number, lng2: number): 
 // --- STASIUN WARNA AQI (COLOR STOPS) ---
 // Titik jangkar pencampuran warna berdasarkan standar US EPA
 const AQI_COLOR_STOPS = [
-    { val: 0, rgb: [16, 185, 129] },   // Emerald 500 (Sangat Baik)
-    { val: 50, rgb: [16, 185, 129] },   // Emerald 500 (Batas Baik)
+    { val: 0, rgb: [16, 185, 129] },     // Emerald 500 (Sangat Baik)
+    { val: 50, rgb: [16, 185, 129] },    // Emerald 500 (Batas Baik)
     { val: 100, rgb: [250, 204, 21] },   // Yellow 400 (Sedang)
     { val: 150, rgb: [249, 115, 22] },   // Orange 500 (Sensitif)
     { val: 200, rgb: [239, 68, 68] },    // Red 500 (Tidak Sehat)
@@ -2986,18 +2991,21 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { ImageOverlay } from 'react-leaflet';
 import { spatialMath, AqiNode } from '@/lib/spatialMath';
 
+// Impor GeoJSON untuk menciptakan path Clipping Canvas (Information Expert)
+import kecData from '@/assets/geojson/kotim-kecamatan.json';
+
 interface AqiSurfaceLayerProps {
     companies: any[];
     mapOpacity: number; // 0 - 100
 }
 
-// Bounding Box untuk mencakup seluruh wilayah Kotawaringin Timur secara geografis.
-// Jika di luar kotak ini, data tidak akan dirender.
+// Bounding Box DIPERLUAS untuk mencakup seluruh ekstrem wilayah Kotawaringin Timur.
+// Mencegah kebocoran "Blank Spots" di pedalaman utara atau pesisir selatan.
 const KOTIM_BOUNDS = {
-    latMin: -3.10, // Pesisir Selatan
-    latMax: -1.60, // Pedalaman Utara
-    lngMin: 112.10, // Perbatasan Barat
-    lngMax: 113.40  // Perbatasan Timur
+    latMin: -3.40,  // Diperluas ke Selatan (Pesisir)
+    latMax: -1.30,  // Diperluas ke Utara (Pedalaman)
+    lngMin: 112.00, // Diperluas ke Barat
+    lngMax: 113.60  // Diperluas ke Timur
 };
 
 // Bounds format Leaflet: [[South, West], [North, East]]
@@ -3006,29 +3014,28 @@ const LEAFLET_BOUNDS: [number, number][] = [
     [KOTIM_BOUNDS.latMax, KOTIM_BOUNDS.lngMax]
 ];
 
-// Resolusi Kanvas. 60x60 = 3600 titik kalkulasi per render.
-// Sangat ringan untuk CPU. Leaflet + CSS Blur akan membuatnya mulus (Continuous Surface).
-const CANVAS_RESOLUTION = 60;
+// Resolusi Kanvas. Semakin tinggi semakin detail, namun lebih berat di CPU.
+// 80x80 = 6400 titik kalkulasi, optimal untuk rendering batas presisi Kotim.
+const CANVAS_RESOLUTION = 80;
 
 /**
  * ============================================================================
- * AQI SURFACE LAYER (CANVAS BLENDING ENGINE)
+ * AQI SURFACE LAYER (CANVAS BLENDING ENGINE W/ CLIPPING)
  * ============================================================================
- * Komponen ini menggantikan teknik SVG Circle Stacking. Ia merender matriks warna
- * ke dalam HTML5 Canvas tersembunyi (Offscreen Canvas), lalu mengubahnya menjadi 
- * Base64 Image untuk diletakkan di atas peta. Ini memangkas beban DOM hingga 99%.
+ * Menggunakan teknik Clipping Mask dari HTML5 Canvas agar bentuk gradasi
+ * terpotong rapi mengikuti lekukan geografis Kabupaten Kotawaringin Timur.
  */
 export default function AqiSurfaceLayer({ companies, mapOpacity }: AqiSurfaceLayerProps) {
     const [canvasDataUrl, setCanvasDataUrl] = useState<string | null>(null);
 
-    // 1. Ekstrak Data Sensor (Information Expert)
+    // 1. Ekstrak Data Sensor
     const aqiSensors = useMemo(() => {
         return companies.map(c => {
             const lat = parseFloat(c.lat);
             const lng = parseFloat(c.lng);
             if (isNaN(lat) || isNaN(lng)) return null;
 
-            // Pseudo-random AQI simulator berdasarkan koordinat (Sama seperti service IQAir Backend)
+            // Pseudo-random AQI simulator berdasarkan koordinat
             const seed = Math.abs(Math.sin(lat) * Math.cos(lng));
             const aqi = Math.floor(25 + (seed * 60)); // Rentang 25 - 85
 
@@ -3038,7 +3045,7 @@ export default function AqiSurfaceLayer({ companies, mapOpacity }: AqiSurfaceLay
 
     // 2. Render Canvas di Background Memory (Pure Fabrication)
     useEffect(() => {
-        if (aqiSensors.length === 0) return;
+        if (aqiSensors.length === 0 || !kecData || !(kecData as any).features) return;
 
         // Membuat kanvas offscreen
         const canvas = document.createElement('canvas');
@@ -3050,23 +3057,70 @@ export default function AqiSurfaceLayer({ companies, mapOpacity }: AqiSurfaceLay
         const latStep = (KOTIM_BOUNDS.latMax - KOTIM_BOUNDS.latMin) / (CANVAS_RESOLUTION - 1);
         const lngStep = (KOTIM_BOUNDS.lngMax - KOTIM_BOUNDS.lngMin) / (CANVAS_RESOLUTION - 1);
 
-        // Menggambar piksel demi piksel
+        // --- A. PEMBUATAN CLIPPING PATH KOTIM ---
+        // Mentranslasikan koordinat Lat/Lng dari GeoJSON ke koordinat X/Y pada Canvas
+        const kotimPath = new Path2D();
+
+        const getX = (lng: number) => ((lng - KOTIM_BOUNDS.lngMin) / (KOTIM_BOUNDS.lngMax - KOTIM_BOUNDS.lngMin)) * CANVAS_RESOLUTION;
+        // Y di-inverse karena 0,0 di Canvas ada di atas, sedangkan LatMax ada di Utara (atas)
+        const getY = (lat: number) => ((KOTIM_BOUNDS.latMax - lat) / (KOTIM_BOUNDS.latMax - KOTIM_BOUNDS.latMin)) * CANVAS_RESOLUTION;
+
+        (kecData as any).features.forEach((feature: any) => {
+            const geom = feature.geometry;
+            if (!geom) return;
+
+            if (geom.type === "Polygon") {
+                geom.coordinates.forEach((ring: any[]) => {
+                    ring.forEach((coord, i) => {
+                        const x = getX(coord[0]);
+                        const y = getY(coord[1]);
+                        if (i === 0) kotimPath.moveTo(x, y);
+                        else kotimPath.lineTo(x, y);
+                    });
+                    kotimPath.closePath();
+                });
+            } else if (geom.type === "MultiPolygon") {
+                geom.coordinates.forEach((poly: any[][]) => {
+                    poly.forEach((ring: any[]) => {
+                        ring.forEach((coord, i) => {
+                            const x = getX(coord[0]);
+                            const y = getY(coord[1]);
+                            if (i === 0) kotimPath.moveTo(x, y);
+                            else kotimPath.lineTo(x, y);
+                        });
+                        kotimPath.closePath();
+                    });
+                });
+            }
+        });
+
+        // Terapkan Path sebagai Masking Canvas
+        ctx.save();
+        ctx.clip(kotimPath);
+
+        // --- B. RENDERING PIKSEL & OPTIMASI CPU ---
         for (let y = 0; y < CANVAS_RESOLUTION; y++) {
             for (let x = 0; x < CANVAS_RESOLUTION; x++) {
-                // Di kanvas, Y=0 ada di atas. Di peta, LatMax ada di atas.
+
+                // OPTIMASI KRITIS: Jika titik X/Y ini jatuh di laut atau kabupaten lain, 
+                // lewati kalkulasi IDW (hemat ribuan siklus CPU tiap frame).
+                if (!ctx.isPointInPath(kotimPath, x, y)) {
+                    continue;
+                }
+
                 const currentLat = KOTIM_BOUNDS.latMax - (y * latStep);
                 const currentLng = KOTIM_BOUNDS.lngMin + (x * lngStep);
 
                 // Tarik nilai tebakan dari Engine IDW kita
                 const interpolatedAqi = spatialMath.interpolateAqi(currentLat, currentLng, aqiSensors);
-
-                // FIX TS ERROR: Panggil nama fungsi yang benar sesuai pembaruan di Fase 2
                 const [r, g, b] = spatialMath.interpolateColorRgb(interpolatedAqi);
 
                 ctx.fillStyle = `rgb(${r},${g},${b})`;
                 ctx.fillRect(x, y, 1, 1);
             }
         }
+
+        ctx.restore();
 
         // Simpan sebagai URI Gambar agar bisa ditangkap oleh ImageOverlay Leaflet
         setCanvasDataUrl(canvas.toDataURL('image/png'));
@@ -3078,10 +3132,10 @@ export default function AqiSurfaceLayer({ companies, mapOpacity }: AqiSurfaceLay
         <ImageOverlay
             url={canvasDataUrl}
             bounds={LEAFLET_BOUNDS as any}
-            // Kontrol Opacity dikelola oleh Leaflet, tidak perlu re-render canvas
             opacity={mapOpacity / 100}
-            // className ini menerapkan CSS Filter Blur & Multiply untuk efek menyatu ke basemap!
-            className="continuous-surface-map mix-blend-multiply blur-[25px]"
+            // CSS Blur menyatukan matriks piksel menjadi gradasi mulus
+            // mix-blend-multiply menempelkan warna ini ke atas basemap seperti tinta
+            className="continuous-surface-map mix-blend-multiply blur-[20px]"
             interactive={false}
         />
     );
@@ -3264,8 +3318,8 @@ export default function CompanyMarkerLayer({ companies, currentZoom, mapOpacity,
 
 --- FILE: src\modules\admin\components\gis\layers\WindFlowLayer.tsx ---
 // src/modules/admin/components/gis/layers/WindFlowLayer.tsx
-import React, { useMemo } from 'react';
-import { Marker } from 'react-leaflet';
+import React, { useEffect, useMemo, useRef } from 'react';
+import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { spatialMath, WindNode } from '@/lib/spatialMath';
 
@@ -3273,63 +3327,36 @@ interface WindFlowLayerProps {
     companies: any[];
 }
 
-// Bounding Box Kotim untuk jaringan angin (Bisa sedikit lebih kecil dari AQI agar rapi)
-const WIND_BOUNDS = {
-    latMin: -2.95,
-    latMax: -1.80,
-    lngMin: 112.25,
-    lngMax: 113.25
+// Bounding Box Kotim (Disamakan persis dengan AqiSurfaceLayer)
+const KOTIM_BOUNDS = {
+    latMin: -3.40,
+    latMax: -1.30,
+    lngMin: 112.00,
+    lngMax: 113.60
 };
 
-// SVG Animasi Meluncur CSS diinjeksi ke global head untuk menghindari inline-style repainting
-const windAnimationStyle = `
-    @keyframes wind-flow-drift {
-        0% { transform: translate(0, 0) scale(0.85); opacity: 0.1; }
-        50% { transform: translate(0, -8px) scale(1.1); opacity: 0.8; }
-        100% { transform: translate(0, -16px) scale(0.85); opacity: 0.1; }
-    }
-    .wind-animated-vector {
-        animation: wind-flow-drift var(--wind-speed-duration, 2s) infinite linear;
-    }
-`;
-
-if (typeof document !== 'undefined') {
-    if (!document.getElementById('wind-anim-style')) {
-        const styleElement = document.createElement("style");
-        styleElement.id = 'wind-anim-style';
-        styleElement.innerHTML = windAnimationStyle;
-        document.head.appendChild(styleElement);
-    }
-}
-
-// Generator Ikon SVG Dinamis (Rotasi Derajat & Durasi Animasi Kecepatan)
-const createWindArrowIcon = (wd: number, ws: number) => {
-    // Logika angin: Semakin kencang, semakin cepat animasi meluncur (duration mengecil)
-    const duration = ws > 5 ? "0.8s" : ws > 3 ? "1.5s" : "2.5s";
-
-    return L.divIcon({
-        html: `
-            <div style="transform: rotate(${wd}deg); transform-origin: center;" class="flex items-center justify-center pointer-events-none">
-                <svg style="--wind-speed-duration: ${duration};" class="wind-animated-vector w-5 h-5 text-white/60 drop-shadow-md" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                    <line x1="12" y1="22" x2="12" y2="2"></line>
-                    <polyline points="5 9 12 2 19 9"></polyline>
-                </svg>
-            </div>
-        `,
-        className: "custom-wind-vector bg-transparent border-none",
-        iconSize: [24, 24],
-        iconAnchor: [12, 12]
-    });
-};
+// ============================================================================
+// ENGINE TUNING PARAMETERS (THE FLUID MAGIC)
+// ============================================================================
+const RESOLUTION = 50;           // Kerapatan Matriks Vektor (Dinaikkan agar belokan lebih halus)
+const PARTICLE_COUNT = 600;      // Jumlah partikel (Dinaikkan agar layar tidak kosong saat angin pelan)
+const PARTICLE_LIFESPAN = 350;   // Umur partikel (Diperpanjang agar jejak/ekor lebih panjang)
+const VELOCITY_MULTIPLIER = 0.15; // Skala Pengali Kecepatan (Diturunkan drastis untuk menjinakkan "Blower")
+const FADE_RATE = 0.04;          // Kecepatan Pudar Ekor Komet (Semakin kecil = ekor semakin panjang & mulus)
 
 /**
  * ============================================================================
- * WIND FLOW LAYER (VECTOR GRID)
+ * WIND FLOW LAYER (CUSTOM CANVAS PARTICLE ENGINE)
  * ============================================================================
- * Menghitung interpolasi arah & kecepatan angin menggunakan Trigonometri IDW,
- * lalu menempatkannya pada grid koordinat yang rapi di seluruh Kotim.
+ * Menciptakan ilusi Fluid Dynamics (seperti IQAir) menggunakan HTML5 Canvas.
+ * Dilengkapi dengan arsitektur "Fade & Pause" (Debounced Rendering) untuk
+ * mencegah frame drop dan flickering saat peta digeser.
  */
 export default function WindFlowLayer({ companies }: WindFlowLayerProps) {
+    const map = useMap();
+    const canvasRef = useRef<HTMLCanvasElement | null>(null);
+    const animationRef = useRef<number | null>(null);
+
     // 1. Ekstrak Data Sensor Angin
     const windSensors = useMemo(() => {
         return companies.map(c => {
@@ -3337,45 +3364,176 @@ export default function WindFlowLayer({ companies }: WindFlowLayerProps) {
             const lng = parseFloat(c.lng);
             if (isNaN(lat) || isNaN(lng)) return null;
 
+            // Seed generator (Sama seperti AQI)
             const seed = Math.abs(Math.sin(lat) * Math.cos(lng));
             const wd = Math.floor(seed * 360);
-            const ws = parseFloat((1.5 + (seed * 4)).toFixed(1));
+            const ws = parseFloat((1.5 + (seed * 4)).toFixed(1)); // Dinamis antara 1.5 - 5.5 m/s
 
             return { lat, lng, wd, ws } as WindNode;
         }).filter(Boolean) as WindNode[];
     }, [companies]);
 
-    // 2. Kalkulasi Grid Angin (Resolusi 12x12 = 144 Titik)
-    const windGridPoints = useMemo(() => {
+    // 2. PRE-COMPUTE VECTOR FIELD (O(1) Lookup untuk Animasi)
+    const vectorField = useMemo(() => {
         if (windSensors.length === 0) return [];
+        const grid = spatialMath.generateCanvasGrid(KOTIM_BOUNDS, RESOLUTION, RESOLUTION);
 
-        const baseGrid = spatialMath.generateCanvasGrid(WIND_BOUNDS, 12, 12);
+        return grid.map(pt => {
+            const wind = spatialMath.interpolateWind(pt.lat, pt.lng, windSensors);
+            const rad = (wind.wd * Math.PI) / 180;
 
-        return baseGrid.map(pt => {
-            const interpolatedWind = spatialMath.interpolateWind(pt.lat, pt.lng, windSensors);
+            // KECEPATAN SANGAT DINAMIS: Tergantung murni dari interpolasi data wind.ws area tersebut
+            const speed = wind.ws * VELOCITY_MULTIPLIER;
+
             return {
-                lat: pt.lat,
-                lng: pt.lng,
-                wd: interpolatedWind.wd,
-                ws: interpolatedWind.ws
+                u: Math.cos(rad) * speed,
+                v: Math.sin(rad) * speed
             };
         });
     }, [windSensors]);
 
-    if (windGridPoints.length === 0) return null;
+    // 3. LIFECYCLE ENGINE PARTIKEL CANVAS
+    useEffect(() => {
+        if (vectorField.length === 0) return;
 
-    return (
-        <React.Fragment>
-            {windGridPoints.map((pt, idx) => (
-                <Marker
-                    key={`wind-vector-${idx}`}
-                    position={[pt.lat, pt.lng]}
-                    icon={createWindArrowIcon(pt.wd, pt.ws)}
-                    interactive={false} // Pasif, agar tidak mem-blokir klik ke wilayah/perusahaan di bawahnya
-                />
-            ))}
-        </React.Fragment>
-    );
+        const canvas = document.createElement('canvas');
+        canvas.className = 'leaflet-zoom-animated pointer-events-none mix-blend-screen';
+        canvas.style.position = 'absolute';
+        canvas.style.left = '0';
+        canvas.style.top = '0';
+        // THE MAGIC FADE: Mengatur transisi CSS agar halus saat dimatikan/dihidupkan
+        canvas.style.opacity = '0.7';
+        canvas.style.transition = 'opacity 0.3s ease-in-out';
+
+        map.getPanes().overlayPane.appendChild(canvas);
+        canvasRef.current = canvas;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        let particles: { x: number, y: number, age: number }[] = [];
+        let isAnimating = true; // State Engine
+
+        const syncCanvas = () => {
+            const size = map.getSize();
+            canvas.width = size.x;
+            canvas.height = size.y;
+
+            const topLeft = map.containerPointToLayerPoint([0, 0]);
+            L.DomUtil.setPosition(canvas, topLeft);
+
+            particles = Array.from({ length: PARTICLE_COUNT }).map(() => ({
+                x: Math.random() * size.x,
+                y: Math.random() * size.y,
+                age: Math.random() * PARTICLE_LIFESPAN
+            }));
+        };
+
+        // 4. THE FADE & PAUSE STRATEGY (LIFECYCLE HANDLERS)
+        const handleMoveStart = () => {
+            isAnimating = false;
+            // Matikan engine animasi segera untuk membebaskan CPU
+            if (animationRef.current) {
+                cancelAnimationFrame(animationRef.current);
+                animationRef.current = null;
+            }
+            // Memicu CSS transition fade-out
+            canvas.style.opacity = '0';
+        };
+
+        const handleMoveEnd = () => {
+            // Kalkulasi ulang layout
+            syncCanvas();
+            isAnimating = true;
+            // Memicu CSS transition fade-in
+            canvas.style.opacity = '0.7';
+            // Start engine kembali
+            render();
+        };
+
+        // Pasang pendengar event (Listener)
+        map.on('movestart zoomstart', handleMoveStart);
+        map.on('moveend zoomend', handleMoveEnd);
+
+        // Inisialisasi Pertama
+        syncCanvas();
+
+        // 5. ANIMATION LOOP (60 FPS)
+        const render = () => {
+            // Guard clause: Cegah render jika sedang digeser atau kanvas hilang
+            if (!isAnimating || !canvasRef.current) return;
+
+            const width = canvas.width;
+            const height = canvas.height;
+
+            // Fading Tails menggunakan nilai FADE_RATE yang lebih rendah untuk jejak komet yang mulus
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.fillStyle = `rgba(0, 0, 0, ${FADE_RATE})`;
+            ctx.fillRect(0, 0, width, height);
+
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.lineWidth = 1.2; // Sedikit ditipiskan agar lebih elegan
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+            ctx.lineCap = 'round';
+
+            const bounds = map.getBounds();
+
+            ctx.beginPath();
+
+            particles.forEach(p => {
+                if (p.age > PARTICLE_LIFESPAN) {
+                    p.x = Math.random() * width;
+                    p.y = Math.random() * height;
+                    p.age = 0;
+                }
+
+                const pLatLng = map.containerPointToLatLng([p.x, p.y]);
+
+                const gridX = Math.floor(((pLatLng.lng - KOTIM_BOUNDS.lngMin) / (KOTIM_BOUNDS.lngMax - KOTIM_BOUNDS.lngMin)) * RESOLUTION);
+                const gridY = Math.floor(((KOTIM_BOUNDS.latMax - pLatLng.lat) / (KOTIM_BOUNDS.latMax - KOTIM_BOUNDS.latMin)) * RESOLUTION);
+
+                if (gridX < 0 || gridX >= RESOLUTION || gridY < 0 || gridY >= RESOLUTION) {
+                    p.age = PARTICLE_LIFESPAN + 1;
+                    return;
+                }
+
+                const index = gridY * RESOLUTION + gridX;
+                const vector = vectorField[index];
+
+                if (!vector) return;
+
+                ctx.moveTo(p.x, p.y);
+
+                // Bergerak secara dinamis mengikuti arah (u,v) dengan kecepatan unik dari area tersebut
+                // Noise dikurangi agar tidak terlalu bergetar saat kecepatan pelan
+                p.x += vector.u + (Math.random() - 0.5) * 0.2;
+                p.y += vector.v + (Math.random() - 0.5) * 0.2;
+                p.age++;
+
+                ctx.lineTo(p.x, p.y);
+            });
+
+            ctx.stroke();
+
+            // Loop ke frame berikutnya
+            animationRef.current = requestAnimationFrame(render);
+        };
+
+        render(); // Start engine
+
+        // Cleanup
+        return () => {
+            isAnimating = false;
+            if (animationRef.current) cancelAnimationFrame(animationRef.current);
+            map.off('movestart zoomstart', handleMoveStart);
+            map.off('moveend zoomend', handleMoveEnd);
+            if (canvasRef.current && canvasRef.current.parentNode) {
+                canvasRef.current.parentNode.removeChild(canvasRef.current);
+            }
+        };
+    }, [vectorField, map]);
+
+    return null;
 }
 
 --- FILE: src\modules\admin\components\gis\LimbahMap.tsx ---
@@ -3392,6 +3550,8 @@ import {
     useMap,
     useMapEvents
 } from 'react-leaflet';
+// IMPORT BARU: Modul Clustering
+import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useSijagaStore } from '@/store/useSijagaStore';
@@ -3409,7 +3569,8 @@ import { spatialMath } from '@/lib/spatialMath';
 import AqiSurfaceLayer from './layers/AqiSurfaceLayer';
 import WindFlowLayer from './layers/WindFlowLayer';
 import CompanyMarkerLayer from './layers/CompanyMarkerLayer';
-import AqiHorizontalLegend from './AqiHorizontalLegend'; // INJEKSI: Legenda Horizontal
+import AqiHorizontalLegend from './AqiHorizontalLegend';
+import { Sparkles } from 'lucide-react'; // INJEKSI ICON AI
 
 // --- Fix Leaflet Default Icon ---
 import icon from "leaflet/dist/images/marker-icon.png";
@@ -3430,34 +3591,51 @@ const DEFAULT_CENTER: [number, number] = [-2.5337, 112.9515];
 // HELPERS & ICONS GENERATORS
 // ============================================================================
 
-// Generator AQI Spasial Realistis lokal berkinerja tinggi
 const getSimulatedAqi = (lat: number, lng: number): number => {
     if (isNaN(lat) || isNaN(lng)) return 35;
     const seed = Math.abs(Math.sin(lat) * Math.cos(lng));
     return Math.floor(25 + (seed * 60)); // Skala 25 - 85 (Baik - Sedang)
 };
 
-// [UPDATE] AQI Numeric Badge - BEBAS ANIMASI PULSE & WARNA DINAMIS
-const createAqiBadgeIcon = (aqi: number, bgColorRgb: string) => {
-    // Teks hitam jika indikator warna kuning/terang agar terbaca (AQI 51-100)
+const createAqiBadgeIcon = (aqi: number, bgColorRgb: string, isCluster: boolean = false) => {
     const textColor = (aqi > 50 && aqi <= 100) ? '#0f172a' : '#ffffff';
+    const size = isCluster ? 38 : 32;
+    const fontSize = isCluster ? '13px' : '11px';
 
-    // FIX CSS CONFLICT: Menghapus class "inline-flex" dan hanya mempertahankan "flex"
     return L.divIcon({
         html: `
-            <div style="position: relative; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
-                <span class="relative flex rounded-full h-8 w-8 border-2 border-white shadow-md items-center justify-center font-mono font-black text-[11px] leading-none select-none transition-colors" style="background-color: ${bgColorRgb}; color: ${textColor};">
-                    ${aqi}
+            <div style="position: relative; width: ${size}px; height: ${size}px; display: flex; align-items: center; justify-content: center;">
+                <span class="relative flex rounded-full h-full w-full border-2 border-white shadow-md items-center justify-center font-mono font-black select-none transition-colors" style="background-color: ${bgColorRgb}; color: ${textColor}; font-size: ${fontSize};">
+                    ${Math.round(aqi)}
                 </span>
             </div>
         `,
         className: "custom-aqi-numeric-badge bg-transparent border-none",
-        iconSize: [32, 32],
-        iconAnchor: [16, 16]
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2]
     });
 };
 
-// Ikon Berkedip (Triage Admin & Auditor untuk titik krisis pengaduan)
+const createClusterCustomIcon = function (cluster: any) {
+    const childMarkers = cluster.getAllChildMarkers();
+
+    let sumAqi = 0;
+    let validCount = 0;
+
+    childMarkers.forEach((marker: any) => {
+        if (marker.options && marker.options.aqiData !== undefined) {
+            sumAqi += marker.options.aqiData;
+            validCount++;
+        }
+    });
+
+    const avgAqi = validCount > 0 ? sumAqi / validCount : 0;
+    const [r, g, b] = spatialMath.interpolateColorRgb(avgAqi);
+    const bgColorRgb = `rgb(${r}, ${g}, ${b})`;
+
+    return createAqiBadgeIcon(avgAqi, bgColorRgb, true);
+};
+
 const createPulsingIcon = (status: string) => {
     let colorClass = "bg-rose-600";
     let ringClass = "bg-rose-500 animate-ping";
@@ -3485,7 +3663,6 @@ const createPulsingIcon = (status: string) => {
     });
 };
 
-// Ikon Statis Solid (Tugas Inspektur Lapangan)
 const createStaticTaskIcon = (isUnknown: boolean) => {
     const bgColor = isUnknown ? "bg-rose-500" : "bg-emerald-500";
     return L.divIcon({
@@ -3532,20 +3709,42 @@ function ExternalMapController() {
     return null;
 }
 
+/**
+ * MapZoomListener (Modified)
+ * Menangkap event zoomend Leaflet dan men-sinkronkannya langsung ke Zustand Store [3]
+ */
 function MapZoomListener({ onChange }: { onChange: (zoom: number) => void }) {
     const map = useMap();
-    useMapEvents({ zoomend: () => onChange(map.getZoom()) });
-    useEffect(() => { onChange(map.getZoom()); }, [map, onChange]);
+    const { setMapZoom } = useGisUIStore(); // INJEKSI: Mengambil fungsi setMapZoom global
+
+    useMapEvents({
+        zoomend: () => {
+            const zoomLevel = map.getZoom();
+            onChange(zoomLevel);
+            setMapZoom(zoomLevel); // Sinkronisasi reaktif setiap kali user melakukan zoom-in/out [3]
+        }
+    });
+
+    useEffect(() => {
+        const initialZoom = map.getZoom();
+        onChange(initialZoom);
+        setMapZoom(initialZoom); // Sinkronisasi saat inisialisasi awal render peta [3]
+    }, [map, onChange, setMapZoom]);
+
     return null;
 }
 
 function MapEventsHandler() {
-    const { closePanel } = useGisUIStore();
+    const { closePanel, setMapCenter } = useGisUIStore();
     useMapEvents({
         click: () => {
             closePanel("detil-perusahaan");
             closePanel("detail-tugas");
             closePanel("telemetri-lingkungan");
+        },
+        moveend: (e) => {
+            const center = e.target.getCenter();
+            setMapCenter([center.lat, center.lng]); // Sinkronisasi koordinat global untuk AI [3]
         }
     });
     return null;
@@ -3563,10 +3762,8 @@ export default function LimbahMap() {
         activeAdminBoundary, showImpactRadius, activePanels
     } = useGisUIStore();
 
-    // State LOD Kamera
     const [currentZoom, setCurrentZoom] = useState(9);
 
-    // Keamanan Data Aduan (Hanya Verifikator & Eksekutif)
     useEffect(() => {
         if (currentUser && (currentUser.role === "ADMIN_DLH" || currentUser.role === "SUPER_ADMIN")) {
             if (adminReports.length === 0) fetchAdminReports();
@@ -3574,10 +3771,8 @@ export default function LimbahMap() {
     }, [adminReports.length, fetchAdminReports, currentUser]);
 
     const isOfficer = currentUser?.role === "PETUGAS_LAPANGAN";
+    const isExecutive = currentUser?.role === "AUDITOR" || currentUser?.role === "ADMIN_DLH" || currentUser?.role === "SUPER_ADMIN";
 
-    // ------------------------------------------------------------------------
-    // TILE URL RESOLVER (Mendukung 5 Basemap)
-    // ------------------------------------------------------------------------
     const getTileUrl = () => {
         switch (activeBaseMap) {
             case 'dark': return "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
@@ -3590,9 +3785,6 @@ export default function LimbahMap() {
         }
     };
 
-    // ------------------------------------------------------------------------
-    // INVERTED POLYGON MASKING (Area luar Kotim)
-    // ------------------------------------------------------------------------
     const invertedKotimMask = useMemo(() => {
         const kecGeoJson = kecData as any;
         if (!kecGeoJson || !kecGeoJson.features) return null;
@@ -3622,9 +3814,6 @@ export default function LimbahMap() {
         return [worldOuterBounds, ...innerHoles] as any;
     }, []);
 
-    // ------------------------------------------------------------------------
-    // CHOROPLETH (Kecamatan / Desa)
-    // ------------------------------------------------------------------------
     const kecamatanCounts = useMemo(() => {
         if (activeAdminBoundary !== 'kecamatan') return {};
         return calculateCompaniesPerKecamatan(companies, kecData as any);
@@ -3646,17 +3835,11 @@ export default function LimbahMap() {
         fillOpacity: 0.15 * (mapOpacity / 100)
     };
 
-    // ------------------------------------------------------------------------
-    // IMPACT RADIUS (5KM)
-    // ------------------------------------------------------------------------
     const activeTaskPanel = activePanels.find(p => p.type === 'detail-tugas' || p.type === 'detil-perusahaan' || p.type === 'telemetri-lingkungan');
     const impactCenter: [number, number] | null = (!isNaN(parseFloat(activeTaskPanel?.data?.lat)) && !isNaN(parseFloat(activeTaskPanel?.data?.lng)))
         ? [parseFloat(activeTaskPanel?.data?.lat), parseFloat(activeTaskPanel?.data?.lng)]
         : null;
 
-    // ------------------------------------------------------------------------
-    // DATA: TUGAS PETUGAS LAPANGAN
-    // ------------------------------------------------------------------------
     const officerTasks = useMemo(() => {
         if (!isOfficer) return [];
         const userId = currentUser?.id;
@@ -3679,7 +3862,6 @@ export default function LimbahMap() {
             }).filter(t => !isNaN(t.lat) && !isNaN(t.lng));
     }, [inspections, currentUser, companies, isOfficer]);
 
-    // Handler klik Laporan & Tugas
     const handleReportClick = (report: any, e: L.LeafletMouseEvent) => {
         e.originalEvent.stopPropagation();
         e.target._map.flyTo([parseFloat(report.lat), parseFloat(report.lng)], 16, { animate: true, duration: 1.5 });
@@ -3698,27 +3880,45 @@ export default function LimbahMap() {
 
     return (
         <div className="absolute inset-0 z-0 bg-slate-100">
+            {/* FLOATING ACTION BUTTON AI COPILOT (Hanya untuk Eksekutif) */}
+            {isExecutive && (
+                <div className="absolute top-[88px] right-6 z-[1000]">
+                    <button
+                        onClick={() => openPanel('ai-copilot', 'AI Spatial Assistant')}
+                        className="group relative flex items-center justify-center w-12 h-12 bg-slate-900 border border-emerald-500 hover:bg-emerald-600 transition-all rounded-none shadow-[0_0_15px_rgba(16,185,129,0.5)] outline-none overflow-hidden"
+                    >
+                        {/* Radar Scan Effect */}
+                        <div className="absolute inset-0 bg-emerald-400/20 animate-ping rounded-full opacity-0 group-hover:opacity-100" />
+                        <Sparkles size={20} className="text-emerald-400 group-hover:text-white transition-colors relative z-10" />
+
+                        {/* Tooltip Hover Kaku */}
+                        <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-slate-900 border border-slate-700 text-emerald-400 text-[9px] font-black uppercase tracking-widest whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none rounded-none shadow-xl">
+                            AI Forensik Scan
+                        </div>
+                    </button>
+                </div>
+            )}
+
             <MapContainer
                 center={DEFAULT_CENTER}
                 zoom={9}
                 zoomControl={false}
                 style={{ height: '100%', width: '100%' }}
+                maxZoom={18}
             >
                 <ExternalMapController />
                 <MapZoomListener onChange={setCurrentZoom} />
                 <MapEventsHandler />
 
-                {/* BaseMap Layer Dinamis */}
                 <TileLayer url={getTileUrl()} />
 
-                {/* 🌑 INVERTED POLYGON MASK (Tingkat kegelapan dikontrol oleh maskOpacity Store) */}
                 {invertedKotimMask && (
                     <Polygon
                         positions={invertedKotimMask}
                         pathOptions={{
                             color: "#0f172a",
                             fillColor: "#0f172a",
-                            fillOpacity: maskOpacity / 100, // Reactive Masking Control
+                            fillOpacity: maskOpacity / 100,
                             weight: 1,
                             opacity: 0.2,
                             interactive: false
@@ -3726,7 +3926,6 @@ export default function LimbahMap() {
                     />
                 )}
 
-                {/* 🔴 BATAS ADMINISTRASI (CHOROPLETH) */}
                 {activeAdminBoundary === 'kecamatan' && (
                     <GeoJSON key={`kec-${mapOpacity}`} data={kecData as any} style={geoJsonKecStyle} />
                 )}
@@ -3734,7 +3933,6 @@ export default function LimbahMap() {
                     <GeoJSON key={`desa-${mapOpacity}`} data={desaData as any} style={geoJsonDesaStyle} />
                 )}
 
-                {/* 🔴 IMPACT RADIUS (Cincin Bencana 5 KM) */}
                 {showImpactRadius && impactCenter && (
                     <Circle
                         center={impactCenter}
@@ -3745,17 +3943,14 @@ export default function LimbahMap() {
                     </Circle>
                 )}
 
-                {/* 🟢 LAYER MODULAR 1: CONTINUOUS AQI SURFACE MAP (Canvas Blending Engine) */}
                 {!isOfficer && activeLayers.includes("layer-aqi") && (
                     <AqiSurfaceLayer companies={companies} mapOpacity={mapOpacity} />
                 )}
 
-                {/* 🟢 LAYER MODULAR 2: WIND FLOW FIELD (Vector Animation) */}
                 {!isOfficer && activeLayers.includes("layer-aqi") && (
                     <WindFlowLayer companies={companies} />
                 )}
 
-                {/* 🟢 LAYER MODULAR 3: COMPANY POLYGON & MARKER (Level of Detail System) */}
                 <CompanyMarkerLayer
                     companies={companies}
                     currentZoom={currentZoom}
@@ -3763,46 +3958,50 @@ export default function LimbahMap() {
                     isOfficer={isOfficer}
                 />
 
-                {/* 🟢 LAYER MODULAR 4: AQI NUMERIC BADGES (Interpolated Solid Colors) */}
-                {!isOfficer && activeLayers.includes("layer-aqi") && companies.map(c => {
-                    const lat = parseFloat(c.lat);
-                    const lng = parseFloat(c.lng);
-                    if (isNaN(lat) || isNaN(lng)) return null;
+                {!isOfficer && activeLayers.includes("layer-aqi") && (
+                    <MarkerClusterGroup
+                        chunkedLoading
+                        iconCreateFunction={createClusterCustomIcon}
+                        maxClusterRadius={60}
+                        spiderfyOnMaxZoom={true}
+                    >
+                        {companies.map(c => {
+                            const lat = parseFloat(c.lat);
+                            const lng = parseFloat(c.lng);
+                            if (isNaN(lat) || isNaN(lng)) return null;
 
-                    // Dapatkan nilai AQI simulasi berdasarkan koordinat (Kirim Format Number)
-                    const aqi = getSimulatedAqi(lat, lng);
+                            const aqi = getSimulatedAqi(lat, lng);
+                            const [r, g, b] = spatialMath.interpolateColorRgb(aqi);
+                            const bgColorRgb = `rgb(${r}, ${g}, ${b})`;
 
-                    // Injeksi warna gradasi mulus dari SpatialMath
-                    const [r, g, b] = spatialMath.interpolateColorRgb(aqi);
-                    const bgColorRgb = `rgb(${r}, ${g}, ${b})`;
+                            return (
+                                <Marker
+                                    key={`aqi-num-badge-${c.id}`}
+                                    position={[lat, lng]}
+                                    {...{ aqiData: aqi }}
+                                    icon={createAqiBadgeIcon(aqi, bgColorRgb, false)}
+                                    eventHandlers={{
+                                        click: (e) => {
+                                            e.originalEvent.stopPropagation();
 
-                    return (
-                        <Marker
-                            key={`aqi-num-badge-${c.id}`}
-                            position={[lat, lng]}
-                            icon={createAqiBadgeIcon(aqi, bgColorRgb)}
-                            eventHandlers={{
-                                click: (e) => {
-                                    e.originalEvent.stopPropagation();
+                                            if (currentZoom >= 16) {
+                                                e.target._map.flyToBounds(e.target.getBounds(), { padding: [100, 100], duration: 1.5 });
+                                            } else {
+                                                e.target._map.flyTo([lat, lng], 16, { animate: true, duration: 1.5 });
+                                            }
 
-                                    // Posisikan kamera secara dinamis
-                                    if (currentZoom >= 16) {
-                                        e.target._map.flyToBounds(e.target.getBounds(), { padding: [100, 100], duration: 1.5 });
-                                    } else {
-                                        e.target._map.flyTo([lat, lng], 16, { animate: true, duration: 1.5 });
-                                    }
+                                            setSelectedCompanyId(c.id);
+                                            closePanelsToTheRight(-1);
+                                            openPanel("detil-perusahaan", `Detail Industri`, c);
+                                            openPanel("telemetri-lingkungan", `Telemetri Spasial`, c);
+                                        }
+                                    }}
+                                />
+                            );
+                        })}
+                    </MarkerClusterGroup>
+                )}
 
-                                    setSelectedCompanyId(c.id);
-                                    closePanelsToTheRight(-1);
-                                    openPanel("detil-perusahaan", `Detail Industri`, c);
-                                    openPanel("telemetri-lingkungan", `Telemetri Spasial`, c);
-                                }
-                            }}
-                        />
-                    );
-                })}
-
-                {/* 📍 PIN PENGADUAN KELIP KELIP (ADMIN / AUDITOR TRIAGE) */}
                 {!isOfficer && activeLayers.includes("layer-complaints") &&
                     adminReports.map((report) => {
                         const latNum = parseFloat(report.lat);
@@ -3820,7 +4019,6 @@ export default function LimbahMap() {
                     })
                 }
 
-                {/* 📍 PIN TUGAS SOLID (HANYA UNTUK INSPEKTUR) */}
                 {isOfficer && officerTasks.map((task) => (
                     <Marker
                         key={`task-${task.id}`}
@@ -3832,7 +4030,6 @@ export default function LimbahMap() {
 
             </MapContainer>
 
-            {/* LEGENDA HORIZONTAL (Diluar Kanvas Peta, Tetap Melayang di Z-30) */}
             {!isOfficer && <AqiHorizontalLegend />}
         </div>
     );
@@ -3993,10 +4190,13 @@ import DetailPanel from "./panels/DetailPanel";
 import PatrolTaskPanel from "./panels/PatrolTaskPanel";
 import TaskDetailPanel from "./panels/TaskDetailPanel";
 import EnvironmentalTelemetryPanel from "./panels/EnvironmentalTelemetryPanel";
-import BasemapPanel from "./panels/BasemapPanel"; // IMPOR BARU: Panel khusus Basemap
+import BasemapPanel from "./panels/BasemapPanel";
 
 // MODULAR: Mengimpor laci taktis telemetri live dari modul transport
 import ActiveFleetPanel from "@/modules/transport/components/gis/panels/ActiveFleetPanel";
+
+// [NEW MODULE] Mengimpor laci asisten AI Forensik untuk Pimpinan/Admin
+import ExecutiveCopilotPanel from "@/modules/dashboard/components/auditor/ExecutiveCopilotPanel";
 
 /**
  * PanelOrchestrator - The Stacking Drawer (GFW Paradigm)
@@ -4124,8 +4324,10 @@ function renderPanelContent(type: GisPanelType, data: any) {
             return <EnvironmentalTelemetryPanel companyData={data} />;
         case "detail-tugas":
             return <TaskDetailPanel taskData={data} />;
-        case "basemap-gallery": // <-- REGISTRASI RENDERER BARU
+        case "basemap-gallery":
             return <BasemapPanel />;
+        case "ai-copilot": // <-- REGISTRASI RENDERER AI FORENSIK
+            return <ExecutiveCopilotPanel />;
         case "tentang":
             return (
                 <div className="p-6 text-center space-y-3 text-slate-500 font-sans">
@@ -5105,6 +5307,7 @@ export default function LayerPanel() {
     const {
         activeLayers, toggleLayer,
         mapOpacity, setMapOpacity,
+        maskOpacity, setMaskOpacity, // INJEKSI FASE 4: Kontrol Opacity Masking Luar Wilayah
         activeAdminBoundary, setActiveAdminBoundary
     } = useGisUIStore();
 
@@ -5231,20 +5434,38 @@ export default function LayerPanel() {
                         <h4 className="text-[11px] font-bold uppercase tracking-wider">Kontrol Visual Peta</h4>
                     </div>
 
-                    {/* Slider: Poligon/Heatmap Opacity */}
-                    <div className="px-4 py-3 border-b border-slate-200 bg-white space-y-2.5">
-                        <div className="flex justify-between items-center">
-                            <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Opacity Layer Aktif</span>
-                            <span className="text-[9px] font-black text-emerald-800 font-mono bg-emerald-50 px-1.5 py-0.5 border border-emerald-100">{mapOpacity}%</span>
+                    <div className="flex flex-col divide-y divide-slate-100">
+                        {/* Slider 1: Poligon/Heatmap Opacity */}
+                        <div className="px-4 py-3 bg-white space-y-2.5">
+                            <div className="flex justify-between items-center">
+                                <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Opacity Layer Aktif</span>
+                                <span className="text-[9px] font-black text-emerald-800 font-mono bg-emerald-50 px-1.5 py-0.5 border border-emerald-100">{mapOpacity}%</span>
+                            </div>
+                            <input
+                                type="range"
+                                min="0"
+                                max="100"
+                                value={mapOpacity}
+                                onChange={(e) => setMapOpacity(parseInt(e.target.value))}
+                                className="w-full h-1.5 bg-slate-200 rounded-none appearance-none cursor-pointer accent-emerald-600 outline-none"
+                            />
                         </div>
-                        <input
-                            type="range"
-                            min="0"
-                            max="100"
-                            value={mapOpacity}
-                            onChange={(e) => setMapOpacity(parseInt(e.target.value))}
-                            className="w-full h-1.5 bg-slate-200 rounded-none appearance-none cursor-pointer accent-emerald-600 outline-none"
-                        />
+
+                        {/* Slider 2: Masking Opacity (Area Luar) */}
+                        <div className="px-4 py-3 border-b border-slate-200 bg-white space-y-2.5">
+                            <div className="flex justify-between items-center">
+                                <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Masking Luar Wilayah</span>
+                                <span className="text-[9px] font-black text-slate-800 font-mono bg-slate-100 px-1.5 py-0.5 border border-slate-200">{maskOpacity}%</span>
+                            </div>
+                            <input
+                                type="range"
+                                min="0"
+                                max="100"
+                                value={maskOpacity}
+                                onChange={(e) => setMaskOpacity(parseInt(e.target.value))}
+                                className="w-full h-1.5 bg-slate-200 rounded-none appearance-none cursor-pointer accent-slate-800 outline-none"
+                            />
+                        </div>
                     </div>
                 </div>
             )}
@@ -7737,6 +7958,238 @@ function UKLUPTemplate() {
   );
 }
 
+--- FILE: src\modules\dashboard\components\auditor\ExecutiveCopilotPanel.tsx ---
+// src/modules/dashboard/components/auditor/ExecutiveCopilotPanel.tsx
+import React, { useState } from "react";
+import { Sparkles, Send, Loader2, Target, AlertTriangle, CheckCircle2, Factory, Crosshair, ArrowRight } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { useSijagaStore } from "@/store/useSijagaStore";
+import { useGisUIStore } from "@/store/useGisUIStore";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+
+export default function ExecutiveCopilotPanel() {
+    const { runAiForensicScan, isAiLoading, aiForensicResult } = useSijagaStore();
+    const { mapCenter, mapZoom } = useGisUIStore(); // Mengambil koordinat pusat peta dan level zoom global [3]
+
+    const [input, setInput] = useState("");
+    const [hasSearched, setHasSearched] = useState(false);
+
+    // GATEKEEPER CONDITIONAL: Skala makro di bawah level zoom 10 diblokir [3]
+    const isZoomTooFar = mapZoom < 10;
+
+    const handleSend = async (e?: React.FormEvent, presetInput?: string) => {
+        if (e) e.preventDefault();
+
+        // Cegah eksekusi jika skala peta melanggar aturan Zoom-Guard [3]
+        if (isZoomTooFar) {
+            toast.error("Skala peta terlalu makro. Harap zoom-in terlebih dahulu.");
+            return;
+        }
+
+        const query = presetInput || input;
+        if (!query.trim()) return;
+
+        setInput(query);
+        setHasSearched(true);
+
+        // Menyiapkan Payload Spasial Lengkap dengan Parameter Zoom [3]
+        const payload = {
+            lat: mapCenter[0],
+            lng: mapCenter[1],
+            zoom: mapZoom, // Kirim tingkat zoom Leaflet secara dinamis ke Backend [3]
+            windDirection: 135, // Mock arah angin (Tenggara)
+            incidentType: "Anomali Polusi Udara / Air",
+            description: query
+        };
+
+        const result = await runAiForensicScan(payload);
+
+        // TACTICAL UI EVENT: Jika AI menemukan tersangka, gerakkan peta ke koordinat pabrik tersebut
+        if (result && result.culpritId !== "COM-UNKNOWN") {
+            const companies = useSijagaStore.getState().companies;
+            const culprit = companies.find(c => c.id === result.culpritId);
+
+            if (culprit && culprit.lat && culprit.lng) {
+                window.dispatchEvent(
+                    new CustomEvent("map-fly-to-coords", {
+                        detail: { lat: parseFloat(culprit.lat), lng: parseFloat(culprit.lng) }
+                    })
+                );
+            }
+        }
+    };
+
+    // Fungsi Render Warna Indikator Keyakinan (Confidence Score)
+    const getConfidenceColor = (score: number) => {
+        if (score >= 80) return "text-rose-600 bg-rose-50 border-rose-200";
+        if (score >= 50) return "text-amber-600 bg-amber-50 border-amber-200";
+        return "text-slate-600 bg-slate-50 border-slate-200";
+    };
+
+    return (
+        <div className="flex flex-col h-full bg-slate-50 font-sans text-left">
+
+            {/* Header Konteks */}
+            <div className="px-4 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 rounded-none">
+                        <Sparkles size={16} className={isAiLoading ? "animate-spin" : "animate-pulse"} />
+                    </div>
+                    <div>
+                        <h3 className="text-[11px] font-black uppercase tracking-widest leading-none">Spatial AI Copilot</h3>
+                        <p className="text-[9px] text-slate-400 mt-1 font-bold">Forensic Data & Correlation Engine</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Area Hasil Investigasi (Widget Actionable) */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 flex flex-col gap-4">
+
+                {!hasSearched && !isAiLoading && !aiForensicResult && (
+                    <div className="flex-1 flex flex-col items-center justify-center text-center space-y-3 opacity-60">
+                        <Crosshair size={32} className="text-slate-400" />
+                        <div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Standby Mode</p>
+                            <p className="text-[10px] font-bold text-slate-400 mt-1">Posisikan peta pada area terdampak, lalu beri instruksi.</p>
+                        </div>
+                    </div>
+                )}
+
+                {isAiLoading && (
+                    <div className="flex-1 flex flex-col items-center justify-center text-center space-y-4">
+                        <div className="w-12 h-12 border-4 border-slate-200 border-t-emerald-600 rounded-full animate-spin" />
+                        <div className="space-y-1">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Menganalisa Vektor Geospasial...</p>
+                            <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Menyaring data arah angin & logbook industri terdekat</p>
+                        </div>
+                    </div>
+                )}
+
+                {!isAiLoading && aiForensicResult && (
+                    <div className="space-y-4 animate-in fade-in zoom-in-95 duration-300">
+                        {/* WIDGET 1: KESIMPULAN TERSANGKA (High Density) */}
+                        <div className="bg-white border border-slate-200 rounded-none shadow-sm flex flex-col">
+                            <div className="p-3 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+                                    <Target size={12} className="text-rose-500" /> Hasil Identifikasi
+                                </span>
+                                <Badge className={cn("rounded-none border text-[9px] font-black tracking-widest uppercase px-2 shadow-none", getConfidenceColor(aiForensicResult.confidenceScore))}>
+                                    Akurasi: {aiForensicResult.confidenceScore}%
+                                </Badge>
+                            </div>
+                            <div className="p-4 space-y-1.5">
+                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Tersangka Utama</span>
+                                <h3 className="text-base font-black text-slate-900 leading-none uppercase">
+                                    {aiForensicResult.culpritName}
+                                </h3>
+                                <p className="text-[10px] font-mono font-bold text-slate-500 pt-1">
+                                    ID: {aiForensicResult.culpritId}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* WIDGET 2: BUKTI & ANALISIS */}
+                        <div className="bg-white border border-slate-200 rounded-none shadow-sm">
+                            <div className="p-3 border-b border-slate-100 bg-slate-50">
+                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Dasar Kesimpulan Agent</span>
+                            </div>
+                            <div className="p-4 space-y-4">
+                                <p className="text-xs font-semibold text-slate-700 leading-relaxed text-justify">
+                                    {aiForensicResult.analysis}
+                                </p>
+
+                                <div className="space-y-2 pt-2 border-t border-slate-100">
+                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Jejak Digital Ditemukan:</span>
+                                    <ul className="space-y-2">
+                                        {aiForensicResult.evidencePoints.map((point, idx) => (
+                                            <li key={idx} className="flex items-start gap-2 text-xs font-bold text-slate-600 bg-slate-50 p-2 border border-slate-100">
+                                                <CheckCircle2 size={14} className="text-emerald-500 shrink-0 mt-0.5" />
+                                                <span className="leading-snug">{point}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* WIDGET 3: REKOMENDASI TINDAKAN (Call to Action) */}
+                        <div className="pt-2">
+                            {aiForensicResult.recommendedAction === "INSPECTION" && (
+                                <Button className="w-full h-12 bg-rose-600 hover:bg-rose-700 text-white rounded-none font-black text-[10px] uppercase tracking-widest shadow-none gap-2">
+                                    <AlertTriangle size={14} /> Terbitkan Surat Tugas Sidak Sekarang
+                                </Button>
+                            )}
+                            {aiForensicResult.recommendedAction === "WARNING_LETTER" && (
+                                <Button className="w-full h-12 bg-amber-500 hover:bg-amber-600 text-white rounded-none font-black text-[10px] uppercase tracking-widest shadow-none gap-2">
+                                    <Factory size={14} /> Kirim Teguran Elektronik
+                                </Button>
+                            )}
+                            {(aiForensicResult.recommendedAction === "MONITORING" || aiForensicResult.recommendedAction === "MANUAL_INVESTIGATION") && (
+                                <Button className="w-full h-12 bg-slate-900 hover:bg-slate-800 text-white rounded-none font-black text-[10px] uppercase tracking-widest shadow-none gap-2">
+                                    <Crosshair size={14} /> Pantau Ketat Radius 5 KM
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Input Form Bawah (Dengan Pengaman Zoom-Guard) */}
+            <div className="p-4 bg-white border-t border-slate-200 shrink-0">
+                {isZoomTooFar ? (
+                    /* BANNER PERINGATAN REAKTIF (Mencegah Kebocoran Token) [3] */
+                    <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-none text-left space-y-2.5 animate-in slide-in-from-bottom-2 duration-300">
+                        <div className="flex items-center gap-2">
+                            <AlertTriangle className="text-amber-600 animate-pulse" size={14} />
+                            <h4 className="text-[9px] font-black uppercase tracking-widest leading-none text-amber-900">Skala Peta Terlalu Makro</h4>
+                        </div>
+                        <p className="text-[9px] font-semibold leading-relaxed text-amber-700">
+                            Analisis AI memerlukan presisi wilayah yang ketat. Silakan **Perbesar Peta (Zoom In)** mendekati skala kecamatan untuk mengaktifkan kembali scan forensik AI.
+                        </p>
+                    </div>
+                ) : (
+                    /* INTERFASE CHAT AKTIF (HANYA MUNCUL DI ZOOM SENSITIF) */
+                    <div className="animate-in fade-in duration-300">
+                        <div className="flex gap-2 mb-3 overflow-x-auto custom-scrollbar pb-1">
+                            <Badge
+                                onClick={() => handleSend(undefined, "Analisa titik polusi udara merah di area ini sekarang.")}
+                                className="cursor-pointer bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 rounded-none border-slate-200 text-[9px] font-bold whitespace-nowrap shadow-none"
+                            >
+                                Investigasi Polusi Udara
+                            </Badge>
+                            <Badge
+                                onClick={() => handleSend(undefined, "Cari pabrik yang membuang limbah cair ilegal ke sungai berdasarkan logbook yang anjlok.")}
+                                className="cursor-pointer bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 rounded-none border-slate-200 text-[9px] font-bold whitespace-nowrap shadow-none"
+                            >
+                                Analisis Limbah Cair
+                            </Badge>
+                        </div>
+                        <form onSubmit={handleSend} className="relative flex gap-2">
+                            <Input
+                                value={input}
+                                onChange={(e) => setInput(e.target.value)}
+                                disabled={isAiLoading}
+                                placeholder="Ketik instruksi forensik Anda..."
+                                className="h-10 rounded-none border-slate-300 text-xs font-bold focus-visible:ring-emerald-500 focus-visible:border-emerald-500 bg-slate-50"
+                            />
+                            <Button
+                                type="submit"
+                                disabled={isAiLoading || !input.trim()}
+                                className="h-10 px-4 bg-slate-900 hover:bg-emerald-600 text-white rounded-none font-black text-[10px] uppercase tracking-widest transition-colors shrink-0"
+                            >
+                                <ArrowRight size={14} />
+                            </Button>
+                        </form>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
 --- FILE: src\modules\dashboard\components\auditor\GisTab.tsx ---
 // src/modules/dashboard/components/auditor/GisTab.tsx
 import React, { useMemo } from "react";
@@ -10038,7 +10491,7 @@ interface GisUIState {
 
     // FASE 4 INJEKSI: Koordinat & Zoom Global Berbasis Sumber Kebenaran Tunggal
     mapCenter: [number, number]; // Koordinat pusat peta saat ini
-    mapZoom: number;             // Skala zoom peta saat ini
+    mapZoom: number;             // Skala zoom peta saat ini (Sumber data untuk Scale-Guard AI) [3]
 
     // FASE 3 INJEKSI: State untuk Advanced Spatial Analytics (Kotawaringin Timur)
     activeAdminBoundary: 'none' | 'kecamatan' | 'desa';
@@ -10066,7 +10519,7 @@ interface GisUIState {
 
     // Aksi Pengubah Koordinat & Zoom Peta secara Global
     setMapCenter: (center: [number, number]) => void;
-    setMapZoom: (zoom: number) => void;
+    setMapZoom: (zoom: number) => void; // Aksi sinkronisasi zoom Leaflet ke Zustand Store [3]
 
     // Aksi untuk mengontrol Peta Administratif & Radius Dampak
     setActiveAdminBoundary: (boundary: 'none' | 'kecamatan' | 'desa') => void;
@@ -10091,7 +10544,7 @@ export const useGisUIStore = create<GisUIState>((set) => ({
 
     // Fokus otomatis dikunci ke wilayah Sampit, Kotawaringin Timur
     mapCenter: [-2.5337, 112.9515],
-    mapZoom: 9,
+    mapZoom: 9, // Zoom awal default
 
     // Inisialisasi State Spasial Lanjutan
     activeAdminBoundary: 'none',
@@ -10223,7 +10676,7 @@ export const useGisUIStore = create<GisUIState>((set) => ({
     setSelectedCompanyId: (id) => set({ selectedCompanyId: id }),
 
     setMapCenter: (center) => set({ mapCenter: center }),
-    setMapZoom: (zoom) => set({ mapZoom: zoom }),
+    setMapZoom: (zoom) => set({ mapZoom: zoom }), // Menyimpan nilai zoom level secara global
 
     setActiveAdminBoundary: (boundary) => set({ activeAdminBoundary: boundary }),
     setShowImpactRadius: (show) => set({ showImpactRadius: show }),
@@ -10247,7 +10700,7 @@ export const useGisUIStore = create<GisUIState>((set) => ({
             maskOpacity: 60,
             activeBaseMap: 'dark',
             mapCenter: [-2.5337, 112.9515],
-            mapZoom: 9,
+            mapZoom: 9, // Reset kembali ke skala default
             aqiCache: {},
         }),
 }));
@@ -10267,9 +10720,10 @@ export type GisPanelType =
     | 'tugas-patroli'        // Panel daftar penugasan patroli milik petugas lapangan
     | 'detail-tugas'         // Panel melayang (floating) khusus detail tugas & pengaduan
     | 'armada-tracking'      // Panel pelacakan live armada milik transporter/pengangkut
-    | 'basemap-gallery'      // [NEW PANEL] Panel khusus pengaturan peta dasar (Basemap)
+    | 'basemap-gallery'      // Panel khusus pengaturan peta dasar (Basemap)
     | 'hasil-pencarian'      // Panel untuk hasil search global
-    | 'tentang';             // Panel informasi aplikasi
+    | 'tentang'              // Panel informasi aplikasi
+    | 'ai-copilot';          // [NEW PANEL] Asisten AI Forensik Spasial
 
 /**
  * Interface untuk mengelola state panel yang sedang terbuka.

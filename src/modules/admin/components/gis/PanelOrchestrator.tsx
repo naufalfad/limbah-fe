@@ -11,15 +11,18 @@ import DetailPanel from "./panels/DetailPanel";
 import PatrolTaskPanel from "./panels/PatrolTaskPanel";
 import TaskDetailPanel from "./panels/TaskDetailPanel";
 import EnvironmentalTelemetryPanel from "./panels/EnvironmentalTelemetryPanel";
-import BasemapPanel from "./panels/BasemapPanel"; // IMPOR BARU: Panel khusus Basemap
+import BasemapPanel from "./panels/BasemapPanel";
 
 // MODULAR: Mengimpor laci taktis telemetri live dari modul transport
 import ActiveFleetPanel from "@/modules/transport/components/gis/panels/ActiveFleetPanel";
 
+// [NEW MODULE] Mengimpor laci asisten AI Forensik untuk Pimpinan/Admin
+import ExecutiveCopilotPanel from "@/modules/dashboard/components/auditor/ExecutiveCopilotPanel";
+
 /**
  * PanelOrchestrator - The Stacking Drawer (GFW Paradigm)
- * Mengatur dua jenis perilaku panel dengan Sumbu X (Width) yang ramping:
- * 1. Panel Menu (Flush/Docked): 280px, menempel rapat di kiri (Zero Gap).
+ * Mengatur dua jenis perilaku panel dengan Sumbu X (Width) yang dinamis & reaktif:
+ * 1. Panel Menu (Flush/Docked): Lebar dinamis (280px - 360px), menempel rapat di kiri (Zero Gap).
  * 2. Panel Detail (Floating): Melayang secara dinamis berdampingan mengikuti jumlah tumpukan.
  * 
  * GRASP: Indirection & Pure Fabrication
@@ -35,9 +38,21 @@ export default function PanelOrchestrator() {
         return () => window.removeEventListener("resize", handleResize);
     }, []);
 
-    // Sumbu X: Base width 280px untuk panel menu statis kiri
-    const PANEL_WIDTH = isMobile ? (typeof window !== 'undefined' ? window.innerWidth - 64 : 280) : 280;
-    const PANEL_GAP = 0; // Zero Gap Policy (Flush)
+    // ==========================================================================
+    // DYNAMIC WIDTH ALGORITHM (LOD LAYOUT ENGINE)
+    // ==========================================================================
+    const getPanelWidth = (type: GisPanelType) => {
+        if (isMobile) return window.innerWidth - 64;
+
+        // Memperlebar laci AI Copilot dan Detail Industri ke 360px demi kenyamanan analisis [3]
+        if (type === "ai-copilot" || type === "detil-perusahaan") {
+            return 360;
+        }
+        if (type === "telemetri-lingkungan" || type === "detail-tugas") {
+            return 320;
+        }
+        return 280; // Lebar default untuk laci menu kiri biasa
+    };
 
     return (
         <div className="absolute top-16 bottom-0 left-16 z-30 pointer-events-none flex items-start">
@@ -48,21 +63,44 @@ export default function PanelOrchestrator() {
                     panel.type === "detail-tugas" ||
                     panel.type === "telemetri-lingkungan";
 
-                // 2. FORMULA KALKULASI SUMBU X BAGI FLOATING STACKING LAYOUT
-                const dockedPanelsCount = activePanels.filter(
-                    (p, i) => i < index && p.type !== "detil-perusahaan" && p.type !== "detail-tugas" && p.type !== "telemetri-lingkungan"
-                ).length;
+                const currentWidth = getPanelWidth(panel.type);
 
-                const floatingPanelsBefore = activePanels.filter(
-                    (p, i) => i < index && (p.type === "detil-perusahaan" || p.type === "detail-tugas" || p.type === "telemetri-lingkungan")
-                ).length;
+                // 2. DYNAMIC OFFSET CALCULATION (Menghitung sumbu X tanpa hardcoded multiplier) [3]
 
-                const floatingOffset = floatingPanelsBefore * 320;
+                // Kalkulasi offset X untuk panel docked sebelah kiri (Flush)
+                let dockedOffset = 0;
+                for (let i = 0; i < index; i++) {
+                    const p = activePanels[i];
+                    const pIsFloating = p.type === "detil-perusahaan" || p.type === "detail-tugas" || p.type === "telemetri-lingkungan";
+                    if (!pIsFloating) {
+                        dockedOffset += getPanelWidth(p.type);
+                    }
+                }
 
-                const xOffset = index * (PANEL_WIDTH + PANEL_GAP);
-                const floatingLeft = isMobile
-                    ? 16
-                    : (dockedPanelsCount * PANEL_WIDTH) + floatingOffset + 16;
+                // Kalkulasi posisi kiri (left) untuk panel melayang (Floating)
+                let floatingLeft = 16;
+                if (!isMobile) {
+                    // A. Jumlahkan total lebar laci docked di kiri layar [3]
+                    let totalDockedWidth = 0;
+                    activePanels.forEach(p => {
+                        const pIsFloating = p.type === "detil-perusahaan" || p.type === "detail-tugas" || p.type === "telemetri-lingkungan";
+                        if (!pIsFloating) {
+                            totalDockedWidth += getPanelWidth(p.type);
+                        }
+                    });
+
+                    // B. Jumlahkan total lebar laci floating sebelum index saat ini [3]
+                    let totalFloatingBefore = 0;
+                    for (let i = 0; i < index; i++) {
+                        const p = activePanels[i];
+                        const pIsFloating = p.type === "detil-perusahaan" || p.type === "detail-tugas" || p.type === "telemetri-lingkungan";
+                        if (pIsFloating) {
+                            totalFloatingBefore += getPanelWidth(p.type) + 16; // 16px gap antar laci
+                        }
+                    }
+
+                    floatingLeft = totalDockedWidth + totalFloatingBefore + 16;
+                }
 
                 return (
                     <div
@@ -77,7 +115,7 @@ export default function PanelOrchestrator() {
                                     left: `${floatingLeft}px`,
                                     top: '16px',
                                     bottom: '16px',
-                                    width: '320px',
+                                    width: `${currentWidth}px`, // Menggunakan lebar dinamis [3]
                                     maxWidth: 'calc(100vw - 80px)',
                                     zIndex: 50,
                                 }
@@ -85,8 +123,8 @@ export default function PanelOrchestrator() {
                                     left: 0,
                                     top: 0,
                                     bottom: 0,
-                                    width: `${PANEL_WIDTH}px`,
-                                    transform: `translateX(${xOffset}px)`,
+                                    width: `${currentWidth}px`, // Menggunakan lebar dinamis [3]
+                                    transform: `translateX(${dockedOffset}px)`, // Menggunakan offset dinamis [3]
                                     zIndex: 40 - index,
                                 }
                         }
@@ -97,7 +135,7 @@ export default function PanelOrchestrator() {
                                 <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest leading-none">
                                     {panel.type.replace("-", " ")}
                                 </span>
-                                <h3 className="text-[11px] font-bold text-slate-800 truncate max-w-[200px] tracking-tight mt-1 uppercase leading-none">
+                                <h3 className="text-[11px] font-bold text-slate-800 truncate max-w-[280px] tracking-tight mt-1 uppercase leading-none">
                                     {panel.title}
                                 </h3>
                             </div>
@@ -142,8 +180,10 @@ function renderPanelContent(type: GisPanelType, data: any) {
             return <EnvironmentalTelemetryPanel companyData={data} />;
         case "detail-tugas":
             return <TaskDetailPanel taskData={data} />;
-        case "basemap-gallery": // <-- REGISTRASI RENDERER BARU
+        case "basemap-gallery":
             return <BasemapPanel />;
+        case "ai-copilot": // <-- REGISTRASI RENDERER AI FORENSIK
+            return <ExecutiveCopilotPanel />;
         case "tentang":
             return (
                 <div className="p-6 text-center space-y-3 text-slate-500 font-sans">

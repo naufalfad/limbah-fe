@@ -12,9 +12,10 @@ export type GisPanelType =
     | 'tugas-patroli'        // Panel daftar penugasan patroli milik petugas lapangan
     | 'detail-tugas'         // Panel melayang (floating) khusus detail tugas & pengaduan
     | 'armada-tracking'      // Panel pelacakan live armada milik transporter/pengangkut
-    | 'basemap-gallery'      // [NEW PANEL] Panel khusus pengaturan peta dasar (Basemap)
+    | 'basemap-gallery'      // Panel khusus pengaturan peta dasar (Basemap)
     | 'hasil-pencarian'      // Panel untuk hasil search global
-    | 'tentang';             // Panel informasi aplikasi
+    | 'tentang'              // Panel informasi aplikasi
+    | 'ai-copilot';          // [NEW PANEL] Asisten AI Forensik Spasial
 
 /**
  * Interface untuk mengelola state panel yang sedang terbuka.

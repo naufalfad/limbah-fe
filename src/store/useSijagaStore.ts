@@ -3,7 +3,7 @@ import { create } from "zustand";
 import { apiService } from "../lib/api";
 import { toast } from "sonner";
 
-// Mengimpor kontrak data dasar dari file types temen lu
+// Mengimpor kontrak data dasar dari file types
 import {
   SijagaState as BaseSijagaState,
   UserRole,
@@ -15,7 +15,9 @@ import {
   Inspection,
   SystemNotification,
   AuditLog,
-  ReportSlice // INJEKSI BARU: Tipe antarmuka slice pelaporan
+  ReportSlice,
+  AiForensicResult,
+  AqiData // INJEKSI: Mengimpor tipe data AQI
 } from "./types";
 
 // Re-export seluruh kontrak data agar tidak merusak impor di file komponen lain (Backward Compatibility)
@@ -28,10 +30,12 @@ export type {
   Invoice,
   Inspection,
   SystemNotification,
-  AuditLog
+  AuditLog,
+  AiForensicResult,
+  AqiData
 };
 
-// Mengimpor modul laci-laci state (Slices) buatan temen lu
+// Mengimpor modul laci-laci state (Slices)
 import { createAuthSlice } from "./slices/authSlice";
 import { createCompanySlice } from "./slices/companySlice";
 import { createWasteSlice } from "./slices/wasteSlice";
@@ -40,7 +44,7 @@ import { createInvoiceSlice } from "./slices/invoiceSlice";
 import { createInspectionSlice } from "./slices/inspectionSlice";
 import { createNotificationSlice } from "./slices/notificationSlice";
 import { createAuditSlice } from "./slices/auditSlice";
-import { createReportSlice } from "./slices/reportSlice"; // INJEKSI BARU
+import { createReportSlice } from "./slices/reportSlice";
 
 // 1. Interfaces Analitik Eksekutif Baru yang Kita Bangun
 export interface ExecutiveAnalyticsData {
@@ -73,11 +77,18 @@ export interface PerformanceAnalyticsData {
   documentComposition: { sppl: number; uklUpl: number };
 }
 
-// 2. Mengembangkan (Extend) SijagaState untuk Menampung Fitur Admin, Auditor & Pelaporan (ReportSlice)
-export interface SijagaState extends BaseSijagaState, ReportSlice { // INJEKSI: Extend ReportSlice ke State Induk
+// 2. Mengembangkan (Extend) SijagaState untuk Menampung Fitur Admin, Auditor, Pelaporan & AI Agent
+export interface SijagaState extends BaseSijagaState, ReportSlice {
   users: User[];
   executiveAnalytics: ExecutiveAnalyticsData | null;
   performanceAnalytics: PerformanceAnalyticsData | null;
+
+  // State & Action khusus AI Agent (Forensic Spasial)
+  aiForensicResult: AiForensicResult | null;
+  isAiLoading: boolean;
+  // SINKRONISASI TS FIX: Menambahkan parameter zoom ke dalam tipe data payload [3]
+  runAiForensicScan: (payload: { lat: number; lng: number; zoom: number; windDirection: number; incidentType: string; description: string }) => Promise<AiForensicResult | null>;
+
   fetchUsers: () => Promise<void>;
   updateUserRole: (id: string, role: UserRole) => Promise<void>;
   fetchExecutiveAnalytics: () => Promise<void>;
@@ -107,7 +118,7 @@ const defaultPerformanceAnalytics: PerformanceAnalyticsData = {
 
 // 4. Inisialisasi Store Zustand Terpadu (Slices + Inline Executive Actions)
 export const useSijagaStore = create<SijagaState>((set, get, store) => ({
-  // Mengurai (spread) seluruh laci state milik temen lu secara instan
+  // Mengurai (spread) seluruh laci state modular
   ...createAuthSlice(set, get, store),
   ...createCompanySlice(set, get, store),
   ...createWasteSlice(set, get, store),
@@ -116,14 +127,71 @@ export const useSijagaStore = create<SijagaState>((set, get, store) => ({
   ...createInspectionSlice(set, get, store),
   ...createNotificationSlice(set, get, store),
   ...createAuditSlice(set, get, store),
-  ...createReportSlice(set, get, store), // INJEKSI BARU: Menyuntikkan slice pelaporan masyarakat
+  ...createReportSlice(set, get, store),
 
   // Suntikan State Baru Khusus Otoritas Admin & Auditor
   users: [],
   executiveAnalytics: null,
   performanceAnalytics: null,
 
-  // Suntikan Aksi Pengelolaan Pengguna Super Admin (API Terhubung)
+  // ==========================================================================
+  // MANAJEMEN KUALITAS UDARA SPASIAL (AQI SLICE IMPLEMENTATION)
+  // ==========================================================================
+  currentAqiData: null,
+  isAqiLoading: false,
+
+  fetchAqiData: async (lat: string | number, lng: string | number) => {
+    set({ isAqiLoading: true });
+    try {
+      const response = await apiService.analytics.getAqiData(lat, lng);
+      if (response && response.success) {
+        set({ currentAqiData: response.data });
+        return response.data;
+      }
+      return null;
+    } catch (e) {
+      console.error("Gagal menarik telemetri AQI:", e);
+      return null;
+    } finally {
+      set({ isAqiLoading: false });
+    }
+  },
+
+  clearAqiData: () => set({ currentAqiData: null }),
+
+  // ==========================================================================
+  // AI AGENT FORENSIC ENGINE LOGIC
+  // ==========================================================================
+  aiForensicResult: null,
+  isAiLoading: false,
+
+  runAiForensicScan: async (payload) => {
+    set({ isAiLoading: true, aiForensicResult: null });
+    try {
+      // Memanggil lapisan API Service dengan muatan payload yang kini dijamin membawa zoom [3]
+      const response = await apiService.agent.runForensicScan(payload);
+
+      if (response && response.success) {
+        set({ aiForensicResult: response.data });
+        toast.success("Analisis AI Forensik berhasil diselesaikan.");
+        return response.data as AiForensicResult;
+      } else {
+        toast.error("Gagal melakukan kalkulasi forensik AI.");
+        return null;
+      }
+    } catch (e: any) {
+      console.error("AI Forensic Store Error:", e);
+      const serverMsg = e.response?.data?.message || "Koneksi ke otak AI terputus. Pastikan server Backend aktif.";
+      toast.error(serverMsg);
+      return null;
+    } finally {
+      set({ isAiLoading: false });
+    }
+  },
+
+  // ==========================================================================
+  // PENGELOLAAN PENGGUNA (SUPER ADMIN)
+  // ==========================================================================
   fetchUsers: async () => {
     try {
       const response = await apiService.admin.getAllUsers();
@@ -162,7 +230,9 @@ export const useSijagaStore = create<SijagaState>((set, get, store) => ({
     }
   },
 
-  // Suntikan Aksi Pengelolaan Analitik Eksekutif Pimpinan (API Terhubung & Fail-Safe)
+  // ==========================================================================
+  // ANALITIK EKSEKUTIF PIMPINAN
+  // ==========================================================================
   fetchExecutiveAnalytics: async () => {
     try {
       const response = await apiService.analytics.getExecutive();
