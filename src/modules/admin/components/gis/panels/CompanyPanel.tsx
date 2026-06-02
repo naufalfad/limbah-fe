@@ -1,6 +1,6 @@
 // src/modules/admin/components/gis/panels/CompanyPanel.tsx
 import React, { useState, useMemo } from "react";
-import { Search, Building2, ChevronRight, CheckCircle2, AlertTriangle, ShieldCheck, TrendingDown, Award } from "lucide-react";
+import { Search, Building2, ChevronRight, CheckCircle2, AlertTriangle, ShieldCheck, TrendingDown } from "lucide-react";
 import { useSijagaStore } from "@/store/useSijagaStore";
 import { useGisUIStore } from "@/store/useGisUIStore";
 import { cn } from "@/lib/utils";
@@ -57,6 +57,22 @@ export default function CompanyPanel() {
         setSelectedCompanyId(company.id);
         closePanelsToTheRight(-1); // Bersihkan panel melayang sebelumnya
         openPanel("detil-perusahaan", `Detail Industri`, company);
+
+        // =========================================================================
+        // FASE 1: INTEGRASI EVENT FLY-TO SECARA OTOMATIS [3]
+        // 
+        // Mengirimkan sinyal koordinat spasial secara global agar didengar peta utama
+        // sehingga kamera peta langsung terbang meluncur halus menyorot lokasi pabrik.
+        // =========================================================================
+        const lat = parseFloat(company.lat);
+        const lng = parseFloat(company.lng);
+        if (!isNaN(lat) && !isNaN(lng) && lat !== 0) {
+            window.dispatchEvent(
+                new CustomEvent("map-fly-to-coords", {
+                    detail: { lat, lng }
+                })
+            );
+        }
     };
 
     const getObligationIcon = (type: string) => {

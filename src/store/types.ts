@@ -128,6 +128,24 @@ export interface AuditLog {
   action: string;
 }
 
+// [NEW INTERFACE] Struktur data kualitas udara & cuaca dari API IQAir
+export interface AqiData {
+  city: string;
+  state: string;
+  country: string;
+  aqi: number;
+  mainPollutant: string;
+  weather: {
+    temperature: number;
+    humidity: number;
+    windSpeed: number;
+    windDirection: number;
+    pressure: number;
+  };
+  source: 'live' | 'cache' | 'simulation';
+  cachedAt?: string;
+}
+
 // Slice Interfaces
 export interface AuthSlice {
   currentUser: User | null;
@@ -234,10 +252,15 @@ export interface ReportSlice {
   trackCitizenReport: (trackingId: string) => Promise<CitizenReport | null>;
   clearPublicReportData: () => void;
   fetchAdminReports: (status?: string) => Promise<void>;
-  verifyCitizenReport: (id: string, payload: any) => Promise<boolean>;
-  investigateCitizenReport: (id: string) => Promise<boolean>;
-  rejectCitizenReport: (id: string, adminNotes: string) => Promise<boolean>;
+}
+
+// [NEW INTERFACE] Slice khusus pengelolaan kualitas udara (AQI) spasial
+export interface AqiSlice {
+  currentAqiData: AqiData | null;
+  isAqiLoading: boolean;
+  fetchAqiData: (lat: string | number, lng: string | number) => Promise<AqiData | null>;
+  clearAqiData: () => void;
 }
 
 // Combined State
-export interface SijagaState extends AuthSlice, CompanySlice, WasteSlice, PickupSlice, InvoiceSlice, InspectionSlice, NotificationSlice, AuditSlice, ReportSlice { }
+export interface SijagaState extends AuthSlice, CompanySlice, WasteSlice, PickupSlice, InvoiceSlice, InspectionSlice, NotificationSlice, AuditSlice, ReportSlice, AqiSlice { }

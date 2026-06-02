@@ -1,7 +1,6 @@
 // src/modules/admin/InspectionManagement.tsx
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
-import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,16 +16,25 @@ import { useSijagaStore } from '@/store/useSijagaStore';
 import { toast } from "sonner";
 
 export default function InspectionManagement() {
-  const { inspections, fetchInspections, fetchCompanies } = useSijagaStore();
+  // SINKRONISASI DATA: Memanggil fetchOfficers dari store untuk master data penugasan [3]
+  const {
+    inspections,
+    fetchInspections,
+    fetchCompanies,
+    fetchOfficers
+  } = useSijagaStore();
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isFollowUpModalOpen, setIsFollowUpModalOpen] = useState(false);
   const [selectedInspection, setSelectedInspection] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
+  // Memastikan sinkronisasi master data lengkap saat inisiasi
   useEffect(() => {
     fetchInspections();
     fetchCompanies();
-  }, []);
+    fetchOfficers(); // SINKRONISASI DAFTAR INSPEKTUR LAPANGAN [3]
+  }, [fetchInspections, fetchCompanies, fetchOfficers]);
 
   const getComplianceStatus = (status: string, score: number | null) => {
     if (status === "Terjadwal") return "TERJADWAL";
@@ -55,7 +63,7 @@ export default function InspectionManagement() {
 
   return (
     <DashboardLayout role="ADMIN_DLH">
-      <div className="space-y-4 pb-6 text-left"> {/* DIET: space-y-8 -> space-y-4 */}
+      <div className="space-y-4 pb-6 text-left">
 
         {/* --- HEADER --- */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -65,13 +73,15 @@ export default function InspectionManagement() {
             </h1>
             <p className="text-slate-500 text-xs font-medium mt-1">Audit fisik dan penilaian kepatuhan lingkungan hidup pelaku usaha.</p>
           </div>
-          {/* <Button
+
+          {/* AKTIVASI TOMBOL: Mengaktifkan kembali penugasan mandiri terkontrol oleh Admin DLH [3] */}
+          <Button
             onClick={() => setIsModalOpen(true)}
             size="sm"
-            className="rounded-none font-bold bg-slate-900 hover:bg-emerald-600 h-10 px-6 text-xs uppercase tracking-widest shadow-md"
+            className="rounded-none font-bold bg-slate-900 hover:bg-emerald-600 h-10 px-6 text-xs uppercase tracking-widest shadow-md flex items-center gap-1.5"
           >
-            <Plus className="mr-1.5" size={14} /> INPUT HASIL INSPEKSI
-          </Button> */}
+            <Plus size={14} /> BUAT SURAT TUGAS
+          </Button>
         </div>
 
         {/* --- STATS SUMMARY (DENSE) --- */}
@@ -146,7 +156,7 @@ export default function InspectionManagement() {
                             </div>
                           </div>
                         ) : (
-                          <span className="text-slate-400 font-bold text-[10px] uppercase tracking-wider italic">Belum Dinilai</span>
+                          <span className="text-slate-400 font-bold text-[10px] uppercase tracking-wider italic font-mono">TERJADWAL (BELUM SIDAK)</span>
                         )}
                       </TableCell>
                       <TableCell className="text-center">
@@ -162,7 +172,7 @@ export default function InspectionManagement() {
                               if (item.status === 'Selesai') {
                                 toast.info(`BAP Detail: ${item.notes || 'TPS B3 dan IPAL memenuhi standar.'}`);
                               } else {
-                                toast.warning("BAP belum diterbitkan (Inspeksi Terjadwal).");
+                                toast.warning(`Tugas Aktif: "${item.notes || 'Inspeksi kepatuhan lapangan.'}"`);
                               }
                             }}
                           >
@@ -195,10 +205,10 @@ export default function InspectionManagement() {
       </div>
 
       <CreateInspectionModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
-      <FollowUpModal 
-        isOpen={isFollowUpModalOpen} 
-        onClose={() => setIsFollowUpModalOpen(false)} 
-        inspection={selectedInspection} 
+      <FollowUpModal
+        isOpen={isFollowUpModalOpen}
+        onClose={() => setIsFollowUpModalOpen(false)}
+        inspection={selectedInspection}
       />
     </DashboardLayout>
   );

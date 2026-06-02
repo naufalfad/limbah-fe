@@ -41,6 +41,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 
+// Import Dialog untuk Modal Terima Kasih (Membantu Isolasi UI) [3]
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+} from "@/components/ui/dialog";
+
 // --- Fix Leaflet Default Marker Icons (Vite safety) ---
 import icon from "leaflet/dist/images/marker-icon.png";
 import iconShadow from "leaflet/dist/images/marker-shadow.png";
@@ -53,8 +63,8 @@ const DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// Peta default diatur di area pusat kota Bandung
-const DEFAULT_CENTER: [number, number] = [-6.9147, 107.6098];
+// FASE 2: PETA DEFAULT DIUBAH SECARA GLOBAL KE KOTA SAMPIT (KOTAWARINGIN TIMUR) [3]
+const DEFAULT_CENTER: [number, number] = [-2.5337, 112.9515];
 
 // SOLUSI ARSITEKTURAL: Kunci referensi array di luar komponen agar terhindar dari re-render loop
 const EXCLUDED_FORM_FIELDS = ["evidencePhotos"];
@@ -82,6 +92,10 @@ export default function ReportPage() {
     const [addressQuery, setAddressQuery] = useState("");
     const [isGeocoding, setIsGeocoding] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // STATE BARU: Manajemen Modal Terima Kasih (Decoupled Flow) [3]
+    const [isSuccessOpen, setIsSuccessOpen] = useState(false);
+    const [submittedTrackingId, setSubmittedTrackingId] = useState("");
 
     const methods = useForm<ReportFormValues>({
         resolver: zodResolver(reportSchema) as any,
@@ -184,7 +198,7 @@ export default function ReportPage() {
         nextStep();
     };
 
-    // --- FORM MULTIPART SUBMISSION ---
+    // --- FORM MULTIPART SUBMISSION (MODIFIED FASE 2) ---
     const onSubmit = async (data: ReportFormValues) => {
         if (photos.length === 0) {
             toast.error("Wajib melampirkan minimal 1 foto bukti fisik lapangan.");
@@ -207,6 +221,7 @@ export default function ReportPage() {
         const result = await submitCitizenReport(formData);
 
         if (result.success && result.trackingId) {
+            // Amankan data pelacakan lokal untuk arsip statis warga
             const existingReports = localStorage.getItem("sijaga_citizen_reports");
             const reportsList = existingReports ? JSON.parse(existingReports) : [];
             reportsList.unshift({
@@ -219,8 +234,13 @@ export default function ReportPage() {
             localStorage.setItem("pantau_limbah_report_id", result.trackingId);
             localStorage.removeItem("SIJAGA_CITIZEN_REPORT_DRAFT");
 
-            toast.success("Laporan terkirim! Mengalihkan ke Halaman Pelacakan...");
-            navigate(`/lacak/${result.trackingId}`);
+            // Simpan ID pelacakan ke state lokal untuk ditampilkan di dialog terima kasih
+            setSubmittedTrackingId(result.trackingId);
+
+            // Buka Modal Sukses & Reset Form sepenuhnya (Menghindari Double Submit) [3]
+            setIsSuccessOpen(true);
+            setPhotos([]);
+            methods.reset();
         }
     };
 
@@ -549,7 +569,7 @@ export default function ReportPage() {
                                             <div className="space-y-2">
                                                 <Label className="text-[10px] font-bold uppercase text-slate-500 tracking-wider">Nama Lengkap (Opsional)</Label>
                                                 <div className="relative">
-                                                   
+
                                                     <Input
                                                         {...methods.register("reporterName")}
                                                         placeholder="Sembunyikan / Anonim"
@@ -606,6 +626,47 @@ export default function ReportPage() {
                 </div>
 
             </div>
+
+            {/* SUCCESS MODAL / THANK YOU DIALOG (FASE 2 DECOUPLING) [3] */}
+            <Dialog open={isSuccessOpen} onOpenChange={setIsSuccessOpen}>
+                <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-md rounded-none border-2 border-slate-900 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-left bg-white p-6 z-[99999]">
+                    <DialogHeader className="border-b pb-3">
+                        <div className="w-12 h-12 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-none flex items-center justify-center shadow-inner mb-3">
+                            <CheckCircle2 size={28} />
+                        </div>
+                        <DialogTitle className="text-sm font-black uppercase tracking-widest text-slate-900 leading-none">
+                            Laporan Berhasil Diterima
+                        </DialogTitle>
+                        <DialogDescription className="text-xs font-semibold text-slate-500 mt-1 leading-normal">
+                            Aduan Anda telah berhasil direkam secara aman ke dalam basis data dinas [3].
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="py-4 text-xs space-y-3 leading-relaxed font-sans">
+                        <p className="font-bold text-slate-800 text-justify">
+                            Terima kasih atas partisipasi aktif Anda dalam menjaga kelestarian lingkungan hidup daerah Kotawaringin Timur.
+                        </p>
+                        <p className="text-slate-500 text-justify">
+                            Laporan Anda telah tercatat dengan ID Pelacakan resmi: <strong className="font-mono text-slate-800 bg-slate-50 px-1.5 py-0.5 border border-slate-200">{submittedTrackingId}</strong>.
+                        </p>
+                        <p className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 p-2.5">
+                            ℹ️ INFORMASI INI DISIMPAN SEBAGAI ARSIP DOKUMENTASI DATA SPASIAL PENGAWASAN INTERNAL DLH DAERAH.
+                        </p>
+                    </div>
+
+                    <DialogFooter className="mt-4">
+                        <Button
+                            onClick={() => {
+                                setIsSuccessOpen(false);
+                                navigate("/");
+                            }}
+                            className="bg-slate-900 hover:bg-slate-800 text-white rounded-none h-10 w-full font-black text-xs uppercase tracking-widest"
+                        >
+                            KEMBALI KE BERANDA
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

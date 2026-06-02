@@ -11,10 +11,21 @@ interface GisUIState {
     // ==========================================
     // 2. STATE: Konteks Eksplorasi Spasial (Peta)
     // ==========================================
-    activeLayers: string[];     // Menyimpan ID layer yang nyala ('amdal', 'ukl-upl', 'sppl', 'das', 'rtrw')
+    activeLayers: string[];     // Menyimpan ID layer yang nyala ('amdal', 'ukl-upl', 'sppl', 'das', 'rtrw', 'layer-aqi')
     mapOpacity: number;         // 0 - 100
     activeBaseMap: string;      // 'voyager', 'satellite', 'osm'
     selectedCompanyId: string | null; // ID perusahaan yang sedang di-klik/difokuskan
+
+    // FASE 4 INJEKSI: Koordinat & Zoom Global Berbasis Sumber Kebenaran Tunggal [3]
+    mapCenter: [number, number]; // Koordinat pusat peta saat ini
+    mapZoom: number;             // Skala zoom peta saat ini
+
+    // FASE 3 INJEKSI: State untuk Advanced Spatial Analytics (Kotawaringin Timur)
+    activeAdminBoundary: 'none' | 'kecamatan' | 'desa';
+    showImpactRadius: boolean;
+
+    // [NEW STATE] Cache spasial sementara di sisi klien untuk menghemat memori
+    aqiCache: Record<string, any>; // Key format: "roundedLat_roundedLng" -> Value: AqiData
 
     // ==========================================
     // ACTIONS: Manajemen Panel
@@ -31,6 +42,18 @@ interface GisUIState {
     setMapOpacity: (opacity: number) => void;
     setActiveBaseMap: (baseMapId: string) => void;
     setSelectedCompanyId: (id: string | null) => void;
+
+    // FASE 4 INJEKSI: Aksi Pengubah Koordinat & Zoom Peta secara Global [3]
+    setMapCenter: (center: [number, number]) => void;
+    setMapZoom: (zoom: number) => void;
+
+    // FASE 3 INJEKSI: Aksi untuk mengontrol Peta Administratif & Radius Dampak
+    setActiveAdminBoundary: (boundary: 'none' | 'kecamatan' | 'desa') => void;
+    setShowImpactRadius: (show: boolean) => void;
+
+    // [NEW ACTION] Menyimpan telemetri kualitas udara yang sukses diambil ke cache klien
+    setAqiCache: (key: string, data: any) => void;
+
     resetMapContext: () => void;
 }
 
@@ -38,13 +61,22 @@ export const useGisUIStore = create<GisUIState>((set) => ({
     // Inisialisasi State Default
     activePanels: [],
 
-    // PERUBAHAN ARSITEKTUR: Mencabut 'layer-complaints' dari default array.
-    // Menghindari polusi visual. Visibilitas akan ditentukan manual via Panel Layer oleh Aktor [3].
-    activeLayers: ['layer-amdal', 'layer-uklupl', 'layer-sppl', 'overlay-das', 'overlay-rtrw'],
-
+    // Update activeLayers untuk memuat 'layer-aqi' di peta secara default
+    activeLayers: ['layer-amdal', 'layer-uklupl', 'layer-sppl', 'layer-aqi', 'overlay-das', 'overlay-rtrw'],
     mapOpacity: 80,
     activeBaseMap: 'voyager',
     selectedCompanyId: null,
+
+    // FASE 4 DEFAULT: Fokus otomatis dikunci ke wilayah Sampit, Kotawaringin Timur [3]
+    mapCenter: [-2.5337, 112.9515],
+    mapZoom: 9,
+
+    // Inisialisasi State Spasial Lanjutan
+    activeAdminBoundary: 'none',
+    showImpactRadius: false,
+
+    // Inisialisasi awal objek cache kosong
+    aqiCache: {},
 
     // ======================================================================
     // LOGIKA MUTUALLY EXCLUSIVE & STACKING (GFW PARADIGM)
@@ -52,13 +84,13 @@ export const useGisUIStore = create<GisUIState>((set) => ({
     openPanel: (type, title, data = null) =>
         set((state) => {
             // Aturan Singleton: Apakah yang mau dibuka adalah Panel Floating Detail?
-            const isDetailPanel = type === "detil-perusahaan";
+            const isDetailPanel = type === "detil-perusahaan" || type === "detail-tugas";
 
             let nextPanels = [...state.activePanels];
 
             if (isDetailPanel) {
                 // Hapus panel detail lama jika ada, agar tidak numpuk melayang di layar
-                nextPanels = nextPanels.filter((p) => p.type !== "detil-perusahaan");
+                nextPanels = nextPanels.filter((p) => p.type !== "detil-perusahaan" && p.type !== "detail-tugas");
             } else {
                 // Untuk panel menu (Kiri), hapus panel tipe sama agar tidak duplikat
                 nextPanels = nextPanels.filter((p) => p.type !== type);
@@ -85,11 +117,11 @@ export const useGisUIStore = create<GisUIState>((set) => ({
 
             // Jika yang ditutup adalah panel detail, otomatis unselect perusahaan
             const closedPanel = state.activePanels.find((p) => p.id === id);
-            const shouldUnselectCompany = closedPanel?.type === "detil-perusahaan";
+            const shouldUnselectCompany = closedPanel?.type === "detil-perusahaan" || closedPanel?.type === "detail-tugas";
 
             return {
                 activePanels: filteredPanels,
-                ...(shouldUnselectCompany && { selectedCompanyId: null }),
+                ...(shouldUnselectCompany && { selectedCompanyId: null, showImpactRadius: false }), // Otomatis matikan radius dampak jika panel ditutup
             };
         }),
 
@@ -99,18 +131,18 @@ export const useGisUIStore = create<GisUIState>((set) => ({
             const slicedPanels = state.activePanels.slice(0, index + 1);
 
             // Cek apakah panel detail terikut tertutup (tidak ada di array sisa)
-            const isDetailStillOpen = slicedPanels.some((p) => p.type === "detil-perusahaan");
+            const isDetailStillOpen = slicedPanels.some((p) => p.type === "detil-perusahaan" || p.type === "detail-tugas");
 
             return {
                 activePanels: slicedPanels,
-                ...(!isDetailStillOpen && { selectedCompanyId: null }),
+                ...(!isDetailStillOpen && { selectedCompanyId: null, showImpactRadius: false }),
             };
         }),
 
-    clearPanels: () => set({ activePanels: [], selectedCompanyId: null }),
+    clearPanels: () => set({ activePanels: [], selectedCompanyId: null, showImpactRadius: false }),
 
     // ======================================================================
-    // LOGIKA KONTROL PETA (LAYERS, OPACITY, BASEMAP)
+    // LOGIKA KONTROL PETA (LAYERS, OPACITY, BASEMAP, COORDINATES)
     // ======================================================================
     toggleLayer: (layerId) =>
         set((state) => {
@@ -127,11 +159,33 @@ export const useGisUIStore = create<GisUIState>((set) => ({
 
     setSelectedCompanyId: (id) => set({ selectedCompanyId: id }),
 
-    // Mereset peta ke mode awal
+    // FASE 4 INJEKSI: Setter untuk pusat koordinat & skala zoom peta
+    setMapCenter: (center) => set({ mapCenter: center }),
+    setMapZoom: (zoom) => set({ mapZoom: zoom }),
+
+    // FASE 3 INJEKSI: Setter Fungsi Spatial Analytics
+    setActiveAdminBoundary: (boundary) => set({ activeAdminBoundary: boundary }),
+    setShowImpactRadius: (show) => set({ showImpactRadius: show }),
+
+    // Menyimpan telemetri baru ke dalam penyimpanan cache lokal
+    setAqiCache: (key, data) =>
+        set((state) => ({
+            aqiCache: {
+                ...state.aqiCache,
+                [key]: data,
+            },
+        })),
+
+    // Mereset peta ke mode awal (Mengembalikan fokus ke Kotawaringin Timur / Sampit) [3]
     resetMapContext: () =>
         set({
-            activeLayers: ['layer-amdal', 'layer-uklupl', 'layer-sppl', 'overlay-das', 'overlay-rtrw'],
+            activeLayers: ['layer-amdal', 'layer-uklupl', 'layer-sppl', 'layer-aqi', 'overlay-das', 'overlay-rtrw'],
             selectedCompanyId: null,
             activePanels: [],
+            activeAdminBoundary: 'none',
+            showImpactRadius: false,
+            mapCenter: [-2.5337, 112.9515], // Mengunci titik reset di pusat Sampit [3]
+            mapZoom: 9,                     // Mengunci skala zoom default wilayah administrasi Kotim [3]
+            aqiCache: {},                   // Membersihkan cache lokal saat peta di-reset
         }),
 }));

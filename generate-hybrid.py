@@ -5,11 +5,18 @@ from pathlib import Path
 TARGET_DIRECTORY = r"C:\Users\PC\Documents\Dev\E-LIMBAD\limbah-fe"
 OUTPUT_FILE = r"C:\Users\PC\Documents\Dev\E-LIMBAD\limbah-fe\limbah-fe.txt"
 
-# 1. Folder yang HARAM hukumnya(Blacklist)
-# Disesuaikan dengan ekosistem React(node_modules, build, dist, dll)
+# 1. Folder yang HARAM hukumnya (Blacklist Folder)
+# Disesuaikan dengan ekosistem React (node_modules, build, dist, dll)
 FORBIDDEN_DIRS = {
     "node_modules", ".git", "dist", "build", "out", "coverage",
     ".vscode", ".idea", ".next", ".swc"
+}
+
+# 1.5. File yang HARAM hukumnya (Blacklist File)
+# Masukkan nama file spesifik yang tidak ingin diproses di sini
+FORBIDDEN_FILES = {
+    "kotim-desa.json", 
+    "kotim-kecamatan.json"
 }
 
 # 2. Folder yang BOLEH diambil(Whitelist)
@@ -42,11 +49,15 @@ def main():
     # Ini jauh lebih cepat karena kita bisa memblokir Python masuk ke node_modules
     for root, dirs, files in os.walk(target_path):
         # Cegah Python masuk ke folder terlarang(SANGAT hemat waktu)
-        dirs[:] =[d for d in dirs if d not in FORBIDDEN_DIRS]
+        dirs[:] = [d for d in dirs if d not in FORBIDDEN_DIRS]
 
         root_path = Path(root)
 
         for file_name in files:
+            # --- TAMBAHAN PENGECEKAN BLACKLIST FILE ---
+            if file_name in FORBIDDEN_FILES:
+                continue
+            
             file_path = root_path / file_name
             relative_path = file_path.relative_to(target_path)
             

@@ -2,14 +2,20 @@
 import React, { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSijagaStore } from "@/store/useSijagaStore";
+import { useGisUIStore } from "@/store/useGisUIStore";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
     AlertTriangle, ClipboardList, MapPin, Calendar,
-    Camera, FileText, ArrowRight, CheckCircle2, User
+    Camera, FileText, ArrowRight, CheckCircle2, User,
+    Target
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+
+// FASE 4 INJEKSI: Mengimpor fungsi otak analitik Turf.js dan data batas desa
+import { getAffectedVillages } from "@/lib/spatialAnalytics";
+import desaData from "@/assets/geojson/kotim-desa.json";
 
 interface TaskDetailPanelProps {
     taskData: any; // Menerima payload Polimorfik (Bisa Inspection, bisa CitizenReport)
@@ -20,6 +26,9 @@ const BACKEND_URL = "http://localhost:5000";
 export default function TaskDetailPanel({ taskData }: TaskDetailPanelProps) {
     const navigate = useNavigate();
     const { currentUser, inspections, adminReports } = useSijagaStore();
+
+    // FASE 4 INJEKSI: Memanggil state pengontrol cincin radius bencana
+    const { showImpactRadius, setShowImpactRadius } = useGisUIStore();
 
     if (!taskData) return null;
 
@@ -46,11 +55,34 @@ export default function TaskDetailPanel({ taskData }: TaskDetailPanelProps) {
         }
     }, [reportObj]);
 
-    // 4. ACTION HANDLER (Role-Based Navigation & Safe Routing)
+    // 4. MENGHITUNG DESA TERDAMPAK (Turf.js Spatial Analytics)
+    const affectedVillages = useMemo(() => {
+        if (!showImpactRadius) return [];
+
+        let lat = NaN, lng = NaN;
+
+        // Ekstrak koordinat yang presisi
+        if (reportObj && reportObj.lat && reportObj.lng) {
+            lat = parseFloat(reportObj.lat);
+            lng = parseFloat(reportObj.lng);
+        } else if (inspectionObj && inspectionObj.location.includes(",")) {
+            const coords = inspectionObj.location.split(",");
+            lat = parseFloat(coords[0]);
+            lng = parseFloat(coords[1]);
+        }
+
+        if (!isNaN(lat) && !isNaN(lng)) {
+            // Memanggil Turf.js: Cari desa yang tertabrak radius 5 KM
+            return getAffectedVillages(lat, lng, 5, desaData);
+        }
+
+        return [];
+    }, [showImpactRadius, reportObj, inspectionObj]);
+
+    // 5. ACTION HANDLER (Role-Based Navigation & Safe Routing)
     const handleActionClick = () => {
         if (currentUser?.role === "PETUGAS_LAPANGAN") {
             if (inspectionObj && inspectionObj.status !== "Selesai") {
-                // FASE 2 FIX: Lempar ID Tugas secara spesifik (Unik) untuk mencegah ambigu pada COM-UNKNOWN
                 toast.success("Menyiapkan dokumen BAP Lapangan...");
                 navigate("/officer/inspections", { state: { preSelectedInspectionId: inspectionObj.id } });
             } else if (inspectionObj && inspectionObj.status === "Selesai") {
@@ -59,7 +91,6 @@ export default function TaskDetailPanel({ taskData }: TaskDetailPanelProps) {
                 toast.error("Surat Tugas belum diterbitkan oleh Admin DLH.");
             }
         } else {
-            // Jika Admin/Auditor yang melihat, arahkan ke halaman Triage
             navigate("/admin/reports");
         }
     };
@@ -125,7 +156,7 @@ export default function TaskDetailPanel({ taskData }: TaskDetailPanelProps) {
                     </div>
                 )}
 
-                {/* --- SEKSI 3: KRONOLOGI PENGADUAN WARGA (Jika Ada) --- */}
+                {/* --- SEKSI 3: KRONOLOGI PENGADUAN WARGA --- */}
                 {reportObj && (
                     <div className="p-5 space-y-4">
                         <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-none flex items-start gap-2.5">
@@ -178,9 +209,59 @@ export default function TaskDetailPanel({ taskData }: TaskDetailPanelProps) {
                     </div>
                 )}
 
+                {/* --- SEKSI 4: ANALISIS RISIKO BENCANA / SPATIAL ANALYTICS (FASE 4) --- */}
+                {reportObj && (
+                    <div className="p-5 border-t border-slate-100 space-y-4">
+                        <h3 className="text-[10px] font-black text-rose-600 uppercase tracking-widest flex items-center gap-1.5 leading-none">
+                            <Target size={14} className="text-rose-600 animate-pulse" /> Analisis Risiko (Radius 5 KM)
+                        </h3>
+
+                        {!showImpactRadius ? (
+                            <Button
+                                variant="outline"
+                                onClick={() => setShowImpactRadius(true)}
+                                className="w-full h-10 rounded-none border-rose-200 text-rose-600 hover:bg-rose-50 text-[10px] font-black uppercase tracking-widest shadow-none"
+                            >
+                                Aktifkan Simulasi Dampak
+                            </Button>
+                        ) : (
+                            <div className="space-y-3 animate-in fade-in zoom-in duration-300">
+                                <div className="bg-rose-50 border border-rose-200 p-3 rounded-none">
+                                    <p className="text-[9px] font-semibold text-rose-800 leading-relaxed">
+                                        🚨 <strong className="font-black">PROYEKSI DAMPAK:</strong> Pencemaran berpotensi menyebar sejauh 5 KM dari titik episentrum kejadian, mengenai <strong className="font-black">{affectedVillages.length} Desa/Kelurahan</strong> di sekitarnya.
+                                    </p>
+                                </div>
+
+                                <div className="max-h-[150px] overflow-y-auto custom-scrollbar border border-slate-200 divide-y divide-slate-100">
+                                    {affectedVillages.length === 0 ? (
+                                        <div className="p-3 text-center text-[9px] text-slate-500 font-bold uppercase">
+                                            Kawasan aman / Tidak mendeteksi pemukiman
+                                        </div>
+                                    ) : (
+                                        affectedVillages.map((v, i) => (
+                                            <div key={i} className="p-2.5 bg-white flex justify-between items-center hover:bg-slate-50">
+                                                <span className="text-[10px] font-bold text-slate-800 uppercase">{v.desa}</span>
+                                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest text-right">{v.kecamatan}</span>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+
+                                <Button
+                                    variant="ghost"
+                                    onClick={() => setShowImpactRadius(false)}
+                                    className="w-full h-8 rounded-none text-slate-500 hover:text-slate-700 hover:bg-slate-100 text-[9px] font-black uppercase tracking-widest"
+                                >
+                                    Tutup Simulasi
+                                </Button>
+                            </div>
+                        )}
+                    </div>
+                )}
+
             </div>
 
-            {/* --- SEKSI 4: ACTION FOOTER (Sticky) --- */}
+            {/* --- SEKSI 5: ACTION FOOTER (Sticky) --- */}
             <div className="p-4 border-t border-slate-200 bg-white shrink-0">
                 {currentUser?.role === "PETUGAS_LAPANGAN" ? (
                     inspectionObj?.status === "Selesai" ? (

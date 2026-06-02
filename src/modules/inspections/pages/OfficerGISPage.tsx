@@ -18,14 +18,13 @@ import LimbahMap from "@/modules/admin/components/gis/LimbahMap";
  *    laci "Tugas Patroli" alih-alih "Katalog Industri" [3].
  */
 export default function OfficerGISPage() {
-  // Menambahkan pemanggilan fetchAdminReports untuk sinkronisasi data pengaduan secara instan [3]
-  const { fetchCompanies, fetchAdminReports } = useSijagaStore();
+  // DEKOPLING SPASIAL: fetchAdminReports dihapus karena Inspektur tidak memiliki wewenang membaca arsip pengaduan masyarakat [3]
+  const { fetchCompanies } = useSijagaStore();
 
-  // Memastikan data master spasial (perusahaan) & data pengaduan warga diambil bersamaan (Information Expert) [3]
+  // Memastikan data master spasial (perusahaan) diambil mandiri saat halaman dimuat (Information Expert) [3]
   useEffect(() => {
     fetchCompanies();
-    fetchAdminReports(); // Menjamin ketersediaan pin aduan warga pada peta saat halaman dimuat [3]
-  }, [fetchCompanies, fetchAdminReports]);
+  }, [fetchCompanies]);
 
   return (
     // Memenuhi 100% layar (h-screen w-screen) tanpa menggunakan DashboardLayout bawaan untuk sensasi Command Center

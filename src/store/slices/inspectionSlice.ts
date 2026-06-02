@@ -24,6 +24,12 @@ export const createInspectionSlice: StateCreator<
     }
   },
 
+  /**
+   * ACTION: Menjadwalkan Surat Tugas Baru (Direct DLH Assignment)
+   * 
+   * Aksi ini diselaraskan untuk menerima payload koordinat spasial custom (pada field location)
+   * dan rincian instruksi dinas (pada field notes) dari form penugasan mandiri [3].
+   */
   scheduleInspection: async (inspectionData) => {
     try {
       const response = await apiService.inspections.schedule(inspectionData);
@@ -46,6 +52,7 @@ export const createInspectionSlice: StateCreator<
       id: newId,
       status: "Terjadwal",
       score: null,
+      bapSigned: false, // Mengeset nilai default false secara eksplisit agar aman di render UI [3]
       checklist: { tpsB3: false, ipal: false, apar: false, noise: false, safetyEquipment: false }
     };
 
@@ -55,7 +62,15 @@ export const createInspectionSlice: StateCreator<
 
     toast.success("Jadwal inspeksi berhasil disimpan (Offline)!");
     const user = get().currentUser;
-    get().addAuditLog(user?.email || "SYSTEM", user?.role || "ADMIN_DLH", `Menjadwalkan inspeksi lapangan untuk ${inspectionData.companyName}`);
+
+    // Catat tindakan ke log audit luring
+    get().addAuditLog(
+      user?.email || "SYSTEM",
+      user?.role || "ADMIN_DLH",
+      `Menjadwalkan inspeksi lapangan untuk ${inspectionData.companyName}`
+    );
+
+    // Menerbitkan notifikasi sistem luring
     get().addNotification(
       "Jadwal Inspeksi Lingkungan",
       `Petugas ${inspectionData.inspectorName} dijadwalkan menginspeksi ${inspectionData.companyName} pada ${inspectionData.date}.`,

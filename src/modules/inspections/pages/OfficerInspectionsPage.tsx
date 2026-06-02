@@ -28,25 +28,24 @@ export default function OfficerInspectionsPage() {
   const location = useLocation();
   const navigate = useNavigate(); // FASE 2 INJEKSI: Menggunakan native router navigator
 
+  // DEKOPLING SPASIAL: fetchAdminReports dihapus dari store karena Inspektur tidak berhak mengakses arsip aduan warga [3]
   const {
     currentUser,
     inspections,
     companies,
     fetchCompanies,
     fetchInspections,
-    fetchAdminReports, // Sinkronisasi aduan tetap dijalankan agar data cache up-to-date
     scheduleInspection
   } = useSijagaStore();
 
   const [selectedInsp, setSelectedInsp] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Inisialisasi sinkronisasi data master (Information Expert) [3]
+  // Inisialisasi sinkronisasi data master (Information Expert) - DIBERSIHKAN dari fetchAdminReports [3]
   useEffect(() => {
     fetchCompanies();
     fetchInspections();
-    fetchAdminReports();
-  }, [fetchCompanies, fetchInspections, fetchAdminReports]);
+  }, [fetchCompanies, fetchInspections]);
 
   // LOGIKA PRO-UX: Deteksi penugasan dari Peta GIS Patroli secara otomatis [3]
   useEffect(() => {
@@ -84,9 +83,8 @@ export default function OfficerInspectionsPage() {
   const handleCloseModal = () => {
     setSelectedInsp(null);
     setIsModalOpen(false);
-    // Sinkronisasi ulang data setelah modal ditutup agar perubahan langsung ter-render
+    // Sinkronisasi ulang data setelah modal ditutup agar perubahan langsung ter-render (Hanya fetchInspections) [3]
     fetchInspections();
-    fetchAdminReports();
   };
 
   // --- LOGIKA MONITORING JATUH TEMPO INSPEKSI (30 HARI) [3] ---

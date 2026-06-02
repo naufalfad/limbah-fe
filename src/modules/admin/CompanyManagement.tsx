@@ -49,6 +49,7 @@ function ResizeMap() {
   return null;
 }
 
+// FASE 2: Penyesuaian parameter fallback lat/lng MapPicker ke Sampit, Kotim [3]
 function MapPicker({ lat, lng, onChange }: { lat: string; lng: string; onChange: (lat: string, lng: string) => void }) {
   useMapEvents({
     click(e) {
@@ -56,8 +57,8 @@ function MapPicker({ lat, lng, onChange }: { lat: string; lng: string; onChange:
     },
   });
 
-  const parsedLat = parseFloat(lat) || -6.9175;
-  const parsedLng = parseFloat(lng) || 107.6191;
+  const parsedLat = parseFloat(lat) || -2.5337;
+  const parsedLng = parseFloat(lng) || 112.9515;
 
   return <Marker position={[parsedLat, parsedLng]} />;
 }
@@ -82,13 +83,15 @@ export default function CompanyManagement() {
 
   // States for Wajib AMDAL Registration Modal
   const [isAmdalOpen, setIsAmdalOpen] = useState(false);
+
+  // FASE 2: Inisiasi Koordinat Default Form AMDAL diarahkan ke Sampit, Kotim [3]
   const [amdalForm, setAmdalForm] = useState({
     companyName: "",
     nib: "",
     npwp: "",
     address: "",
-    lat: "-6.9175",
-    lng: "107.6191",
+    lat: "-2.5337",
+    lng: "112.9515",
   });
   const [isSubmittingAmdal, setIsSubmittingAmdal] = useState(false);
 
@@ -109,8 +112,8 @@ export default function CompanyManagement() {
         nib: "",
         npwp: "",
         address: "",
-        lat: "-6.9175",
-        lng: "107.6191",
+        lat: "-2.5337",
+        lng: "112.9515",
       });
       await fetchCompanies();
     } catch (err) {
@@ -144,7 +147,7 @@ export default function CompanyManagement() {
   const handleConfirmAction = async () => {
     if (!actionTarget) return;
     const { company, nextStatus } = actionTarget;
-    
+
     try {
       await updateCompanyStatus(company.id, nextStatus as any);
       setIsActionOpen(false);
@@ -247,7 +250,7 @@ export default function CompanyManagement() {
   return (
     <DashboardLayout role="ADMIN_DLH">
       <div className="space-y-4 text-left">
-        
+
         {/* --- HEADER --- */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
@@ -280,7 +283,7 @@ export default function CompanyManagement() {
 
         {/* --- METRICS CARDS (Curated Aesthetics) --- */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          
+
           <Card className="rounded-none border border-slate-200 shadow-none bg-white relative overflow-hidden">
             <CardContent className="p-4 flex justify-between items-center">
               <div className="space-y-1">
@@ -363,7 +366,7 @@ export default function CompanyManagement() {
         {/* --- SEARCH & QUICK FILTER BAR --- */}
         <Card className="rounded-none border border-slate-200 shadow-none p-3 bg-white">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-            
+
             {/* Search */}
             <div className="relative md:col-span-2">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
@@ -433,12 +436,12 @@ export default function CompanyManagement() {
 
                   return (
                     <TableRow key={c.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors h-14 group">
-                      
+
                       {/* Registration ID */}
                       <TableCell className="font-mono font-bold text-slate-500 pl-4 text-xs">
                         {c.id.substring(0, 8)}...
                       </TableCell>
-                      
+
                       {/* Name & Address */}
                       <TableCell>
                         <div className="flex flex-col text-left">
@@ -478,11 +481,11 @@ export default function CompanyManagement() {
                                 daysRemaining < 0
                                   ? "text-rose-600"
                                   : daysRemaining <= 30
-                                  ? "text-amber-500"
-                                  : "text-emerald-600"
+                                    ? "text-amber-500"
+                                    : "text-emerald-600"
                               )}>
-                                {daysRemaining < 0 
-                                  ? `Kadaluarsa ${Math.abs(daysRemaining)} hari` 
+                                {daysRemaining < 0
+                                  ? `Kadaluarsa ${Math.abs(daysRemaining)} hari`
                                   : `Sisa ${daysRemaining} hari`}
                               </span>
                             )}
@@ -506,7 +509,7 @@ export default function CompanyManagement() {
                       {/* Tactical Actions */}
                       <TableCell className="text-right pr-4">
                         <div className="flex items-center justify-end gap-1.5">
-                          
+
                           {/* Inspect Detail */}
                           <Button
                             variant="ghost"
@@ -595,13 +598,13 @@ export default function CompanyManagement() {
               {actionTarget?.nextStatus === "SUSPENDED" ? (
                 <>
                   Apakah Anda yakin ingin **menangguhkan (suspend)** sertifikat izin untuk perusahaan{" "}
-                  <span className="text-slate-900 font-bold">"{actionTarget?.company.companyName}"</span>? 
+                  <span className="text-slate-900 font-bold">"{actionTarget?.company.companyName}"</span>?
                   Tindakan ini akan memblokir pengunduhan sertifikat dan menandai izin dalam kondisi melanggar / tidak aktif.
                 </>
               ) : (
                 <>
                   Apakah Anda yakin ingin **mengaktifkan kembali** sertifikat izin untuk perusahaan{" "}
-                  <span className="text-slate-900 font-bold">"{actionTarget?.company.companyName}"</span>? 
+                  <span className="text-slate-900 font-bold">"{actionTarget?.company.companyName}"</span>?
                   Izin perusahaan akan dipulihkan ke status aktif dan sertifikat digital dapat kembali diunduh.
                 </>
               )}
@@ -623,8 +626,8 @@ export default function CompanyManagement() {
               onClick={handleConfirmAction}
               className={cn(
                 "rounded-none font-black text-xs h-9 uppercase tracking-wider",
-                actionTarget?.nextStatus === "SUSPENDED" 
-                  ? "bg-rose-600 hover:bg-rose-700 text-white" 
+                actionTarget?.nextStatus === "SUSPENDED"
+                  ? "bg-rose-600 hover:bg-rose-700 text-white"
                   : "bg-emerald-600 hover:bg-emerald-700 text-white"
               )}
             >
@@ -654,7 +657,7 @@ export default function CompanyManagement() {
 
           <form onSubmit={handleAmdalSubmit} className="flex flex-col max-h-[75vh]">
             <div className="p-6 overflow-y-auto space-y-6">
-              
+
               {/* GIS MAP PICKER CANVAS */}
               <div className="space-y-2">
                 <label className="text-xs font-black text-slate-700 uppercase tracking-widest flex items-center gap-1.5">
@@ -664,8 +667,8 @@ export default function CompanyManagement() {
                 <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Klik pada peta untuk mengambil titik lokasi perusahaan</p>
                 <div className="h-[250px] w-full bg-slate-200 border-2 border-slate-900 relative z-10 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)]">
                   <MapContainer
-                    center={[-6.9175, 107.6191]}
-                    zoom={12}
+                    center={[-2.5337, 112.9515]} // SINKRONISASI KOTIM: Diubah ke Sampit [3]
+                    zoom={10} // default zoom 10 agar area Sampit langsung fokus [3]
                     zoomControl={true}
                     style={{ height: "100%", width: "100%" }}
                   >
@@ -687,7 +690,7 @@ export default function CompanyManagement() {
                     required
                     value={amdalForm.lat}
                     onChange={(e) => setAmdalForm({ ...amdalForm, lat: e.target.value })}
-                    placeholder="-6.9175"
+                    placeholder="-2.5337"
                     className="h-11 rounded-none border-2 border-slate-300 focus-visible:border-rose-600 focus-visible:ring-0 bg-white text-sm font-bold shadow-none"
                   />
                 </div>
@@ -697,7 +700,7 @@ export default function CompanyManagement() {
                     required
                     value={amdalForm.lng}
                     onChange={(e) => setAmdalForm({ ...amdalForm, lng: e.target.value })}
-                    placeholder="107.6191"
+                    placeholder="112.9515"
                     className="h-11 rounded-none border-2 border-slate-300 focus-visible:border-rose-600 focus-visible:ring-0 bg-white text-sm font-bold shadow-none"
                   />
                 </div>
@@ -742,7 +745,7 @@ export default function CompanyManagement() {
                   required
                   value={amdalForm.address}
                   onChange={(e) => setAmdalForm({ ...amdalForm, address: e.target.value })}
-                  placeholder="Kawasan Industri Panyileukan No. 44, Bandung"
+                  placeholder="Kawasan Industri Ketapang No. 44, Sampit"
                   className="w-full min-h-[100px] rounded-none border-2 border-slate-300 p-3 text-sm font-bold focus:outline-none focus:border-rose-600 focus:ring-0 bg-white shadow-none resize-none"
                 />
               </div>
@@ -772,7 +775,7 @@ export default function CompanyManagement() {
       {/* --- DETAIL MODAL (HIGH DENSITY METADATA INSPECT) --- */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
         <DialogContent className="rounded-none border-2 border-slate-900 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] text-left max-w-2xl overflow-y-auto max-h-[85vh] p-6">
-          
+
           <DialogHeader className="border-b border-slate-200 pb-4">
             <div className="flex justify-between items-start gap-4">
               <div>
@@ -786,11 +789,11 @@ export default function CompanyManagement() {
               </div>
               <Badge className={cn(
                 "rounded-none shadow-none text-[8px] font-black tracking-widest border px-3 py-1",
-                selectedCompany?.status === "APPROVED" 
-                  ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                selectedCompany?.status === "APPROVED"
+                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                   : selectedCompany?.status === "SUSPENDED"
-                  ? "bg-rose-50 text-rose-700 border-rose-200"
-                  : "bg-blue-50 text-blue-700 border-blue-200"
+                    ? "bg-rose-50 text-rose-700 border-rose-200"
+                    : "bg-blue-50 text-blue-700 border-blue-200"
               )}>
                 {selectedCompany?.status}
               </Badge>
@@ -799,7 +802,7 @@ export default function CompanyManagement() {
 
           {selectedCompany && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4 text-xs">
-              
+
               {/* Seksi 1: Administrasi & Legalitas */}
               <div className="space-y-4">
                 <h3 className="font-black text-[10px] text-slate-400 uppercase tracking-widest flex items-center gap-1.5 border-b pb-1">
@@ -956,11 +959,11 @@ function StatusIndicator({ state, docType }: { state: StatusFilter; docType: str
 
   const configs: Record<StatusFilter, { label: string; style: string }> = {
     ALL: { label: "Semua", style: "" },
-    ACTIVE: { 
-      label: `AKTIF (${normalizedDoc})`, 
-      style: isAmdal 
-        ? "bg-rose-50 text-rose-700 border-rose-200 font-black" 
-        : "bg-emerald-50 text-emerald-700 border-emerald-200" 
+    ACTIVE: {
+      label: `AKTIF (${normalizedDoc})`,
+      style: isAmdal
+        ? "bg-rose-50 text-rose-700 border-rose-200 font-black"
+        : "bg-emerald-50 text-emerald-700 border-emerald-200"
     },
     SUSPENDED: { label: "DITANGGUHKAN", style: "bg-rose-50 text-rose-700 border-rose-200 border-dashed" },
     EXPIRED: { label: "IZIN KADALUARSA", style: "bg-amber-50 text-amber-700 border-amber-200 animate-pulse" },

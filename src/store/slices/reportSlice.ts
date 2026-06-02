@@ -35,7 +35,7 @@ export const createReportSlice: StateCreator<
             return { success: true, trackingId: response.data.data.trackingId };
         } catch (error: any) {
             console.error('Error submitting report:', error);
-            // Penanganan error adaptif membaca pesan kegagalan dari kontroler backend
+            // Penanganan error adaktif membaca pesan kegagalan dari kontroler backend
             toast.error(error.response?.data?.message || 'Gagal mengirim laporan');
             return { success: false };
         } finally {
@@ -64,7 +64,7 @@ export const createReportSlice: StateCreator<
         set({ publicReportTrackData: null });
     },
 
-    // --- ACTIONS (PROTECTED ADMIN / PETUGAS LAPANGAN) ---
+    // --- ACTIONS (PROTECTED ADMIN - ARSIP PENGADUAN STATIS) ---
 
     fetchAdminReports: async (status?: string) => {
         try {
@@ -77,65 +77,6 @@ export const createReportSlice: StateCreator<
         } catch (error: any) {
             console.error('Error fetching admin reports:', error);
             toast.error('Gagal mengambil data pengaduan masyarakat');
-        } finally {
-            set({ isReportLoading: false });
-        }
-    },
-
-    verifyCitizenReport: async (id: string, payload: any) => {
-        try {
-            set({ isReportLoading: true });
-
-            await api.post(`${REPORT_API_URL}/admin/${id}/verify`, payload);
-
-            toast.success('Laporan diverifikasi & Surat Tugas diterbitkan');
-
-            // Mengambil data ulang agar tabel ter-refresh secara real-time
-            await get().fetchAdminReports();
-            return true;
-        } catch (error: any) {
-            console.error('Error verifying report:', error);
-            toast.error(error.response?.data?.message || 'Gagal memverifikasi laporan');
-            return false;
-        } finally {
-            set({ isReportLoading: false });
-        }
-    },
-
-    investigateCitizenReport: async (id: string) => {
-        try {
-            set({ isReportLoading: true });
-
-            // Mengirimkan PATCH request ke backend terproteksi
-            await api.patch(`${REPORT_API_URL}/admin/${id}/investigate`);
-
-            toast.success('Penyelidikan lapangan (patroli) resmi diaktifkan.');
-
-            // Mengambil data ulang agar tabel ter-refresh secara real-time
-            await get().fetchAdminReports();
-            return true;
-        } catch (error: any) {
-            console.error('Error starting investigation:', error);
-            toast.error(error.response?.data?.message || 'Gagal memulai penyelidikan');
-            return false;
-        } finally {
-            set({ isReportLoading: false });
-        }
-    },
-
-    rejectCitizenReport: async (id: string, adminNotes: string) => {
-        try {
-            set({ isReportLoading: true });
-
-            await api.post(`${REPORT_API_URL}/admin/${id}/reject`, { adminNotes });
-
-            toast.success('Laporan ditolak (Spam/Hoax)');
-            await get().fetchAdminReports();
-            return true;
-        } catch (error: any) {
-            console.error('Error rejecting report:', error);
-            toast.error('Gagal menolak laporan');
-            return false;
         } finally {
             set({ isReportLoading: false });
         }

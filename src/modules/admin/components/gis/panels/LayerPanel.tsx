@@ -1,24 +1,33 @@
 // src/modules/admin/components/gis/panels/LayerPanel.tsx
 import React from "react";
-import { Layers, Map as MapIcon, Sun, Moon, Info, Settings2, ShieldCheck, Factory, Waves, AlertTriangle } from "lucide-react";
+import {
+    Layers, Map as MapIcon, Sun, Info, Settings2,
+    ShieldCheck, Factory, Waves, AlertTriangle, MapPin, Wind
+} from "lucide-react";
 import { useGisUIStore } from "@/store/useGisUIStore";
-import { useSijagaStore } from "@/store/useSijagaStore"; // INJEKSI: Mengambil konteks user saat ini
+import { useSijagaStore } from "@/store/useSijagaStore";
 
 /**
  * LayerPanel - GFW Paradigm (High-Density Data & Solid UI)
  * Menggunakan arsitektur Flush List tanpa margin kontainer internal.
  * Lebar penuh, dipisahkan oleh hairline.
+ * 
+ * FASE 5 REFACTOR: Membatasi render layer secara dinamis berdasarkan role pengguna [3].
  */
 export default function LayerPanel() {
     const {
         activeLayers, toggleLayer,
         mapOpacity, setMapOpacity,
-        activeBaseMap, setActiveBaseMap
+        activeBaseMap, setActiveBaseMap,
+        activeAdminBoundary, setActiveAdminBoundary // FASE 3 INJEKSI: State Peta Kotim
     } = useGisUIStore();
 
-    const { currentUser } = useSijagaStore(); // Mengambil data pengguna login
+    const { currentUser } = useSijagaStore();
 
-    // UI Polymorphism: Sesuaikan terminologi layer pengaduan berdasarkan Otoritas Role (GRASP)
+    // Deteksi peran pengguna aktif (RBAC Guard)
+    const isOfficer = currentUser?.role === "PETUGAS_LAPANGAN";
+
+    // UI Polymorphism: Sesuaikan terminologi layer pengaduan berdasarkan Otoritas Role
     let complaintLabel = "Aduan Masyarakat";
     let complaintDesc = "Krisis Spasial Warga";
 
@@ -34,6 +43,8 @@ export default function LayerPanel() {
         { id: "layer-amdal", label: "AMDAL", desc: "Risiko Tinggi", color: "bg-red-500", icon: ShieldCheck },
         { id: "layer-uklupl", label: "UKL-UPL", desc: "Risiko Menengah", color: "bg-amber-500", icon: ShieldCheck },
         { id: "layer-sppl", label: "SPPL", desc: "Risiko Rendah", color: "bg-emerald-500", icon: ShieldCheck },
+        // [NEW LAYER] Mengintegrasikan Sensor Kualitas Udara dari API IQAir
+        { id: "layer-aqi", label: "Kualitas Udara (AQI)", desc: "Telemetri Udara Real-time", color: "bg-teal-500", icon: Wind },
         { id: "layer-complaints", label: complaintLabel, desc: complaintDesc, color: "bg-rose-500", icon: AlertTriangle },
     ];
 
@@ -51,85 +62,143 @@ export default function LayerPanel() {
     return (
         <div className="flex flex-col h-full bg-white pb-10 font-sans">
 
-            {/* SECTION 1: LAYER KEWAJIBAN & OVERLAY */}
-            <div className="flex flex-col">
-                {/* Header Section */}
-                <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border-b border-slate-200 text-slate-500">
-                    <Layers size={14} className="text-emerald-700" />
-                    <h4 className="text-[11px] font-bold uppercase tracking-wider">Feature Layers</h4>
-                </div>
+            {/* SECTION 1: FEATURE LAYERS & OVERLAY (HANYA UNTUK NON-OFFICER / ADMIN / AUDITOR) [3] */}
+            {!isOfficer && (
+                <div className="flex flex-col animate-in fade-in duration-300">
+                    {/* Header Section */}
+                    <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border-b border-slate-200 text-slate-500">
+                        <Layers size={14} className="text-emerald-700" />
+                        <h4 className="text-[11px] font-bold uppercase tracking-wider">Feature Layers</h4>
+                    </div>
 
-                {/* List Kewajiban (Flush List) */}
-                <div className="flex flex-col">
-                    {[...layerKewajiban, ...layerOverlay].map((layer, index) => {
-                        const isActive = activeLayers.includes(layer.id);
-                        // Tambah garis pemisah ekstra jika pindah dari Kewajiban ke Overlay
-                        const isSeparator = index === 4; // Bergeser ke index 4 karena layer-complaints nambah di atasnya
+                    {/* List Kewajiban (Flush List) */}
+                    <div className="flex flex-col">
+                        {[...layerKewajiban, ...layerOverlay].map((layer, index) => {
+                            const isActive = activeLayers.includes(layer.id);
+                            // SINKRONISASI INDEKS: Bergeser dari 4 ke 5 karena penambahan satu elemen layer AQI baru
+                            const isSeparator = index === 5;
 
-                        return (
-                            <React.Fragment key={layer.id}>
-                                {isSeparator && (
-                                    <div className="px-4 py-1.5 bg-slate-50 border-y border-slate-200 mt-2">
-                                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Environment Overlay</p>
-                                    </div>
-                                )}
-
-                                <button
-                                    onClick={() => toggleLayer(layer.id)}
-                                    className="group flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-white hover:bg-slate-50 transition-colors text-left w-full outline-none"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        {/* Custom UI Toggle Switch */}
-                                        <div className={`relative inline-flex h-3.5 w-7 shrink-0 items-center rounded-full transition-colors duration-200 ease-in-out ${isActive ? 'bg-emerald-500' : 'bg-slate-300'}`}>
-                                            <span className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white shadow-sm transition duration-200 ease-in-out ${isActive ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+                            return (
+                                <React.Fragment key={layer.id}>
+                                    {isSeparator && (
+                                        <div className="px-4 py-1.5 bg-slate-50 border-y border-slate-200 mt-2 text-left">
+                                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Environment Overlay</p>
                                         </div>
+                                    )}
 
-                                        <div className="flex items-center gap-2.5">
-                                            <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${layer.color} shadow-sm border border-slate-200`} />
-                                            <div className="flex flex-col">
-                                                <span className={`text-[12px] transition-colors ${isActive ? 'text-emerald-800 font-bold' : 'text-slate-700 font-medium group-hover:text-slate-900'}`}>
-                                                    {layer.label}
-                                                </span>
-                                                <span className="text-[10px] font-medium text-slate-500 leading-none">{layer.desc}</span>
+                                    <button
+                                        onClick={() => toggleLayer(layer.id)}
+                                        className="group flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-white hover:bg-slate-50 transition-colors text-left w-full outline-none"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            {/* Custom UI Toggle Switch */}
+                                            <div className={`relative inline-flex h-3.5 w-7 shrink-0 items-center rounded-full transition-colors duration-200 ease-in-out ${isActive ? 'bg-emerald-500' : 'bg-slate-300'}`}>
+                                                <span className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white shadow-sm transition duration-200 ease-in-out ${isActive ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+                                            </div>
+
+                                            <div className="flex items-center gap-2.5">
+                                                <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${layer.color} shadow-sm border border-slate-200`} />
+                                                <div className="flex flex-col">
+                                                    <span className={`text-[12px] transition-colors ${isActive ? 'text-emerald-800 font-bold' : 'text-slate-700 font-medium group-hover:text-slate-900'}`}>
+                                                        {layer.label}
+                                                    </span>
+                                                    <span className="text-[10px] font-medium text-slate-500 leading-none">{layer.desc}</span>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                </button>
-                            </React.Fragment>
-                        );
-                    })}
+                                    </button>
+                                </React.Fragment>
+                            );
+                        })}
+                    </div>
                 </div>
-            </div>
+            )}
 
-            {/* SECTION 2: OPACITY CONTROL */}
+            {/* SECTION 2: BATAS ADMINISTRASI & SPATIAL ANALYTICS (TAMPIL UNTUK SEMUA PERAN) */}
             <div className="flex flex-col mt-0 border-t-4 border-slate-100">
-                <div className="flex items-center justify-between px-4 py-2 bg-slate-50 border-b border-slate-200">
-                    <div className="flex items-center gap-2 text-slate-500">
-                        <Settings2 size={14} className="text-emerald-700" />
-                        <h4 className="text-[11px] font-bold uppercase tracking-wider">Opacity Poligon</h4>
-                    </div>
-                    <span className="text-[10px] font-black text-emerald-800 font-mono bg-emerald-50 px-1.5 py-0.5 border border-emerald-100">
-                        {mapOpacity}%
-                    </span>
+                <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border-b border-slate-200 text-slate-500">
+                    <MapPin size={14} className="text-emerald-700" />
+                    <h4 className="text-[11px] font-bold uppercase tracking-wider">Batas Wilayah & Analitik</h4>
                 </div>
 
-                <div className="px-4 py-4 border-b border-slate-200 bg-white space-y-2">
-                    <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        value={mapOpacity}
-                        onChange={(e) => setMapOpacity(parseInt(e.target.value))}
-                        className="w-full h-1.5 bg-slate-200 rounded-none appearance-none cursor-pointer accent-emerald-600 outline-none"
-                    />
-                    <div className="flex justify-between text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                        <span>Transparan</span>
-                        <span>Solid</span>
-                    </div>
+                <div className="flex flex-col">
+                    {/* Toggle Kecamatan (Choropleth Mode) */}
+                    <button
+                        onClick={() => setActiveAdminBoundary(activeAdminBoundary === 'kecamatan' ? 'none' : 'kecamatan')}
+                        className="group flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-white hover:bg-slate-50 transition-colors text-left w-full outline-none"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className={`relative inline-flex h-3.5 w-7 shrink-0 items-center rounded-full transition-colors duration-200 ease-in-out ${activeAdminBoundary === 'kecamatan' ? 'bg-indigo-500' : 'bg-slate-300'}`}>
+                                <span className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white shadow-sm transition duration-200 ease-in-out ${activeAdminBoundary === 'kecamatan' ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+                            </div>
+
+                            <div className="flex items-center gap-2.5">
+                                <span className="w-2.5 h-2.5 rounded-none shrink-0 bg-indigo-500 shadow-sm border border-slate-200" />
+                                <div className="flex flex-col">
+                                    <span className={`text-[12px] transition-colors ${activeAdminBoundary === 'kecamatan' ? 'text-indigo-800 font-bold' : 'text-slate-700 font-medium group-hover:text-slate-900'}`}>
+                                        Peta Kepadatan Kecamatan
+                                    </span>
+                                    <span className="text-[10px] font-medium text-slate-500 leading-none">Agregasi pabrik per wilayah (Kotim)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </button>
+
+                    {/* Toggle Desa */}
+                    <button
+                        onClick={() => setActiveAdminBoundary(activeAdminBoundary === 'desa' ? 'none' : 'desa')}
+                        className="group flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-white hover:bg-slate-50 transition-colors text-left w-full outline-none"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className={`relative inline-flex h-3.5 w-7 shrink-0 items-center rounded-full transition-colors duration-200 ease-in-out ${activeAdminBoundary === 'desa' ? 'bg-blue-500' : 'bg-slate-300'}`}>
+                                <span className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white shadow-sm transition duration-200 ease-in-out ${activeAdminBoundary === 'desa' ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+                            </div>
+
+                            <div className="flex items-center gap-2.5">
+                                <span className="w-2.5 h-2.5 rounded-none shrink-0 bg-transparent border-2 border-blue-500 border-dashed" />
+                                <div className="flex flex-col">
+                                    <span className={`text-[12px] transition-colors ${activeAdminBoundary === 'desa' ? 'text-blue-800 font-bold' : 'text-slate-700 font-medium group-hover:text-slate-900'}`}>
+                                        Garis Batas Desa
+                                    </span>
+                                    <span className="text-[10px] font-medium text-slate-500 leading-none">Pemetaan wilayah tingkat kelurahan</span>
+                                </div>
+                            </div>
+                        </div>
+                    </button>
                 </div>
             </div>
 
-            {/* SECTION 3: BASEMAP GALLERY */}
+            {/* SECTION 3: OPACITY CONTROL (HANYA DI-RENDER UNTUK NON-OFFICER) [3] */}
+            {!isOfficer && (
+                <div className="flex flex-col mt-0 border-t-4 border-slate-100 animate-in fade-in duration-350">
+                    <div className="flex items-center justify-between px-4 py-2 bg-slate-50 border-b border-slate-200">
+                        <div className="flex items-center gap-2 text-slate-500">
+                            <Settings2 size={14} className="text-emerald-700" />
+                            <h4 className="text-[11px] font-bold uppercase tracking-wider">Opacity Poligon</h4>
+                        </div>
+                        <span className="text-[10px] font-black text-emerald-800 font-mono bg-emerald-50 px-1.5 py-0.5 border border-emerald-100">
+                            {mapOpacity}%
+                        </span>
+                    </div>
+
+                    <div className="px-4 py-4 border-b border-slate-200 bg-white space-y-2">
+                        <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            value={mapOpacity}
+                            onChange={(e) => setMapOpacity(parseInt(e.target.value))}
+                            className="w-full h-1.5 bg-slate-200 rounded-none appearance-none cursor-pointer accent-emerald-600 outline-none"
+                        />
+                        <div className="flex justify-between text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                            <span>Transparan</span>
+                            <span>Solid</span>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* SECTION 4: BASEMAP GALLERY (TAMPIL UNTUK SEMUA PERAN) */}
             <div className="flex flex-col border-t-4 border-slate-100">
                 <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border-b border-slate-200 text-slate-500">
                     <MapIcon size={14} className="text-emerald-700" />

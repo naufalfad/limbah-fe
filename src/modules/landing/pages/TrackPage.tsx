@@ -7,14 +7,11 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { toast } from "sonner";
 
-// Icons
+// Icons (Dibersihkan dari ikon timeline dinamis yang tidak terpakai)
 import {
     Search,
-    Clock,
     CheckCircle,
-    XCircle,
     ShieldCheck,
-    Activity,
     ArrowLeft,
     MapPin,
     Calendar,
@@ -83,30 +80,6 @@ export default function TrackPage() {
 
     const handleSelectLocalReport = (id: string) => {
         navigate(`/lacak/${id}`);
-    };
-
-    // --- LOGIKA TIMELINE STATUS ---
-    const getTimelineSteps = (currentStatus: string) => {
-        const isRejected = currentStatus === "REJECTED";
-
-        const steps = [
-            { id: "PENDING", label: "Laporan Masuk", desc: "Menunggu kurasi verifikator DLH", icon: Clock },
-            {
-                id: isRejected ? "REJECTED" : "VERIFIED",
-                label: isRejected ? "Ditolak / Tidak Valid" : "Diverifikasi",
-                desc: isRejected ? "Laporan diarsipkan" : "Surat perintah tugas diterbitkan",
-                icon: isRejected ? XCircle : ShieldCheck
-            },
-            { id: "INVESTIGATING", label: "Penyelidikan Lapangan", desc: "Petugas meluncur ke lokasi spasial", icon: Activity },
-            { id: "RESOLVED", label: "Tindak Selesai", desc: "Kasus ditindaklanjuti & tuntas", icon: CheckCircle },
-        ];
-
-        let activeIndex = 0;
-        if (currentStatus === "VERIFIED" || currentStatus === "REJECTED") activeIndex = 1;
-        if (currentStatus === "INVESTIGATING") activeIndex = 2;
-        if (currentStatus === "RESOLVED") activeIndex = 3;
-
-        return { steps, activeIndex, isRejected };
     };
 
     // --- ADAPTIVE PHOTO GRID PARSER ---
@@ -221,12 +194,8 @@ export default function TrackPage() {
                                         <Badge className="bg-white text-slate-600 rounded-none border border-slate-200 font-mono text-[10px] tracking-widest font-bold px-3 py-1">
                                             {publicReportTrackData.trackingId}
                                         </Badge>
-                                        <Badge className={
-                                            publicReportTrackData.status === 'RESOLVED' ? "bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-none text-[8px] font-bold tracking-wider" :
-                                                publicReportTrackData.status === 'REJECTED' ? "bg-rose-50 text-rose-700 border border-rose-200 rounded-none text-[8px] font-bold tracking-wider" :
-                                                    "bg-amber-50 text-amber-700 border border-amber-200 rounded-none text-[8px] font-bold tracking-wider"
-                                        }>
-                                            {publicReportTrackData.status}
+                                        <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-none text-[8px] font-black uppercase tracking-wider shadow-none">
+                                            TERARSIP (PERMANENT ARCHIVE)
                                         </Badge>
                                     </div>
                                     <h2 className="text-xl font-extrabold text-slate-900 pt-1 leading-none">
@@ -245,44 +214,23 @@ export default function TrackPage() {
                                 {/* BLOK DETIL (7 Kolom) */}
                                 <div className="lg:col-span-7 space-y-6 flex flex-col">
 
-                                    {/* Timeline Status */}
-                                    <div className="p-6 bg-slate-50/50 border border-slate-100 text-left flex flex-col text-slate-800 space-y-4">
-                                        <div className="border-b border-slate-150 pb-2">
-                                            <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">Timeline Penanganan Kasus</h4>
+                                    {/* PANEL STATUS STATIS COHESIVE (MEMBUANG TIMELINE USANG) [3] */}
+                                    <div className="p-6 bg-emerald-50/20 border border-emerald-200 text-left flex flex-col space-y-4 rounded-none shadow-none">
+                                        <div className="border-b border-emerald-100 pb-2.5 flex items-center gap-2">
+                                            <ShieldCheck className="text-emerald-600 shrink-0" size={16} />
+                                            <h4 className="text-[10px] font-black text-emerald-800 uppercase tracking-widest leading-none">Status Dokumentasi Spasial</h4>
                                         </div>
 
-                                        <div className="space-y-4 relative before:absolute before:inset-0 before:left-4 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
-                                            {getTimelineSteps(publicReportTrackData.status).steps.map((step, idx) => {
-                                                const { activeIndex, isRejected } = getTimelineSteps(publicReportTrackData.status);
-                                                const isPast = idx < activeIndex;
-                                                const isCurrent = idx === activeIndex;
-                                                const Icon = step.icon;
-
-                                                let nodeStyles = "bg-white border-slate-200 text-slate-400";
-                                                let textStyles = "text-slate-400";
-
-                                                if (isPast) {
-                                                    nodeStyles = "bg-emerald-600 border-emerald-600 text-white";
-                                                    textStyles = "text-slate-600";
-                                                } else if (isCurrent) {
-                                                    nodeStyles = isRejected ? "bg-rose-600 border-rose-600 text-white animate-pulse" : "bg-emerald-600 border-emerald-600 text-white animate-pulse";
-                                                    textStyles = isRejected ? "text-rose-600 font-semibold" : "text-emerald-700 font-semibold";
-                                                }
-
-                                                return (
-                                                    <div key={step.id} className="relative flex items-start gap-4">
-                                                        <div className={`w-8.5 h-8.5 rounded-full border-2 flex items-center justify-center shrink-0 z-10 ${nodeStyles}`}>
-                                                            <Icon size={14} />
-                                                        </div>
-                                                        <div className="space-y-0.5">
-                                                            <h5 className={`text-xs font-bold uppercase tracking-wider leading-none ${textStyles}`}>
-                                                                {step.label}
-                                                            </h5>
-                                                            <p className="text-[10px] text-slate-400 font-medium">{step.desc}</p>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
+                                        <div className="space-y-3 font-sans text-xs leading-relaxed">
+                                            <p className="font-bold text-slate-800 text-justify">
+                                                Laporan Pengaduan Anda telah **berhasil direkam dan diarsipkan secara permanen** di basis data geospasial Dinas Lingkungan Hidup (DLH) Kabupaten/Kota.
+                                            </p>
+                                            <p className="text-slate-600 text-justify">
+                                                Sesuai dengan ketentuan perlindungan hak pelapor (*Whistleblower Protection*), sistem mengisolasi penuh data pengaduan ini agar tidak terekspos secara bebas ke pihak eksternal industri [3].
+                                            </p>
+                                            <div className="bg-emerald-50/50 border border-emerald-100 p-3 flex items-start gap-2 text-emerald-800 font-bold text-[9px] uppercase tracking-wider leading-snug">
+                                                <span>INFO: DATA KOORDINAT INI BERFUNGSI SEBAGAI INSTRUMEN RUJUKAN DOKUMENTASI PENGAWASAN SEKTORAL WILAYAH DLH.</span>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -363,7 +311,7 @@ export default function TrackPage() {
                                                 <AlertTriangle size={20} className="mb-2 animate-pulse text-amber-500" />
                                                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 leading-none">Koordinat Spasial Kosong</span>
                                                 <p className="text-[9px] font-medium text-slate-500 mt-2">
-                                                    Data koordinat (lat/lng) tidak diseleksi oleh server API [3]. Harap perbarui select statement pada backend controller.
+                                                    Data koordinat (lat/lng) tidak ditemukan di database.
                                                 </p>
                                             </div>
                                         )}

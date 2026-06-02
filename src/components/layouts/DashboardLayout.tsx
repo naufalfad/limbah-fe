@@ -21,7 +21,7 @@ const MENU_CONFIG = {
   ],
   ADMIN_DLH: [
     { label: "Overview", icon: <LayoutDashboard size={18} />, path: "/admin" },
-    { label: "Triage Pengaduan", icon: <AlertTriangle size={18} />, path: "/admin/reports" }, // INJEKSI BARU: Menu kurasi aduan masyarakat [3]
+    { label: "Arsip Pengaduan", icon: <AlertTriangle size={18} />, path: "/admin/reports" }, // REFACTOR FASE 2: Penyelarasan label arsip statis [3]
     { label: "Registrasi SPPL/UKL", icon: <ShieldCheck size={18} />, path: "/admin/registrations" },
     { label: "Daftar Perusahaan", icon: <Building2 size={18} />, path: "/admin/companies" },
     { label: "Monitoring Limbah", icon: <Trash2 size={18} />, path: "/admin/waste" },

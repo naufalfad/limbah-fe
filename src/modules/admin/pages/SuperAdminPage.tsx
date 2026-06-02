@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import { useSijagaStore, UserRole } from "@/store/useSijagaStore";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import {
   Settings, Users, ShieldAlert, Key,
-  Map as MapIcon, Activity, Lock, Eye, Database, Globe, Search, Download, Loader2
+  Map as MapIcon, Activity, Lock, Database, Globe, Search, Download, Loader2
 } from "lucide-react";
 import { toast } from "sonner";
 import { MapContainer, TileLayer, Circle, FeatureGroup, useMap } from "react-leaflet";
@@ -364,21 +364,25 @@ export default function SuperAdminPage() {
                 <h3 className="font-bold text-sm tracking-tight text-slate-800 uppercase">GIS Layer Sandbox Preview</h3>
               </div>
               <div className="h-[300px] w-full bg-slate-100 relative z-10">
-                <MapContainer center={[-6.9147, 107.6098]} zoom={11} style={{ height: "100%", width: "100%" }}>
+
+                {/* FASE 2: SINKRONISASI KOORDINAT DEFAULT PETALAYER KE SAMPIT KOTIM [3] */}
+                <MapContainer center={[-2.5337, 112.9515]} zoom={10} style={{ height: "100%", width: "100%" }}>
                   <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                   />
                   {riverLayer && (
                     <FeatureGroup>
-                      <Circle center={[-6.9147, 107.6098]} radius={4000} pathOptions={{ color: "blue", fillColor: "blue", fillOpacity: 0.15 }} />
-                      <Circle center={[-6.9388, 107.6255]} radius={3000} pathOptions={{ color: "blue", fillColor: "blue", fillOpacity: 0.15 }} />
+                      {/* Cincin DAS disinkronkan ke area aliran sungai Mentaya (Sampit) [3] */}
+                      <Circle center={[-2.5337, 112.9515]} radius={4000} pathOptions={{ color: "blue", fillColor: "blue", fillOpacity: 0.15 }} />
+                      <Circle center={[-2.5800, 112.9900]} radius={3000} pathOptions={{ color: "blue", fillColor: "blue", fillOpacity: 0.15 }} />
                     </FeatureGroup>
                   )}
                   {industrialLayer && (
                     <FeatureGroup>
-                      <Circle center={[-6.8245, 107.6190]} radius={2000} pathOptions={{ color: "orange", fillColor: "orange", fillOpacity: 0.2 }} />
-                      <Circle center={[-6.9034, 107.6189]} radius={2500} pathOptions={{ color: "orange", fillColor: "orange", fillOpacity: 0.2 }} />
+                      {/* Cincin Zonasi disinkronkan ke area industri Baamang/Cempaga (Sampit) [3] */}
+                      <Circle center={[-2.4900, 112.9300]} radius={2000} pathOptions={{ color: "orange", fillColor: "orange", fillOpacity: 0.2 }} />
+                      <Circle center={[-2.2500, 113.0500]} radius={2500} pathOptions={{ color: "orange", fillColor: "orange", fillOpacity: 0.2 }} />
                     </FeatureGroup>
                   )}
                   <ResizeMap />

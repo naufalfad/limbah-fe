@@ -1,105 +1,98 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Dialog, DialogContent, DialogHeader, DialogTitle 
+// src/modules/admin/components/CreateInspectionModal.tsx
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
-import { 
-  ClipboardList, Camera, CheckCircle2, 
-  X, Building2, CalendarDays, AlertCircle
+import {
+  ClipboardList, X, Building2, CalendarDays, User, Info, FileText
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSijagaStore } from "@/store/useSijagaStore";
 import { toast } from "sonner";
 
-export function CreateInspectionModal({ isOpen, onClose }: any) {
-  const { currentUser, companies, scheduleInspection, submitInspectionResult, fetchCompanies } = useSijagaStore();
+interface CreateInspectionModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
 
-  // Form State
+export function CreateInspectionModal({ isOpen, onClose }: CreateInspectionModalProps) {
+  // Hanya mengambil master data yang dibutuhkan untuk pendelegasian Surat Tugas (Information Expert) [3]
+  const {
+    companies,
+    officers,
+    scheduleInspection,
+    fetchCompanies
+  } = useSijagaStore();
+
+  // Form State Penjadwalan Resmi
   const [selectedCompanyId, setSelectedCompanyId] = useState("");
+  const [selectedOfficerId, setSelectedOfficerId] = useState("");
   const [visitDate, setVisitDate] = useState("");
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Checklist State
-  const [tpsB3, setTpsB3] = useState(false);
-  const [ipal, setIpal] = useState(false);
-  const [apar, setApar] = useState(false);
-  const [noise, setNoise] = useState(false);
-  const [safetyEquipment, setSafetyEquipment] = useState(false);
-
-  // Fetch approved companies on open
+  // Mengambil master data perusahaan saat modal dibuka
   useEffect(() => {
     if (isOpen) {
       fetchCompanies();
     }
   }, [isOpen, fetchCompanies]);
 
-  const approvedCompanies = companies.filter(c => c.status === "APPROVED");
-
-  const checkedCount = [tpsB3, ipal, apar, noise, safetyEquipment].filter(Boolean).length;
-  const calculatedScore = checkedCount * 20;
+  // Saring perusahaan aktif (APPROVED) +COM-UNKNOWN
+  const approvedCompanies = useMemo(() => {
+    return companies.filter(c => c.status === "APPROVED" || c.id === "COM-UNKNOWN");
+  }, [companies]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCompanyId) {
-      toast.error("Silakan pilih perusahaan terlebih dahulu.");
+      toast.error("Silakan tentukan sasaran entitas industri terlebih dahulu.");
+      return;
+    }
+    if (!selectedOfficerId) {
+      toast.error("Silakan tentukan petugas lapangan pelaksana.");
       return;
     }
     if (!visitDate) {
-      toast.error("Silakan tentukan tanggal kunjungan.");
+      toast.error("Silakan pilih rencana tanggal kunjungan sidak.");
       return;
     }
 
-    const company = companies.find(c => c.id === selectedCompanyId);
-    if (!company) {
-      toast.error("Perusahaan tidak ditemukan.");
+    const company = approvedCompanies.find(c => c.id === selectedCompanyId);
+    const officer = officers.find(o => o.id === selectedOfficerId);
+
+    if (!company || !officer) {
+      toast.error("Data industri atau petugas pelaksana tidak valid.");
       return;
     }
 
     setLoading(true);
     try {
-      // 1. Buat jadwal inspeksi (Sequential Phase 1)
-      const newInsp = await scheduleInspection({
+      // Memicu aksi pembuatan Surat Tugas murni (Status: Terjadwal) [3]
+      await scheduleInspection({
         companyId: company.id,
         companyName: company.companyName,
-        inspectorName: currentUser?.name || "Heryanto, S.T.",
-        inspectorId: currentUser?.officerId || currentUser?.id || "OFF-001",
+        inspectorName: officer.name,
+        inspectorId: officer.officerId || officer.id, // Fallback jika petugas tidak memiliki officerId internal
         date: visitDate,
-        location: company.address || "Bandung",
-        notes: notes,
-        photo: "https://images.unsplash.com/photo-1513828742140-ccaa34f3ccd0?w=400&auto=format&fit=crop&q=60" // Default photo placeholder
+        location: company.address || "Kotawaringin Timur",
+        notes: notes || "Inspeksi kepatuhan lingkungan rutin."
       });
 
-      if (newInsp && newInsp.id) {
-        // 2. Submit BAP hasil inspeksi (Sequential Phase 2)
-        await submitInspectionResult(
-          newInsp.id,
-          calculatedScore,
-          notes,
-          { tpsB3, ipal, apar, noise, safetyEquipment }
-        );
-        
-        toast.success("Laporan Hasil Inspeksi Lapangan berhasil dikirim!");
-        onClose();
-        
-        // Reset state
-        setSelectedCompanyId("");
-        setVisitDate("");
-        setNotes("");
-        setTpsB3(false);
-        setIpal(false);
-        setApar(false);
-        setNoise(false);
-        setSafetyEquipment(false);
-      } else {
-        toast.error("Gagal menjadwalkan inspeksi.");
-      }
+      toast.success(`Surat Tugas berhasil diterbitkan untuk ${officer.name}!`);
+
+      // Reset State & Tutup Modal
+      setSelectedCompanyId("");
+      setSelectedOfficerId("");
+      setVisitDate("");
+      setNotes("");
+      onClose();
     } catch (err: any) {
       console.error(err);
-      toast.error("Terjadi kesalahan saat memproses laporan.");
+      toast.error("Terjadi kesalahan saat menyimpan jadwal Surat Tugas.");
     } finally {
       setLoading(false);
     }
@@ -107,194 +100,134 @@ export function CreateInspectionModal({ isOpen, onClose }: any) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-[90vw] lg:max-w-6xl p-0 overflow-hidden rounded-[2.5rem] border-none shadow-2xl bg-white">
-        
+      <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-[500px] p-0 overflow-hidden rounded-none border-2 border-slate-900 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] text-left bg-white font-sans z-50">
+
         {/* --- HEADER --- */}
-        <div className="bg-slate-900 text-white p-8 flex justify-between items-center shrink-0">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-emerald-500 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
-              <ClipboardList size={28} />
+        <div className="bg-slate-900 text-white p-5 flex justify-between items-center shrink-0 border-b-2 border-slate-900">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-emerald-600 rounded-none flex items-center justify-center text-white shadow-sm">
+              <ClipboardList size={20} />
             </div>
             <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="bg-emerald-600/20 text-emerald-400 border border-emerald-500/50 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest">
-                  Internal Audit
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <span className="bg-emerald-600/20 text-emerald-400 border border-emerald-500/50 px-1.5 py-0.5 rounded-none text-[8px] font-black uppercase tracking-widest leading-none">
+                  DLH Command Center
                 </span>
-                <span className="text-slate-500 font-mono text-[10px] tracking-widest italic">BAP-AUTO-GENERATED</span>
+                <span className="text-slate-500 font-mono text-[9px] tracking-widest uppercase leading-none">SURAT-TUGAS-ENTRY</span>
               </div>
-              <DialogTitle className="text-3xl font-black tracking-tighter leading-none text-white">
-                Input Hasil Inspeksi Lapangan
+              <DialogTitle className="text-sm font-black tracking-widest leading-none text-white uppercase">
+                Penerbitan Surat Tugas
               </DialogTitle>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400">
-            <X size={28} />
+          <button onClick={onClose} className="p-1 hover:bg-slate-800 rounded-none transition-colors text-slate-400">
+            <X size={18} />
           </button>
         </div>
 
-        {/* --- BODY (DUA KOLOM) --- */}
-        <form onSubmit={handleSubmit} className="flex h-[75vh] flex-col md:flex-row bg-slate-50 overflow-hidden">
-          
-          {/* KOLOM KIRI: Form Checklist (Scrollable) */}
-          <div className="flex-1 overflow-y-auto p-10 custom-scrollbar text-left">
-            <div className="max-w-3xl mx-auto space-y-10">
-              
-              {/* Seksi Identitas Audit */}
-              <section className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-3">
-                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                    <Building2 size={14} /> Pilih Perusahaan Terdaftar
-                  </Label>
-                  <select 
-                    value={selectedCompanyId} 
-                    onChange={(e) => setSelectedCompanyId(e.target.value)}
-                    className="w-full h-12 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all outline-none"
-                  >
-                    <option value="">Pilih Perusahaan...</option>
-                    {approvedCompanies.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.companyName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-3">
-                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                    <CalendarDays size={14} /> Tanggal Kunjungan
-                  </Label>
-                  <Input 
-                    type="date" 
-                    value={visitDate}
-                    onChange={(e) => setVisitDate(e.target.value)}
-                    className="h-12 rounded-xl border-slate-200 bg-white font-bold text-slate-700" 
-                  />
-                </div>
-              </section>
+        {/* --- FORM BODY --- */}
+        <form onSubmit={handleSubmit} className="p-5 space-y-4 bg-slate-50">
 
-              <Separator className="bg-slate-200" />
-
-              {/* Seksi Checklist Teknis */}
-              <section className="space-y-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <CheckCircle2 size={20} className="text-emerald-500" />
-                  <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">Checklist Kepatuhan Lingkungan</h4>
-                </div>
-                
-                <div className="grid grid-cols-1 gap-3">
-                  <InspectionCheckItem 
-                    label="Ketersediaan Tempat Penampungan Sementara (TPS) B3 Berizin" 
-                    checked={tpsB3}
-                    onChange={() => setTpsB3(!tpsB3)}
-                  />
-                  <InspectionCheckItem 
-                    label="Sistem IPAL (Instalasi Pengolahan Air Limbah) Beroperasi Normal" 
-                    checked={ipal}
-                    onChange={() => setIpal(!ipal)}
-                  />
-                  <InspectionCheckItem 
-                    label="Ketersediaan Alat Pemadam Api Ringan (APAR) Terpasang di Lokasi" 
-                    checked={apar}
-                    onChange={() => setApar(!apar)}
-                  />
-                  <InspectionCheckItem 
-                    label="Tingkat Kebisingan & Getaran Mesin Sesuai Nilai Ambang Batas" 
-                    checked={noise}
-                    onChange={() => setNoise(!noise)}
-                  />
-                  <InspectionCheckItem 
-                    label="Ketersediaan Peralatan K3 & Alat Pelindung Diri (APD) Lengkap Bagi Operator" 
-                    checked={safetyEquipment}
-                    onChange={() => setSafetyEquipment(!safetyEquipment)}
-                  />
-                </div>
-              </section>
-
-              {/* Catatan Tambahan */}
-              <section className="space-y-3">
-                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Temuan Lapangan / Rekomendasi Petugas</Label>
-                <textarea 
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="w-full min-h-[120px] rounded-2xl border border-slate-200 bg-white p-6 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all outline-none" 
-                  placeholder="Uraikan temuan jika ada ketidaksesuaian..."
-                />
-              </section>
-            </div>
+          {/* 1. PILIH PERUSAHAAN (Mendukung COM-UNKNOWN) */}
+          <div className="space-y-1.5">
+            <Label className="text-[9px] font-black uppercase text-slate-500 tracking-widest flex items-center gap-1.5 leading-none">
+              <Building2 size={12} className="text-slate-400 shrink-0" /> Pilih Sasaran Industri <span className="text-rose-500">*</span>
+            </Label>
+            <select
+              required
+              value={selectedCompanyId}
+              onChange={(e) => setSelectedCompanyId(e.target.value)}
+              className="h-10 w-full rounded-none border border-slate-300 bg-white px-3 text-xs font-bold uppercase tracking-wider text-slate-700 focus:outline-none focus:border-emerald-600 focus:ring-0 cursor-pointer"
+            >
+              <option value="">Pilih Industri / Objek Sidak...</option>
+              {approvedCompanies.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.id === "COM-UNKNOWN" ? "⚠️ PENYELIDIKAN LAPANGAN (PELAKU BELUM DIKETAHUI)" : c.companyName}
+                </option>
+              ))}
+            </select>
           </div>
 
-          {/* KOLOM KANAN: Dokumentasi & Simpan (Sidebar) */}
-          <div className="w-full md:w-[380px] bg-white border-l border-slate-200 p-10 flex flex-col gap-10 shrink-0 text-left">
-            
-            {/* Seksi Foto */}
-            <div className="space-y-4">
-              <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Dokumentasi Lapangan</h4>
-              <div className="aspect-square rounded-[2rem] border-2 border-dashed border-slate-200 bg-slate-50 flex flex-col items-center justify-center gap-4 hover:border-emerald-500 transition-all cursor-pointer group">
-                <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-slate-300 group-hover:text-emerald-500 shadow-sm transition-transform group-hover:scale-110">
-                  <Camera size={32} />
-                </div>
-                <div className="text-center">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Foto Bukti Tersemat</p>
-                  <p className="text-[9px] font-bold text-slate-300 italic uppercase">BAP_EVIDENCE.JPG</p>
-                </div>
-              </div>
-            </div>
+          {/* 2. PILIH PETUGAS LAPANGAN (OFFICERS MASTER-DATA) */}
+          <div className="space-y-1.5">
+            <Label className="text-[9px] font-black uppercase text-slate-500 tracking-widest flex items-center gap-1.5 leading-none">
+              <User size={12} className="text-slate-400 shrink-0" /> Pilih Petugas Lapangan <span className="text-rose-500">*</span>
+            </Label>
+            <select
+              required
+              value={selectedOfficerId}
+              onChange={(e) => setSelectedOfficerId(e.target.value)}
+              className="h-10 w-full rounded-none border border-slate-300 bg-white px-3 text-xs font-bold uppercase tracking-wider text-slate-700 focus:outline-none focus:border-emerald-600 focus:ring-0 cursor-pointer"
+            >
+              <option value="">Pilih Petugas Pelaksana...</option>
+              {officers.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.name}
+                </option>
+              ))}
+            </select>
+          </div>
 
-            {/* Skor Otomatis */}
-            <div className="p-6 bg-emerald-50 border-2 border-emerald-100 rounded-[2rem] space-y-2">
-               <div className="flex items-center gap-2 text-emerald-700 font-black text-[10px] uppercase tracking-widest">
-                 <AlertCircle size={14} /> Skor Kepatuhan Sementara
-               </div>
-               <div className="flex items-end gap-2">
-                <span className="text-5xl font-black text-emerald-900 tracking-tighter italic leading-none">{calculatedScore}</span>
-                <span className="text-lg font-bold text-emerald-600 pb-1">/ 100</span>
-               </div>
-               <p className="text-[10px] font-bold text-emerald-600/70 italic">*Skor dihitung otomatis berdasarkan checklist</p>
-            </div>
+          {/* 3. TANGGAL RENCANA TUGAS */}
+          <div className="space-y-1.5">
+            <Label className="text-[9px] font-black uppercase text-slate-500 tracking-widest flex items-center gap-1.5 leading-none">
+              <CalendarDays size={12} className="text-slate-400 shrink-0" /> Rencana Tanggal Sidak <span className="text-rose-500">*</span>
+            </Label>
+            <Input
+              type="date"
+              required
+              value={visitDate}
+              min={new Date().toISOString().split("T")[0]} // Batasi input tanggal masa lalu
+              onChange={(e) => setVisitDate(e.target.value)}
+              className="h-10 rounded-none border-slate-300 bg-white text-xs font-bold text-slate-700"
+            />
+          </div>
 
-            {/* Action Button (Sticky at Bottom) */}
-            <div className="mt-auto">
-              <Button 
-                type="submit"
-                disabled={loading}
-                className="w-full h-16 rounded-[1.5rem] bg-slate-900 hover:bg-emerald-600 text-white font-black text-xl transition-all shadow-2xl shadow-emerald-900/20 tracking-tighter disabled:opacity-50"
-              >
-                {loading ? "MENGIRIM..." : "KIRIM LAPORAN"} <CheckCircle2 className="ml-2" size={20} />
-              </Button>
-              <p className="text-center text-[10px] font-bold text-slate-400 mt-4 uppercase tracking-widest leading-relaxed">
-                Data akan langsung diverifikasi oleh <br/> Kepala Bidang Pengawasan
+          {/* 4. INSTRUKSI DETAIL TUGAS */}
+          <div className="space-y-1.5">
+            <Label className="text-[9px] font-black uppercase text-slate-500 tracking-widest flex items-center gap-1.5 leading-none">
+              <FileText size={12} className="text-slate-400 shrink-0" /> Instruksi Detail Tugas / Catatan Ad-Hoc
+            </Label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="w-full min-h-[80px] rounded-none border border-slate-300 bg-white p-3 text-xs font-medium text-slate-700 focus:outline-none focus:border-emerald-600 focus:ring-0 resize-none"
+              placeholder="Contoh: Selidiki laporan bau minyak terbakar di sektor utara pemukiman warga..."
+            />
+          </div>
+
+          {/* INFO BANNER PERNYATAAN OTORITAS */}
+          <div className="p-3 bg-emerald-50 border border-emerald-150 rounded-none flex items-start gap-2.5 text-left text-emerald-950">
+            <Info className="text-emerald-600 shrink-0 mt-0.5" size={14} />
+            <div>
+              <h5 className="text-[9px] font-black uppercase tracking-widest leading-none">Pendelegasian Mandiri Resmi</h5>
+              <p className="text-[9px] font-semibold leading-normal mt-1.5 text-emerald-700">
+                Surat tugas ini akan diterbitkan langsung dalam status **TERJADWAL**. Pengisian BAP fisik dan penentuan skor kepatuhan sepenuhnya adalah wewenang petugas lapangan saat sidak [3].
               </p>
             </div>
-
           </div>
+
+          {/* ACTION BUTTONS */}
+          <div className="pt-2 border-t border-slate-200 flex justify-end gap-2.5">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              className="rounded-none border-slate-300 font-bold text-xs h-10 px-5 uppercase tracking-widest"
+            >
+              BATAL
+            </Button>
+            <Button
+              type="submit"
+              disabled={loading}
+              className="bg-slate-900 hover:bg-emerald-600 text-white rounded-none h-10 px-6 text-xs font-black uppercase tracking-widest shadow-none"
+            >
+              {loading ? "MEMPROSES..." : "TERBITKAN SURAT TUGAS"}
+            </Button>
+          </div>
+
         </form>
       </DialogContent>
     </Dialog>
-  );
-}
-
-// --- HELPER COMPONENT ---
-
-function InspectionCheckItem({ label, checked, onChange }: { label: string; checked: boolean; onChange: () => void }) {
-  return (
-    <div 
-      onClick={onChange}
-      className={cn(
-        "flex items-center justify-between p-5 rounded-2xl border-2 transition-all cursor-pointer group text-left",
-        checked ? "bg-emerald-50 border-emerald-500 shadow-sm" : "bg-white border-slate-100 hover:border-slate-200"
-      )}
-    >
-      <span className={cn(
-        "text-[13px] font-bold pr-6 leading-snug",
-        checked ? "text-emerald-900" : "text-slate-600"
-      )}>
-        {label}
-      </span>
-      <div className={cn(
-        "w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 transition-all",
-        checked ? "bg-emerald-600 border-emerald-600 text-white" : "border-slate-200 bg-white"
-      )}>
-        {checked && <CheckCircle2 size={14} />}
-      </div>
-    </div>
   );
 }

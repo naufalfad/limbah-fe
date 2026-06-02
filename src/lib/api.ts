@@ -205,6 +205,13 @@ export const apiService = {
     getPerformance: async () => {
       const response = await api.get("/api/analytics/performance");
       return response.data;
+    },
+    // INJEKSI BARU: Pemanggil telemetri kualitas udara spasial dari BE ke FE
+    getAqiData: async (lat: string | number, lng: string | number) => {
+      const response = await api.get("/api/analytics/aqi", {
+        params: { lat, lng }
+      });
+      return response.data;
     }
   }
 };
