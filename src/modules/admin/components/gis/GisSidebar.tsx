@@ -1,6 +1,6 @@
 // src/modules/admin/components/gis/GisSidebar.tsx
 import React, { useMemo } from "react";
-import { Layers, Building2, Info, ClipboardList, Truck } from "lucide-react";
+import { Layers, Building2, Info, ClipboardList, Truck, Map as MapIcon } from "lucide-react";
 import { useGisUIStore } from "@/store/useGisUIStore";
 import { useSijagaStore } from "@/store/useSijagaStore";
 import { GisPanelType } from "@/types/gis";
@@ -14,24 +14,29 @@ export default function GisSidebar() {
     const { openPanel, activePanels, closePanelsToTheRight } = useGisUIStore();
     const { currentUser } = useSijagaStore();
 
-    // Deteksi jika role yang masuk adalah Petugas Lapangan, Transporter, atau Auditor (Information Expert) [3]
     const isOfficer = currentUser?.role === "PETUGAS_LAPANGAN";
     const isTransporter = currentUser?.role === "PENGANGKUT";
-    const isAuditor = currentUser?.role === "AUDITOR"; // DETEKSI BARU: Khusus pimpinan/auditor eksekutif [3]
+    const isAuditor = currentUser?.role === "AUDITOR";
 
-    // Menyusun navigasi item secara reaktif sesuai role yang aktif (Adaptive GFW UI) [3]
+    // Menyusun navigasi item secara reaktif sesuai role yang aktif (Adaptive GFW UI)
     const navigationItems = useMemo(() => {
         const items = [
             {
                 type: "layer-kewajiban" as GisPanelType,
                 label: "Layers",
                 icon: Layers,
-                title: "Konfigurasi Layer Kepatuhan"
+                title: "Konfigurasi Layer Data"
+            },
+            // [NEW] Laci khusus pengaturan Basemap Peta
+            {
+                type: "basemap-gallery" as GisPanelType,
+                label: "Basemap",
+                icon: MapIcon,
+                title: "Katalog Peta Dasar"
             }
         ];
 
         if (isOfficer) {
-            // Jika Petugas Lapangan
             items.push({
                 type: "tugas-patroli" as GisPanelType,
                 label: "Tugas",
@@ -39,7 +44,6 @@ export default function GisSidebar() {
                 title: "Daftar Penugasan Patroli"
             });
         } else if (isTransporter) {
-            // Jika Transporter (Pengangkut)
             items.push({
                 type: "armada-tracking" as GisPanelType,
                 label: "Armada",
@@ -47,7 +51,6 @@ export default function GisSidebar() {
                 title: "Live Pelacakan Armada"
             });
         } else if (isAuditor) {
-            // OPTIMASI BARU: Jika Auditor / Pimpinan Eksekutif, berikan terminologi khusus kepatuhan daerah [3]
             items.push({
                 type: "katalog-perusahaan" as GisPanelType,
                 label: "Kepatuhan",
@@ -55,7 +58,6 @@ export default function GisSidebar() {
                 title: "Pemantauan Kepatuhan Industri"
             });
         } else {
-            // Jika Admin DLH atau Super Admin biasa
             items.push({
                 type: "katalog-perusahaan" as GisPanelType,
                 label: "Industri",
@@ -67,14 +69,11 @@ export default function GisSidebar() {
         return items;
     }, [isOfficer, isTransporter, isAuditor]);
 
-    // Helper cek status aktif
     const isPanelActive = (type: GisPanelType) => {
         return activePanels.some(p => p.type === type);
     };
 
-    // Handler klik menu
     const handleNavClick = (item: typeof navigationItems[0]) => {
-        // Karena GFW paradigm itu zero-gap, kalau klik menu baru, kita tutup panel yang melayang di kanannya dulu
         closePanelsToTheRight(-1);
         openPanel(item.type, item.title);
     };
@@ -82,7 +81,6 @@ export default function GisSidebar() {
     return (
         <aside className="absolute top-16 bottom-0 left-0 w-16 flex flex-col items-center bg-white border-r border-slate-200 z-40 pointer-events-auto">
 
-            {/* BAGIAN ATAS: Menu Utama */}
             <div className="flex-1 flex flex-col items-center w-full">
                 {navigationItems.map((item, index) => {
                     const isActive = isPanelActive(item.type);
@@ -103,10 +101,8 @@ export default function GisSidebar() {
                                 </span>
                             </button>
 
-                            {/* Tooltip GFW Style (Sharp Edges) */}
                             <div className="absolute top-1/2 left-full -translate-y-1/2 ml-1 px-3 py-2 bg-slate-800 text-white text-[10px] font-bold uppercase tracking-widest rounded-none opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
                                 {item.title}
-                                {/* Panah Tooltip runcing */}
                                 <div className="absolute top-1/2 -left-1 -translate-y-1/2 w-2 h-2 bg-slate-800 rotate-45 rounded-none" />
                             </div>
                         </div>
@@ -114,7 +110,6 @@ export default function GisSidebar() {
                 })}
             </div>
 
-            {/* BAGIAN BAWAH: Info/About System */}
             <div className="flex flex-col items-center w-full mt-auto">
                 <div className="w-8 h-px bg-slate-200 mb-1" />
 

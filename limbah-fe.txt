@@ -33,6 +33,7 @@
     "react-dom": "^19.2.6",
     "react-hook-form": "^7.76.0",
     "react-leaflet": "^5.0.0",
+    "react-leaflet-cluster": "^4.1.3",
     "react-router-dom": "^7.15.1",
     "recharts": "^3.8.1",
     "shadcn": "^4.7.0",
@@ -64,6 +65,7 @@
     "vite": "^8.0.12"
   }
 }
+
 
 --- FILE: src\App.tsx ---
 // src/App.tsx
@@ -2794,6 +2796,13 @@ export const apiService = {
     getPerformance: async () => {
       const response = await api.get("/api/analytics/performance");
       return response.data;
+    },
+    // INJEKSI BARU: Pemanggil telemetri kualitas udara spasial dari BE ke FE
+    getAqiData: async (lat: string | number, lng: string | number) => {
+      const response = await api.get("/api/analytics/aqi", {
+        params: { lat, lng }
+      });
+      return response.data;
     }
   }
 };
@@ -2892,6 +2901,265 @@ export const getAffectedVillages = (
     }
 
     return affected;
+};
+
+--- FILE: src\lib\spatialMath.ts ---
+// src/lib/spatialMath.ts
+
+/**
+ * ============================================================================
+ * ENGINE MATEMATIKA SPASIAL (PURE FABRICATION)
+ * Bertanggung jawab penuh atas kalkulasi interpolasi (IDW), jarak Euclidean,
+ * trigonometri vektor angin, dan Gradasi Warna Kontinu (Continuous Color Ramp).
+ * Bebas dari dependensi UI (React/Leaflet).
+ * ============================================================================
+ */
+
+// --- KONTRAK DATA (INTERFACES) ---
+export interface SensorNode {
+    lat: number;
+    lng: number;
+}
+
+export interface AqiNode extends SensorNode {
+    aqi: number;
+}
+
+export interface WindNode extends SensorNode {
+    wd: number; // Wind Direction (Derajat Kompas 0 - 360)
+    ws: number; // Wind Speed (m/s)
+}
+
+export interface GridBounds {
+    latMin: number;
+    latMax: number;
+    lngMin: number;
+    lngMax: number;
+}
+
+export interface GridPoint extends SensorNode {
+    x: number; // Koordinat matriks X pada Canvas
+    y: number; // Koordinat matriks Y pada Canvas
+}
+
+// --- VIRTUAL BASELINE NODES (ANCHOR MITIGATION) ---
+// Untuk mencegah "Ghost Extrapolation" (Peta merah semua karena tidak ada sensor di pedalaman),
+// kita memasang sensor bayangan di perbatasan luar Kotawaringin Timur (Kotim).
+// DIUPDATE: Menyesuaikan Bounding Box baru (-3.40 s/d -1.30 dan 112.00 s/d 113.60).
+// Membentuk cincin 8-titik simetris agar tarikan IDW (20 / Sangat Bersih) merata di seluruh pedalaman.
+const KOTIM_VIRTUAL_NODES: AqiNode[] = [
+    { lat: -1.30, lng: 112.00, aqi: 20 }, // Barat Laut ekstrem (Pedalaman)
+    { lat: -1.30, lng: 112.80, aqi: 20 }, // Utara Tengah (Pedalaman Dalam)
+    { lat: -1.30, lng: 113.60, aqi: 20 }, // Timur Laut ekstrem (Pedalaman)
+    { lat: -2.35, lng: 112.00, aqi: 20 }, // Sayap Barat
+    { lat: -2.35, lng: 113.60, aqi: 20 }, // Sayap Timur
+    { lat: -3.40, lng: 112.00, aqi: 20 }, // Barat Daya ekstrem (Pesisir Laut)
+    { lat: -3.40, lng: 112.80, aqi: 20 }, // Selatan Tengah (Pesisir)
+    { lat: -3.40, lng: 113.60, aqi: 20 }, // Tenggara ekstrem (Pesisir Laut)
+];
+
+// Parameter kekuatan tarikan gravitasi polusi (Power parameter).
+// Semakin tinggi nilainya, polusi semakin "lokal" (jatuh tajam/drop-off cepat).
+// P = 3 ideal untuk mensimulasikan polutan udara industri.
+const IDW_POWER = 3;
+
+/**
+ * 1. KALKULASI JARAK (Optimasi CPU: Euclidean Squared)
+ * 
+ * Menggunakan kuadrat jarak Euclidean alih-alih Haversine murni. 
+ * Ini menghemat penggunaan Math.sqrt() pada iterasi canvas (2.500+ titik per frame).
+ * Akurasi geografis sedikit berkurang, namun sangat bisa ditoleransi untuk skala regional (Kotim).
+ */
+const getDistanceSq = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+    const dLat = lat1 - lat2;
+    const dLng = lng1 - lng2;
+    return (dLat * dLat) + (dLng * dLng);
+};
+
+// --- STASIUN WARNA AQI (COLOR STOPS) ---
+// Titik jangkar pencampuran warna berdasarkan standar US EPA
+const AQI_COLOR_STOPS = [
+    { val: 0, rgb: [16, 185, 129] },     // Emerald 500 (Sangat Baik)
+    { val: 50, rgb: [16, 185, 129] },    // Emerald 500 (Batas Baik)
+    { val: 100, rgb: [250, 204, 21] },   // Yellow 400 (Sedang)
+    { val: 150, rgb: [249, 115, 22] },   // Orange 500 (Sensitif)
+    { val: 200, rgb: [239, 68, 68] },    // Red 500 (Tidak Sehat)
+    { val: 300, rgb: [147, 51, 234] },   // Purple 600 (Sangat Tidak Sehat)
+    { val: 400, rgb: [126, 0, 35] }      // Maroon (Berbahaya)
+];
+
+
+export const spatialMath = {
+
+    /**
+     * 2. INTERPOLASI KUALITAS UDARA (AQI) MENGGUNAKAN IDW
+     * 
+     * Menghitung tebakan nilai AQI pada titik koordinat kosong berdasarkan
+     * sensor-sensor di sekitarnya dan diakhiri tarikan dari Virtual Nodes.
+     */
+    interpolateAqi: (targetLat: number, targetLng: number, realSensors: AqiNode[]): number => {
+        // Gabungkan sensor nyata (dari pabrik) dengan sensor imajiner pelindung (Virtual Nodes)
+        const allSensors = [...realSensors, ...KOTIM_VIRTUAL_NODES];
+
+        if (allSensors.length === 0) return 20; // Fallback sangat bersih
+
+        let totalWeight = 0;
+        let weightedSum = 0;
+
+        for (const sensor of allSensors) {
+            const distSq = getDistanceSq(targetLat, targetLng, sensor.lat, sensor.lng);
+
+            // Jika titik target sangat dekat dengan sensor (mencegah Division by Zero & Infinity)
+            if (distSq < 0.0000001) {
+                return sensor.aqi;
+            }
+
+            // Rumus Inti IDW: W = 1 / (d^p)
+            // Karena distSq sudah d^2, jika P=3, maka kita perlu d^3 = distSq * sqrt(distSq)
+            const dist = Math.sqrt(distSq);
+            const weight = 1 / Math.pow(dist, IDW_POWER);
+
+            weightedSum += sensor.aqi * weight;
+            totalWeight += weight;
+        }
+
+        // Kembalikan rata-rata berbobot
+        return totalWeight > 0 ? Math.round(weightedSum / totalWeight) : 20;
+    },
+
+    /**
+     * 3. INTERPOLASI VEKTOR ANGIN (TRIGONOMETRIC IDW)
+     * 
+     * Rata-rata arah angin tidak bisa menggunakan matematika linear (350° dan 10° rata-ratanya bukan 180°, melainkan 0°).
+     * Solusinya: Pecah derajat menjadi vektor Sinus (U) dan Cosinus (V), bobotkan dengan IDW, 
+     * lalu kembalikan menjadi derajat menggunakan Arc Tangent (Atan2).
+     */
+    interpolateWind: (targetLat: number, targetLng: number, sensors: WindNode[]): { wd: number, ws: number } => {
+        if (sensors.length === 0) return { wd: 0, ws: 0 };
+
+        let totalWeight = 0;
+        let weightedU = 0; // Komponen X (Cosinus)
+        let weightedV = 0; // Komponen Y (Sinus)
+        let weightedSpeed = 0;
+
+        for (const sensor of sensors) {
+            const distSq = getDistanceSq(targetLat, targetLng, sensor.lat, sensor.lng);
+
+            // Mencegah error presisi
+            const weight = distSq < 0.0000001 ? 1000000 : 1 / Math.pow(Math.sqrt(distSq), 2); // Angin menggunakan p=2 agar persebaran lebih rata
+
+            // Konversi Derajat ke Radian
+            const rad = (sensor.wd * Math.PI) / 180;
+
+            // Pecah menjadi Vektor (U, V) dan kalikan dengan kecepatan
+            const u = Math.cos(rad) * sensor.ws;
+            const v = Math.sin(rad) * sensor.ws;
+
+            weightedU += u * weight;
+            weightedV += v * weight;
+            weightedSpeed += sensor.ws * weight;
+            totalWeight += weight;
+        }
+
+        if (totalWeight === 0) return { wd: 0, ws: 0 };
+
+        // Kembalikan Vektor rata-rata
+        const avgU = weightedU / totalWeight;
+        const avgV = weightedV / totalWeight;
+        const avgSpeed = weightedSpeed / totalWeight;
+
+        // Kembalikan ke Derajat (Arc Tangent 2)
+        let avgWd = (Math.atan2(avgV, avgU) * 180) / Math.PI;
+
+        // Normalisasi putaran (jika negatif, putar agar menjadi positif dalam skala 360)
+        if (avgWd < 0) avgWd += 360;
+
+        return {
+            wd: Math.round(avgWd),
+            ws: parseFloat(avgSpeed.toFixed(1))
+        };
+    },
+
+    /**
+     * 4. GENERATOR MATRIKS GRID KANVAS
+     * 
+     * Menghasilkan peta titik-titik (resolusi) untuk digambar oleh HTML5 Canvas.
+     * Outputnya akan di-mapping oleh komponen UI Render.
+     */
+    generateCanvasGrid: (bounds: GridBounds, resolutionX: number, resolutionY: number): GridPoint[] => {
+        const points: GridPoint[] = [];
+
+        const latStep = (bounds.latMax - bounds.latMin) / (resolutionY - 1);
+        const lngStep = (bounds.lngMax - bounds.lngMin) / (resolutionX - 1);
+
+        for (let y = 0; y < resolutionY; y++) {
+            for (let x = 0; x < resolutionX; x++) {
+                points.push({
+                    x,
+                    y,
+                    // Titik (0,0) di canvas biasanya kiri atas. Jadi Y harus di-inverse terhadap Latitude jika digambar.
+                    lat: bounds.latMin + (y * latStep),
+                    lng: bounds.lngMin + (x * lngStep)
+                });
+            }
+        }
+
+        return points;
+    },
+
+    /**
+     * 5. GRADASI WARNA KONTINU (LINEAR COLOR INTERPOLATION)
+     * 
+     * Menggantikan Switch-Case warna kaku. Jika nilai AQI jatuh di antara
+     * dua titik batas (misal: 75, antara 50 dan 100), algoritma ini akan
+     * mencampurkan RGB secara merata untuk menghasilkan gradasi mulus.
+     */
+    interpolateColorRgb: (aqi: number): [number, number, number] => {
+        // Fallback batas aman
+        if (aqi <= 0) return [16, 185, 129];
+        if (aqi >= 400) return [126, 0, 35];
+
+        let lowerLimit = AQI_COLOR_STOPS[0];
+        let upperLimit = AQI_COLOR_STOPS[AQI_COLOR_STOPS.length - 1];
+
+        // Temukan di antara bracket (batas) mana AQI ini jatuh
+        for (let i = 0; i < AQI_COLOR_STOPS.length - 1; i++) {
+            if (aqi >= AQI_COLOR_STOPS[i].val && aqi <= AQI_COLOR_STOPS[i + 1].val) {
+                lowerLimit = AQI_COLOR_STOPS[i];
+                upperLimit = AQI_COLOR_STOPS[i + 1];
+                break;
+            }
+        }
+
+        const range = upperLimit.val - lowerLimit.val;
+        // Mencegah division by zero jika AQI persis di batas
+        if (range === 0) return lowerLimit.rgb as [number, number, number];
+
+        // Hitung persentase posisi AQI di antara dua batas
+        const ratio = (aqi - lowerLimit.val) / range;
+
+        // Campurkan (Blend) masing-masing spektrum Merah, Hijau, Biru (RGB)
+        const r = Math.round(lowerLimit.rgb[0] + ratio * (upperLimit.rgb[0] - lowerLimit.rgb[0]));
+        const g = Math.round(lowerLimit.rgb[1] + ratio * (upperLimit.rgb[1] - lowerLimit.rgb[1]));
+        const b = Math.round(lowerLimit.rgb[2] + ratio * (upperLimit.rgb[2] - lowerLimit.rgb[2]));
+
+        return [r, g, b];
+    },
+
+    /**
+     * 6. KODE WARNA STATIS (Kompabilitas / Fallback UI Tegas)
+     * 
+     * Digunakan jika komponen UI membutuhkan batas tegas murni sesuai EPA 
+     * tanpa efek perpaduan gradasi.
+     */
+    getStaticAqiColorRgb: (aqi: number): [number, number, number] => {
+        if (aqi <= 50) return [16, 185, 129];
+        if (aqi <= 100) return [250, 204, 21];
+        if (aqi <= 150) return [249, 115, 22];
+        if (aqi <= 200) return [239, 68, 68];
+        if (aqi <= 300) return [147, 51, 234];
+        return [126, 0, 35];
+    }
 };
 
 --- FILE: src\lib\utils.ts ---
@@ -5950,6 +6218,75 @@ export function FollowUpModal({ isOpen, onClose, inspection }: FollowUpModalProp
 }
 
 
+--- FILE: src\modules\admin\components\gis\AqiHorizontalLegend.tsx ---
+// src/modules/admin/components/gis/AqiHorizontalLegend.tsx
+import React from "react";
+import { Wind } from "lucide-react";
+import { useGisUIStore } from "@/store/useGisUIStore";
+import { cn } from "@/lib/utils";
+
+/**
+ * ============================================================================
+ * AQI HORIZONTAL LEGEND (IQAir / BMKG Style)
+ * ============================================================================
+ * Menampilkan bilah spektrum warna kualitas udara secara mendatar di bawah 
+ * layar. Menghindari Cognitive Overload akibat legenda vertikal yang memakan
+ * terlalu banyak ruang kanvas peta.
+ */
+export default function AqiHorizontalLegend() {
+    const { activeLayers } = useGisUIStore();
+
+    // Hanya tampilkan legenda ini jika Layer Kualitas Udara (AQI) sedang diaktifkan
+    if (!activeLayers.includes("layer-aqi")) return null;
+
+    // Spektrum Warna & Label Kategori berdasarkan Standar US EPA
+    const aqiSpectrum = [
+        { label: "Baik", range: "0 - 50", bg: "bg-[#10b981]", text: "text-white" },               // Emerald 500
+        { label: "Sedang", range: "51 - 100", bg: "bg-[#facc15]", text: "text-slate-900" },       // Yellow 400
+        { label: "Sensitif", range: "101 - 150", bg: "bg-[#f97316]", text: "text-white" },        // Orange 500
+        { label: "Tidak Sehat", range: "151 - 200", bg: "bg-[#ef4444]", text: "text-white" },     // Red 500
+        { label: "Sangat Tidak Sehat", range: "201 - 300", bg: "bg-[#9333ea]", text: "text-white" },// Purple 600
+        { label: "Berbahaya", range: "300+", bg: "bg-[#7e0023]", text: "text-white" }             // Maroon
+    ];
+
+    return (
+        // FIX Z-INDEX: Menggunakan z-[9999] agar lepas dari jebakan Leaflet Panes (z-400)
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[9999] pointer-events-auto flex flex-col items-center animate-in fade-in slide-in-from-bottom-4 duration-500 shadow-2xl">
+
+            {/* Header Legenda Tipis */}
+            <div className="bg-white/90 backdrop-blur border border-slate-200 border-b-0 px-3 py-1 flex items-center gap-1.5 shadow-sm">
+                <Wind size={12} className="text-emerald-700" />
+                <span className="text-[9px] font-black uppercase tracking-widest text-slate-700">
+                    US EPA Air Quality Index (AQI)
+                </span>
+            </div>
+
+            {/* Bilah Warna Horizontal (Continuous Flush Bar) */}
+            <div className="flex bg-white/90 backdrop-blur border border-slate-200 shadow-lg shadow-slate-900/20">
+                {aqiSpectrum.map((item, idx) => (
+                    <div
+                        key={idx}
+                        className={cn(
+                            "flex flex-col items-center justify-center px-3 md:px-4 py-1.5 min-w-[60px] md:min-w-[90px] border-r border-white/20 last:border-r-0 transition-all hover:brightness-110",
+                            item.bg,
+                            item.text
+                        )}
+                        title={`AQI ${item.range}: ${item.label}`}
+                    >
+                        <span className="text-[10px] font-bold tracking-tight whitespace-nowrap leading-none">
+                            {item.label}
+                        </span>
+                        <span className="text-[8px] font-black opacity-80 mt-1 leading-none">
+                            {item.range}
+                        </span>
+                    </div>
+                ))}
+            </div>
+
+        </div>
+    );
+}
+
 --- FILE: src\modules\admin\components\gis\GisNavbar.tsx ---
 // src/modules/admin/components/gis/GisNavbar.tsx
 import React, { useMemo } from "react";
@@ -6094,7 +6431,7 @@ export default function GisNavbar() {
 --- FILE: src\modules\admin\components\gis\GisSidebar.tsx ---
 // src/modules/admin/components/gis/GisSidebar.tsx
 import React, { useMemo } from "react";
-import { Layers, Building2, Info, ClipboardList, Truck } from "lucide-react";
+import { Layers, Building2, Info, ClipboardList, Truck, Map as MapIcon } from "lucide-react";
 import { useGisUIStore } from "@/store/useGisUIStore";
 import { useSijagaStore } from "@/store/useSijagaStore";
 import { GisPanelType } from "@/types/gis";
@@ -6108,24 +6445,29 @@ export default function GisSidebar() {
     const { openPanel, activePanels, closePanelsToTheRight } = useGisUIStore();
     const { currentUser } = useSijagaStore();
 
-    // Deteksi jika role yang masuk adalah Petugas Lapangan, Transporter, atau Auditor (Information Expert) [3]
     const isOfficer = currentUser?.role === "PETUGAS_LAPANGAN";
     const isTransporter = currentUser?.role === "PENGANGKUT";
-    const isAuditor = currentUser?.role === "AUDITOR"; // DETEKSI BARU: Khusus pimpinan/auditor eksekutif [3]
+    const isAuditor = currentUser?.role === "AUDITOR";
 
-    // Menyusun navigasi item secara reaktif sesuai role yang aktif (Adaptive GFW UI) [3]
+    // Menyusun navigasi item secara reaktif sesuai role yang aktif (Adaptive GFW UI)
     const navigationItems = useMemo(() => {
         const items = [
             {
                 type: "layer-kewajiban" as GisPanelType,
                 label: "Layers",
                 icon: Layers,
-                title: "Konfigurasi Layer Kepatuhan"
+                title: "Konfigurasi Layer Data"
+            },
+            // [NEW] Laci khusus pengaturan Basemap Peta
+            {
+                type: "basemap-gallery" as GisPanelType,
+                label: "Basemap",
+                icon: MapIcon,
+                title: "Katalog Peta Dasar"
             }
         ];
 
         if (isOfficer) {
-            // Jika Petugas Lapangan
             items.push({
                 type: "tugas-patroli" as GisPanelType,
                 label: "Tugas",
@@ -6133,7 +6475,6 @@ export default function GisSidebar() {
                 title: "Daftar Penugasan Patroli"
             });
         } else if (isTransporter) {
-            // Jika Transporter (Pengangkut)
             items.push({
                 type: "armada-tracking" as GisPanelType,
                 label: "Armada",
@@ -6141,7 +6482,6 @@ export default function GisSidebar() {
                 title: "Live Pelacakan Armada"
             });
         } else if (isAuditor) {
-            // OPTIMASI BARU: Jika Auditor / Pimpinan Eksekutif, berikan terminologi khusus kepatuhan daerah [3]
             items.push({
                 type: "katalog-perusahaan" as GisPanelType,
                 label: "Kepatuhan",
@@ -6149,7 +6489,6 @@ export default function GisSidebar() {
                 title: "Pemantauan Kepatuhan Industri"
             });
         } else {
-            // Jika Admin DLH atau Super Admin biasa
             items.push({
                 type: "katalog-perusahaan" as GisPanelType,
                 label: "Industri",
@@ -6161,14 +6500,11 @@ export default function GisSidebar() {
         return items;
     }, [isOfficer, isTransporter, isAuditor]);
 
-    // Helper cek status aktif
     const isPanelActive = (type: GisPanelType) => {
         return activePanels.some(p => p.type === type);
     };
 
-    // Handler klik menu
     const handleNavClick = (item: typeof navigationItems[0]) => {
-        // Karena GFW paradigm itu zero-gap, kalau klik menu baru, kita tutup panel yang melayang di kanannya dulu
         closePanelsToTheRight(-1);
         openPanel(item.type, item.title);
     };
@@ -6176,7 +6512,6 @@ export default function GisSidebar() {
     return (
         <aside className="absolute top-16 bottom-0 left-0 w-16 flex flex-col items-center bg-white border-r border-slate-200 z-40 pointer-events-auto">
 
-            {/* BAGIAN ATAS: Menu Utama */}
             <div className="flex-1 flex flex-col items-center w-full">
                 {navigationItems.map((item, index) => {
                     const isActive = isPanelActive(item.type);
@@ -6197,10 +6532,8 @@ export default function GisSidebar() {
                                 </span>
                             </button>
 
-                            {/* Tooltip GFW Style (Sharp Edges) */}
                             <div className="absolute top-1/2 left-full -translate-y-1/2 ml-1 px-3 py-2 bg-slate-800 text-white text-[10px] font-bold uppercase tracking-widest rounded-none opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
                                 {item.title}
-                                {/* Panah Tooltip runcing */}
                                 <div className="absolute top-1/2 -left-1 -translate-y-1/2 w-2 h-2 bg-slate-800 rotate-45 rounded-none" />
                             </div>
                         </div>
@@ -6208,7 +6541,6 @@ export default function GisSidebar() {
                 })}
             </div>
 
-            {/* BAGIAN BAWAH: Info/About System */}
             <div className="flex flex-col items-center w-full mt-auto">
                 <div className="w-8 h-px bg-slate-200 mb-1" />
 
@@ -6234,6 +6566,552 @@ export default function GisSidebar() {
     );
 }
 
+--- FILE: src\modules\admin\components\gis\layers\AqiSurfaceLayer.tsx ---
+// src/modules/admin/components/gis/layers/AqiSurfaceLayer.tsx
+import React, { useEffect, useState, useMemo } from 'react';
+import { ImageOverlay } from 'react-leaflet';
+import { spatialMath, AqiNode } from '@/lib/spatialMath';
+
+// Impor GeoJSON untuk menciptakan path Clipping Canvas (Information Expert)
+import kecData from '@/assets/geojson/kotim-kecamatan.json';
+
+interface AqiSurfaceLayerProps {
+    companies: any[];
+    mapOpacity: number; // 0 - 100
+}
+
+// Bounding Box DIPERLUAS untuk mencakup seluruh ekstrem wilayah Kotawaringin Timur.
+// Mencegah kebocoran "Blank Spots" di pedalaman utara atau pesisir selatan.
+const KOTIM_BOUNDS = {
+    latMin: -3.40,  // Diperluas ke Selatan (Pesisir)
+    latMax: -1.30,  // Diperluas ke Utara (Pedalaman)
+    lngMin: 112.00, // Diperluas ke Barat
+    lngMax: 113.60  // Diperluas ke Timur
+};
+
+// Bounds format Leaflet: [[South, West], [North, East]]
+const LEAFLET_BOUNDS: [number, number][] = [
+    [KOTIM_BOUNDS.latMin, KOTIM_BOUNDS.lngMin],
+    [KOTIM_BOUNDS.latMax, KOTIM_BOUNDS.lngMax]
+];
+
+// Resolusi Kanvas. Semakin tinggi semakin detail, namun lebih berat di CPU.
+// 80x80 = 6400 titik kalkulasi, optimal untuk rendering batas presisi Kotim.
+const CANVAS_RESOLUTION = 80;
+
+/**
+ * ============================================================================
+ * AQI SURFACE LAYER (CANVAS BLENDING ENGINE W/ CLIPPING)
+ * ============================================================================
+ * Menggunakan teknik Clipping Mask dari HTML5 Canvas agar bentuk gradasi
+ * terpotong rapi mengikuti lekukan geografis Kabupaten Kotawaringin Timur.
+ */
+export default function AqiSurfaceLayer({ companies, mapOpacity }: AqiSurfaceLayerProps) {
+    const [canvasDataUrl, setCanvasDataUrl] = useState<string | null>(null);
+
+    // 1. Ekstrak Data Sensor
+    const aqiSensors = useMemo(() => {
+        return companies.map(c => {
+            const lat = parseFloat(c.lat);
+            const lng = parseFloat(c.lng);
+            if (isNaN(lat) || isNaN(lng)) return null;
+
+            // Pseudo-random AQI simulator berdasarkan koordinat
+            const seed = Math.abs(Math.sin(lat) * Math.cos(lng));
+            const aqi = Math.floor(25 + (seed * 60)); // Rentang 25 - 85
+
+            return { lat, lng, aqi } as AqiNode;
+        }).filter(Boolean) as AqiNode[];
+    }, [companies]);
+
+    // 2. Render Canvas di Background Memory (Pure Fabrication)
+    useEffect(() => {
+        if (aqiSensors.length === 0 || !kecData || !(kecData as any).features) return;
+
+        // Membuat kanvas offscreen
+        const canvas = document.createElement('canvas');
+        canvas.width = CANVAS_RESOLUTION;
+        canvas.height = CANVAS_RESOLUTION;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        if (!ctx) return;
+
+        const latStep = (KOTIM_BOUNDS.latMax - KOTIM_BOUNDS.latMin) / (CANVAS_RESOLUTION - 1);
+        const lngStep = (KOTIM_BOUNDS.lngMax - KOTIM_BOUNDS.lngMin) / (CANVAS_RESOLUTION - 1);
+
+        // --- A. PEMBUATAN CLIPPING PATH KOTIM ---
+        // Mentranslasikan koordinat Lat/Lng dari GeoJSON ke koordinat X/Y pada Canvas
+        const kotimPath = new Path2D();
+
+        const getX = (lng: number) => ((lng - KOTIM_BOUNDS.lngMin) / (KOTIM_BOUNDS.lngMax - KOTIM_BOUNDS.lngMin)) * CANVAS_RESOLUTION;
+        // Y di-inverse karena 0,0 di Canvas ada di atas, sedangkan LatMax ada di Utara (atas)
+        const getY = (lat: number) => ((KOTIM_BOUNDS.latMax - lat) / (KOTIM_BOUNDS.latMax - KOTIM_BOUNDS.latMin)) * CANVAS_RESOLUTION;
+
+        (kecData as any).features.forEach((feature: any) => {
+            const geom = feature.geometry;
+            if (!geom) return;
+
+            if (geom.type === "Polygon") {
+                geom.coordinates.forEach((ring: any[]) => {
+                    ring.forEach((coord, i) => {
+                        const x = getX(coord[0]);
+                        const y = getY(coord[1]);
+                        if (i === 0) kotimPath.moveTo(x, y);
+                        else kotimPath.lineTo(x, y);
+                    });
+                    kotimPath.closePath();
+                });
+            } else if (geom.type === "MultiPolygon") {
+                geom.coordinates.forEach((poly: any[][]) => {
+                    poly.forEach((ring: any[]) => {
+                        ring.forEach((coord, i) => {
+                            const x = getX(coord[0]);
+                            const y = getY(coord[1]);
+                            if (i === 0) kotimPath.moveTo(x, y);
+                            else kotimPath.lineTo(x, y);
+                        });
+                        kotimPath.closePath();
+                    });
+                });
+            }
+        });
+
+        // Terapkan Path sebagai Masking Canvas
+        ctx.save();
+        ctx.clip(kotimPath);
+
+        // --- B. RENDERING PIKSEL & OPTIMASI CPU ---
+        for (let y = 0; y < CANVAS_RESOLUTION; y++) {
+            for (let x = 0; x < CANVAS_RESOLUTION; x++) {
+
+                // OPTIMASI KRITIS: Jika titik X/Y ini jatuh di laut atau kabupaten lain, 
+                // lewati kalkulasi IDW (hemat ribuan siklus CPU tiap frame).
+                if (!ctx.isPointInPath(kotimPath, x, y)) {
+                    continue;
+                }
+
+                const currentLat = KOTIM_BOUNDS.latMax - (y * latStep);
+                const currentLng = KOTIM_BOUNDS.lngMin + (x * lngStep);
+
+                // Tarik nilai tebakan dari Engine IDW kita
+                const interpolatedAqi = spatialMath.interpolateAqi(currentLat, currentLng, aqiSensors);
+                const [r, g, b] = spatialMath.interpolateColorRgb(interpolatedAqi);
+
+                ctx.fillStyle = `rgb(${r},${g},${b})`;
+                ctx.fillRect(x, y, 1, 1);
+            }
+        }
+
+        ctx.restore();
+
+        // Simpan sebagai URI Gambar agar bisa ditangkap oleh ImageOverlay Leaflet
+        setCanvasDataUrl(canvas.toDataURL('image/png'));
+    }, [aqiSensors]);
+
+    if (!canvasDataUrl) return null;
+
+    return (
+        <ImageOverlay
+            url={canvasDataUrl}
+            bounds={LEAFLET_BOUNDS as any}
+            opacity={mapOpacity / 100}
+            // CSS Blur menyatukan matriks piksel menjadi gradasi mulus
+            // mix-blend-multiply menempelkan warna ini ke atas basemap seperti tinta
+            className="continuous-surface-map mix-blend-multiply blur-[20px]"
+            interactive={false}
+        />
+    );
+}
+
+--- FILE: src\modules\admin\components\gis\layers\CompanyMarkerLayer.tsx ---
+// src/modules/admin/components/gis/layers/CompanyMarkerLayer.tsx
+import React, { useMemo } from 'react';
+import { Polygon, Marker } from 'react-leaflet';
+import L from 'leaflet';
+import { useGisUIStore } from '@/store/useGisUIStore';
+
+interface CompanyMarkerLayerProps {
+    companies: any[];
+    currentZoom: number;
+    mapOpacity: number;
+    isOfficer: boolean;
+}
+
+// ============================================================================
+// PURE FABRICATION: GENERATOR IKON MARKER
+// ============================================================================
+const createCompanyMarkerIcon = (score?: number | null, docType?: string, isSelected?: boolean) => {
+    let colorClass = "bg-emerald-500";
+    let ringClass = "border-emerald-200 bg-emerald-500/20";
+    let pulseClass = ""; // Default: TIDAK ADA ANIMASI (Mencegah Cognitive Overload)
+
+    // Logika pewarnaan berdasarkan ESG Score
+    if (score !== undefined && score !== null) {
+        if (score < 60) {
+            colorClass = "bg-red-500";
+            ringClass = "border-red-200 bg-red-500/20";
+            pulseClass = "animate-pulse"; // UX FIX: Animasi berkedip HANYA untuk status KRITIS
+        } else if (score < 80) {
+            colorClass = "bg-amber-500";
+            ringClass = "border-amber-200 bg-amber-500/20";
+        }
+    } else if (docType === 'AMDAL') {
+        colorClass = "bg-red-500";
+        ringClass = "border-red-200 bg-red-500/20";
+    }
+
+    // Timpa styling jika marker sedang diklik/di-select user
+    if (isSelected) {
+        ringClass = "border-slate-800 bg-slate-900/30";
+        pulseClass = ""; // Hentikan kedipan jika sudah di-klik (Acknowledged)
+    }
+
+    return L.divIcon({
+        html: `
+            <div style="position: relative; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">
+                <span class="absolute inline-flex h-6 w-6 rounded-full border ${ringClass} ${pulseClass}"></span>
+                <span class="relative inline-flex rounded-full h-2.5 w-2.5 ${colorClass} border border-white shadow-sm"></span>
+            </div>
+        `,
+        className: "custom-company-marker-wrapper bg-transparent border-none",
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
+    });
+};
+
+/**
+ * ============================================================================
+ * COMPANY MARKER LAYER (LOD & POLYMORPHIC RENDERER)
+ * ============================================================================
+ * Komponen ini hanya bertanggung jawab mem-parsing data perusahaan dan 
+ * merendernya di peta. Mematuhi prinsip LOD (Level of Detail).
+ */
+export default function CompanyMarkerLayer({ companies, currentZoom, mapOpacity, isOfficer }: CompanyMarkerLayerProps) {
+    // Menarik state global yang dibutuhkan (Low Coupling ke LimbahMap)
+    const {
+        activeLayers,
+        selectedCompanyId,
+        setSelectedCompanyId,
+        openPanel,
+        closePanelsToTheRight
+    } = useGisUIStore();
+
+    // 1. Ekstraksi Poligon & Klasifikasi Layer (Information Expert)
+    const processedCompanies = useMemo(() => {
+        // Petugas lapangan tidak melihat katalog pabrik umum, mereka hanya melihat pin tugas.
+        if (isOfficer) return [];
+
+        return companies.map(c => {
+            const lat = parseFloat(c.lat);
+            const lng = parseFloat(c.lng);
+
+            // Tentukan ke layer mana entitas ini masuk (berdasarkan regulasi)
+            const layerId = c.docType === 'AMDAL' ? 'layer-amdal' :
+                (c.docType === 'UKL-UPL' || c.docType === 'UKL_UPL') ? 'layer-uklupl' :
+                    'layer-sppl';
+
+            // Simulasi luasan bangunan pabrik (Bounding Box offset)
+            const offset = 0.0008;
+            const poly: [number, number][] = (isNaN(lat) || isNaN(lng))
+                ? []
+                : [
+                    [lat - offset, lng - offset], [lat + offset, lng - offset],
+                    [lat + offset, lng + offset], [lat - offset, lng + offset],
+                ];
+
+            // Konfigurasi warna poligon berdasarkan regulasi
+            let style = { color: '#10b981', fillColor: '#10b981' }; // Emerald (SPPL)
+            if (c.status === "PENDING" || c.status === "REVIEW") {
+                style = { color: '#3b82f6', fillColor: '#3b82f6' }; // Biru (Pending)
+            } else if (c.status === "SUSPENDED" || c.status === "REJECTED") {
+                style = { color: '#64748b', fillColor: '#64748b' }; // Abu-abu (Suspend)
+            } else {
+                if (c.docType === 'AMDAL') style = { color: '#ef4444', fillColor: '#ef4444' }; // Merah
+                else if (c.docType === 'UKL-UPL' || c.docType === 'UKL_UPL') style = { color: '#f59e0b', fillColor: '#f59e0b' }; // Amber
+            }
+
+            return { ...c, lat, lng, polygon: poly, layerId, style };
+        }).filter(c => !isNaN(c.lat) && !isNaN(c.lng));
+    }, [companies, isOfficer]);
+
+    // 2. Click Handler (Trigger Laci Ganda GFW)
+    const handleEntityClick = (c: any, e: L.LeafletMouseEvent) => {
+        e.originalEvent.stopPropagation();
+
+        // Posisikan kamera secara dinamis
+        if (currentZoom >= 16) {
+            e.target._map.flyToBounds(e.target.getBounds(), { padding: [100, 100], duration: 1.5 });
+        } else {
+            e.target._map.flyTo([c.lat, c.lng], 16, { animate: true, duration: 1.5 });
+        }
+
+        setSelectedCompanyId(c.id);
+
+        // Memutus rantai laci melayang sebelumnya (Zero-Gap Stack Policy)
+        closePanelsToTheRight(-1);
+
+        // [DOUBLE TRIGGER] Buka 2 laci sekaligus: Administrasi & Telemetri Udara
+        openPanel("detil-perusahaan", `Detail Industri`, c);
+        openPanel("telemetri-lingkungan", `Telemetri Spasial`, c);
+    };
+
+    if (isOfficer) return null;
+
+    return (
+        <React.Fragment>
+            {processedCompanies.map(c => {
+                // Cek apakah layer dari entitas ini sedang dihidupkan di menu samping
+                if (!activeLayers.includes(c.layerId)) return null;
+
+                const isSelected = selectedCompanyId === c.id;
+
+                // [LOD RENDERER] 
+                // Jika zoom 16 atau lebih dekat, render bentuk asli Poligon pabrik.
+                if (currentZoom >= 16 && c.polygon.length > 0) {
+                    return (
+                        <Polygon
+                            key={`poly-${c.id}`}
+                            positions={c.polygon}
+                            pathOptions={{
+                                color: isSelected ? '#0f172a' : c.style.color, // Jika dipilih, garis luar jadi tegas
+                                fillColor: c.style.fillColor,
+                                fillOpacity: isSelected ? 0.7 : (0.4 * (mapOpacity / 100)),
+                                weight: isSelected ? 3 : 2,
+                                dashArray: c.layerId === 'layer-amdal' ? '6,4' : undefined,
+                            }}
+                            eventHandlers={{ click: (e) => handleEntityClick(c, e) }}
+                        />
+                    );
+                }
+
+                // Jika zoom di bawah 16, render Pin Minimalis untuk hemat memori
+                return (
+                    <Marker
+                        key={`marker-${c.id}`}
+                        position={[c.lat, c.lng]}
+                        icon={createCompanyMarkerIcon(c.score, c.docType, isSelected)}
+                        eventHandlers={{ click: (e) => handleEntityClick(c, e) }}
+                    />
+                );
+            })}
+        </React.Fragment>
+    );
+}
+
+--- FILE: src\modules\admin\components\gis\layers\WindFlowLayer.tsx ---
+// src/modules/admin/components/gis/layers/WindFlowLayer.tsx
+import React, { useEffect, useMemo, useRef } from 'react';
+import { useMap } from 'react-leaflet';
+import L from 'leaflet';
+import { spatialMath, WindNode } from '@/lib/spatialMath';
+
+interface WindFlowLayerProps {
+    companies: any[];
+}
+
+// Bounding Box Kotim (Disamakan persis dengan AqiSurfaceLayer)
+const KOTIM_BOUNDS = {
+    latMin: -3.40,
+    latMax: -1.30,
+    lngMin: 112.00,
+    lngMax: 113.60
+};
+
+// Parameter Engine Partikel
+const RESOLUTION = 40; // Kerapatan Matriks Vektor (40x40 grid)
+const PARTICLE_COUNT = 400; // Jumlah partikel yang mengalir
+const PARTICLE_LIFESPAN = 100; // Umur partikel sebelum "mati" dan respawn
+
+/**
+ * ============================================================================
+ * WIND FLOW LAYER (CUSTOM CANVAS PARTICLE ENGINE)
+ * ============================================================================
+ * Menciptakan ilusi Fluid Dynamics (seperti IQAir) menggunakan HTML5 Canvas.
+ * Dilengkapi dengan arsitektur "Fade & Pause" (Debounced Rendering) untuk
+ * mencegah frame drop dan flickering saat peta digeser.
+ */
+export default function WindFlowLayer({ companies }: WindFlowLayerProps) {
+    const map = useMap();
+    const canvasRef = useRef<HTMLCanvasElement | null>(null);
+    const animationRef = useRef<number | null>(null);
+
+    // 1. Ekstrak Data Sensor Angin
+    const windSensors = useMemo(() => {
+        return companies.map(c => {
+            const lat = parseFloat(c.lat);
+            const lng = parseFloat(c.lng);
+            if (isNaN(lat) || isNaN(lng)) return null;
+
+            // Seed generator (Sama seperti AQI)
+            const seed = Math.abs(Math.sin(lat) * Math.cos(lng));
+            const wd = Math.floor(seed * 360);
+            const ws = parseFloat((1.5 + (seed * 4)).toFixed(1)); // 1.5 - 5.5 m/s
+
+            return { lat, lng, wd, ws } as WindNode;
+        }).filter(Boolean) as WindNode[];
+    }, [companies]);
+
+    // 2. PRE-COMPUTE VECTOR FIELD (O(1) Lookup untuk Animasi)
+    const vectorField = useMemo(() => {
+        if (windSensors.length === 0) return [];
+        const grid = spatialMath.generateCanvasGrid(KOTIM_BOUNDS, RESOLUTION, RESOLUTION);
+
+        return grid.map(pt => {
+            const wind = spatialMath.interpolateWind(pt.lat, pt.lng, windSensors);
+            const rad = (wind.wd * Math.PI) / 180;
+            const speed = wind.ws * 0.8;
+            return {
+                u: Math.cos(rad) * speed,
+                v: Math.sin(rad) * speed
+            };
+        });
+    }, [windSensors]);
+
+    // 3. LIFECYCLE ENGINE PARTIKEL CANVAS
+    useEffect(() => {
+        if (vectorField.length === 0) return;
+
+        const canvas = document.createElement('canvas');
+        canvas.className = 'leaflet-zoom-animated pointer-events-none mix-blend-screen';
+        canvas.style.position = 'absolute';
+        canvas.style.left = '0';
+        canvas.style.top = '0';
+        // THE MAGIC FADE: Mengatur transisi CSS agar halus saat dimatikan/dihidupkan
+        canvas.style.opacity = '0.7';
+        canvas.style.transition = 'opacity 0.3s ease-in-out';
+
+        map.getPanes().overlayPane.appendChild(canvas);
+        canvasRef.current = canvas;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        let particles: { x: number, y: number, age: number }[] = [];
+        let isAnimating = true; // State Engine
+
+        const syncCanvas = () => {
+            const size = map.getSize();
+            canvas.width = size.x;
+            canvas.height = size.y;
+
+            const topLeft = map.containerPointToLayerPoint([0, 0]);
+            L.DomUtil.setPosition(canvas, topLeft);
+
+            particles = Array.from({ length: PARTICLE_COUNT }).map(() => ({
+                x: Math.random() * size.x,
+                y: Math.random() * size.y,
+                age: Math.random() * PARTICLE_LIFESPAN
+            }));
+        };
+
+        // 4. THE FADE & PAUSE STRATEGY (LIFECYCLE HANDLERS)
+        const handleMoveStart = () => {
+            isAnimating = false;
+            // Matikan engine animasi segera untuk membebaskan CPU
+            if (animationRef.current) {
+                cancelAnimationFrame(animationRef.current);
+                animationRef.current = null;
+            }
+            // Memicu CSS transition fade-out
+            canvas.style.opacity = '0';
+        };
+
+        const handleMoveEnd = () => {
+            // Kalkulasi ulang layout
+            syncCanvas();
+            isAnimating = true;
+            // Memicu CSS transition fade-in
+            canvas.style.opacity = '0.7';
+            // Start engine kembali
+            render();
+        };
+
+        // Pasang pendengar event (Listener)
+        map.on('movestart zoomstart', handleMoveStart);
+        map.on('moveend zoomend', handleMoveEnd);
+
+        // Inisialisasi Pertama
+        syncCanvas();
+
+        // 5. ANIMATION LOOP (60 FPS)
+        const render = () => {
+            // Guard clause: Cegah render jika sedang digeser atau kanvas hilang
+            if (!isAnimating || !canvasRef.current) return;
+
+            const width = canvas.width;
+            const height = canvas.height;
+
+            // Fading Tails
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+            ctx.fillRect(0, 0, width, height);
+
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.lineCap = 'round';
+
+            const bounds = map.getBounds();
+            const latMin = bounds.getSouth();
+            const latMax = bounds.getNorth();
+            const lngMin = bounds.getWest();
+            const lngMax = bounds.getEast();
+
+            ctx.beginPath();
+
+            particles.forEach(p => {
+                if (p.age > PARTICLE_LIFESPAN) {
+                    p.x = Math.random() * width;
+                    p.y = Math.random() * height;
+                    p.age = 0;
+                }
+
+                const pLatLng = map.containerPointToLatLng([p.x, p.y]);
+
+                const gridX = Math.floor(((pLatLng.lng - KOTIM_BOUNDS.lngMin) / (KOTIM_BOUNDS.lngMax - KOTIM_BOUNDS.lngMin)) * RESOLUTION);
+                const gridY = Math.floor(((KOTIM_BOUNDS.latMax - pLatLng.lat) / (KOTIM_BOUNDS.latMax - KOTIM_BOUNDS.latMin)) * RESOLUTION);
+
+                if (gridX < 0 || gridX >= RESOLUTION || gridY < 0 || gridY >= RESOLUTION) {
+                    p.age = PARTICLE_LIFESPAN + 1;
+                    return;
+                }
+
+                const index = gridY * RESOLUTION + gridX;
+                const vector = vectorField[index];
+
+                if (!vector) return;
+
+                ctx.moveTo(p.x, p.y);
+
+                p.x += vector.u + (Math.random() - 0.5) * 0.5;
+                p.y += vector.v + (Math.random() - 0.5) * 0.5;
+                p.age++;
+
+                ctx.lineTo(p.x, p.y);
+            });
+
+            ctx.stroke();
+
+            // Loop ke frame berikutnya
+            animationRef.current = requestAnimationFrame(render);
+        };
+
+        render(); // Start engine
+
+        // Cleanup
+        return () => {
+            isAnimating = false;
+            if (animationRef.current) cancelAnimationFrame(animationRef.current);
+            map.off('movestart zoomstart', handleMoveStart);
+            map.off('moveend zoomend', handleMoveEnd);
+            if (canvasRef.current && canvasRef.current.parentNode) {
+                canvasRef.current.parentNode.removeChild(canvasRef.current);
+            }
+        };
+    }, [vectorField, map]);
+
+    return null;
+}
+
 --- FILE: src\modules\admin\components\gis\LimbahMap.tsx ---
 // src/modules/admin/components/gis/LimbahMap.tsx
 import React, { useEffect, useMemo, useState } from 'react';
@@ -6248,15 +7126,26 @@ import {
     useMap,
     useMapEvents
 } from 'react-leaflet';
+// IMPORT BARU: Modul Clustering
+import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useSijagaStore } from '@/store/useSijagaStore';
 import { useGisUIStore } from '@/store/useGisUIStore';
 
-// FASE 3 INJEKSI: Mengimpor fungsi otak analitik dan data batas wilayah (GeoJSON)
+// Modul Analitik & GeoJSON Wilayah
 import { calculateCompaniesPerKecamatan } from '@/lib/spatialAnalytics';
 import kecData from '@/assets/geojson/kotim-kecamatan.json';
 import desaData from '@/assets/geojson/kotim-desa.json';
+
+// Engine Matematika Spasial (Gradient Color)
+import { spatialMath } from '@/lib/spatialMath';
+
+// --- MODUL LAYER TERISOLASI (HIGH COHESION) ---
+import AqiSurfaceLayer from './layers/AqiSurfaceLayer';
+import WindFlowLayer from './layers/WindFlowLayer';
+import CompanyMarkerLayer from './layers/CompanyMarkerLayer';
+import AqiHorizontalLegend from './AqiHorizontalLegend';
 
 // --- Fix Leaflet Default Icon ---
 import icon from "leaflet/dist/images/marker-icon.png";
@@ -6274,10 +7163,63 @@ L.Marker.prototype.options.icon = DefaultIcon;
 const DEFAULT_CENTER: [number, number] = [-2.5337, 112.9515];
 
 // ============================================================================
-// 1. ICON GENERATORS
+// HELPERS & ICONS GENERATORS
 // ============================================================================
 
-// A. Ikon Berkedip (Khusus Triage Admin & Auditor untuk memantau titik krisis)
+// Generator AQI Spasial Realistis lokal berkinerja tinggi
+const getSimulatedAqi = (lat: number, lng: number): number => {
+    if (isNaN(lat) || isNaN(lng)) return 35;
+    const seed = Math.abs(Math.sin(lat) * Math.cos(lng));
+    return Math.floor(25 + (seed * 60)); // Skala 25 - 85 (Baik - Sedang)
+};
+
+// [UPDATE] AQI Numeric Badge - BEBAS ANIMASI PULSE & WARNA DINAMIS
+const createAqiBadgeIcon = (aqi: number, bgColorRgb: string, isCluster: boolean = false) => {
+    // Teks hitam jika indikator warna kuning/terang agar terbaca (AQI 51-100)
+    const textColor = (aqi > 50 && aqi <= 100) ? '#0f172a' : '#ffffff';
+    // Beri efek ukuran agak besar jika ini adalah cluster
+    const size = isCluster ? 38 : 32;
+    const fontSize = isCluster ? '13px' : '11px';
+
+    return L.divIcon({
+        html: `
+            <div style="position: relative; width: ${size}px; height: ${size}px; display: flex; align-items: center; justify-content: center;">
+                <span class="relative flex rounded-full h-full w-full border-2 border-white shadow-md items-center justify-center font-mono font-black select-none transition-colors" style="background-color: ${bgColorRgb}; color: ${textColor}; font-size: ${fontSize};">
+                    ${Math.round(aqi)}
+                </span>
+            </div>
+        `,
+        className: "custom-aqi-numeric-badge bg-transparent border-none",
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2]
+    });
+};
+
+// [KLASTER POLIMORFISME] Fungsi kustom agregasi rata-rata AQI pada kelompok marker
+const createClusterCustomIcon = function (cluster: any) {
+    const childMarkers = cluster.getAllChildMarkers();
+
+    let sumAqi = 0;
+    let validCount = 0;
+
+    // Bedah internal options dari tiap anak (di-inject saat rendering marker)
+    childMarkers.forEach((marker: any) => {
+        if (marker.options && marker.options.aqiData !== undefined) {
+            sumAqi += marker.options.aqiData;
+            validCount++;
+        }
+    });
+
+    const avgAqi = validCount > 0 ? sumAqi / validCount : 0;
+
+    // Kalkulasi warna gradasi secara dinamis untuk nilai Rata-rata ini
+    const [r, g, b] = spatialMath.interpolateColorRgb(avgAqi);
+    const bgColorRgb = `rgb(${r}, ${g}, ${b})`;
+
+    return createAqiBadgeIcon(avgAqi, bgColorRgb, true);
+};
+
+// Ikon Berkedip (Triage Admin & Auditor untuk titik krisis pengaduan)
 const createPulsingIcon = (status: string) => {
     let colorClass = "bg-rose-600";
     let ringClass = "bg-rose-500 animate-ping";
@@ -6299,13 +7241,13 @@ const createPulsingIcon = (status: string) => {
                 </span>
             </div>
         `,
-        className: "custom-pulsing-marker-wrapper",
+        className: "custom-pulsing-marker-wrapper bg-transparent border-none",
         iconSize: [32, 32],
         iconAnchor: [16, 16],
     });
 };
 
-// B. Ikon Statis Solid (Khusus Operasional Inspektur Lapangan) - Tanpa Animasi
+// Ikon Statis Solid (Tugas Inspektur Lapangan)
 const createStaticTaskIcon = (isUnknown: boolean) => {
     const bgColor = isUnknown ? "bg-rose-500" : "bg-emerald-500";
     return L.divIcon({
@@ -6314,54 +7256,22 @@ const createStaticTaskIcon = (isUnknown: boolean) => {
                 <div style="width: 8px; height: 8px; border-radius: 9999px; background-color: white;"></div>
             </div>
         `,
-        className: "custom-static-task-marker",
+        className: "custom-static-task-marker bg-transparent border-none",
         iconSize: [28, 28],
         iconAnchor: [14, 14],
     });
 };
 
-// C. NEW LOD FEATURE: Ikon Spasial Bullet Bulat Khusus Perusahaan (Zoom < 16) [3]
-const createCompanyMarkerIcon = (score?: number | null, docType?: string) => {
-    let colorClass = "bg-emerald-500";
-    let ringClass = "border-emerald-200 bg-emerald-500/10";
-
-    if (score !== undefined && score !== null) {
-        if (score < 60) {
-            colorClass = "bg-red-500";
-            ringClass = "border-red-200 bg-red-500/10";
-        } else if (score < 80) {
-            colorClass = "bg-amber-500";
-            ringClass = "border-amber-200 bg-amber-500/10";
-        }
-    } else if (docType === 'AMDAL') {
-        colorClass = "bg-red-500";
-        ringClass = "border-red-200 bg-red-500/10";
-    }
-
-    return L.divIcon({
-        html: `
-            <div style="position: relative; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">
-                <span class="absolute inline-flex h-5 w-5 rounded-full border ${ringClass}"></span>
-                <span class="relative inline-flex rounded-full h-2.5 w-2.5 ${colorClass} border border-white"></span>
-            </div>
-        `,
-        className: "custom-company-marker-wrapper",
-        iconSize: [24, 24],
-        iconAnchor: [12, 12],
-    });
-};
-
 // ============================================================================
-// 2. MAP EVENT CONTROLLERS
+// MAP EVENT CONTROLLERS
 // ============================================================================
 
 function ExternalMapController() {
     const map = useMap();
-
     useEffect(() => {
         const handleZoomIn = () => map.zoomIn();
         const handleZoomOut = () => map.zoomOut();
-        const handleResetView = () => map.setView(DEFAULT_CENTER, 9, { animate: true }); // Reset view otomatis disesuaikan ke zoom 9 Kotim
+        const handleResetView = () => map.setView(DEFAULT_CENTER, 9, { animate: true });
 
         const handleFlyToCoords = (e: Event) => {
             const customEvent = e as CustomEvent<{ lat: number; lng: number }>;
@@ -6384,20 +7294,10 @@ function ExternalMapController() {
     return null;
 }
 
-// NEW LOD COMPONENT: Pendengar Perubahan Tingkat Zoom Kamera secara Real-time [3]
 function MapZoomListener({ onChange }: { onChange: (zoom: number) => void }) {
     const map = useMap();
-
-    useMapEvents({
-        zoomend: () => {
-            onChange(map.getZoom());
-        }
-    });
-
-    useEffect(() => {
-        onChange(map.getZoom());
-    }, [map, onChange]);
-
+    useMapEvents({ zoomend: () => onChange(map.getZoom()) });
+    useEffect(() => { onChange(map.getZoom()); }, [map, onChange]);
     return null;
 }
 
@@ -6407,57 +7307,61 @@ function MapEventsHandler() {
         click: () => {
             closePanel("detil-perusahaan");
             closePanel("detail-tugas");
+            closePanel("telemetri-lingkungan");
         }
     });
     return null;
 }
 
 // ============================================================================
-// 3. MAIN COMPONENT
+// MAIN MAP COMPONENT
 // ============================================================================
 
 export default function LimbahMap() {
     const { companies, adminReports, fetchAdminReports, currentUser, inspections } = useSijagaStore();
     const {
-        activeLayers, activeBaseMap, mapOpacity,
-        selectedCompanyId, setSelectedCompanyId, openPanel, closePanelsToTheRight,
+        activeLayers, activeBaseMap, mapOpacity, maskOpacity,
+        setSelectedCompanyId, openPanel, closePanelsToTheRight,
         activeAdminBoundary, showImpactRadius, activePanels
     } = useGisUIStore();
 
-    // STATE LOKAL: Menyimpan tingkat zoom kamera saat ini untuk komputasi LOD [3]
+    // State LOD Kamera
     const [currentZoom, setCurrentZoom] = useState(9);
 
-    // SINKRONISASI DATA AMAN (RBAC GUARD): Hanya izinkan memuat arsip aduan untuk Admin DLH & Super Admin [3]
+    // Keamanan Data Aduan (Hanya Verifikator & Eksekutif)
     useEffect(() => {
         if (currentUser && (currentUser.role === "ADMIN_DLH" || currentUser.role === "SUPER_ADMIN")) {
-            if (adminReports.length === 0) {
-                fetchAdminReports();
-            }
+            if (adminReports.length === 0) fetchAdminReports();
         }
     }, [adminReports.length, fetchAdminReports, currentUser]);
 
     const isOfficer = currentUser?.role === "PETUGAS_LAPANGAN";
 
     // ------------------------------------------------------------------------
-    // FASE 4: SPATIAL INVERTED MASKING LOGIC (Meredupkan Luar Batas Kotim) [1][3]
+    // TILE URL RESOLVER (Mendukung 5 Basemap)
+    // ------------------------------------------------------------------------
+    const getTileUrl = () => {
+        switch (activeBaseMap) {
+            case 'dark': return "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+            case 'satellite': return "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+            case 'street': return "https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}";
+            case 'esri': return "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+            case 'osm': return "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+            case 'voyager':
+            default: return "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
+        }
+    };
+
+    // ------------------------------------------------------------------------
+    // INVERTED POLYGON MASKING (Area luar Kotim)
     // ------------------------------------------------------------------------
     const invertedKotimMask = useMemo(() => {
-        // MENYEMBUNYIKAN ERROR TS2339: Meng-cast kecData ke any agar terbaca kompilator [1]
         const kecGeoJson = kecData as any;
         if (!kecGeoJson || !kecGeoJson.features) return null;
 
-        // Bounding box koordinat bumi penuh sebagai ring terluar
-        const worldOuterBounds: [number, number][] = [
-            [90, -180],
-            [90, 180],
-            [-90, 180],
-            [-90, -180],
-            [90, -180] // Tutup loop poligon terluar
-        ];
-
+        const worldOuterBounds: [number, number][] = [[90, -180], [90, 180], [-90, 180], [-90, -180], [90, -180]];
         const innerHoles: [number, number][][] = [];
 
-        // Ekstrak poligon batas administrasi seluruh kecamatan di Kotim sebagai lubang (cutout holes) [1]
         kecGeoJson.features.forEach((feature: any) => {
             const geometry = feature.geometry;
             if (!geometry) return;
@@ -6477,135 +7381,67 @@ export default function LimbahMap() {
             }
         });
 
-        // Hibrida Poligon: Outer Ring adalah Dunia, Inner Rings (lubang benderang) adalah wilayah Kotim [1][3]
         return [worldOuterBounds, ...innerHoles] as any;
     }, []);
 
     // ------------------------------------------------------------------------
-    // FASE 3: CHOROPLETH LOGIC (Kepadatan Industri per Kecamatan)
+    // CHOROPLETH (Kecamatan / Desa)
     // ------------------------------------------------------------------------
     const kecamatanCounts = useMemo(() => {
         if (activeAdminBoundary !== 'kecamatan') return {};
-        // MENYEMBUNYIKAN POTENSI ERROR TS2339: Cast kecData ke any saat kalkulasi spasial [1][3]
         return calculateCompaniesPerKecamatan(companies, kecData as any);
     }, [companies, activeAdminBoundary]);
 
-    // Gradasi Warna berdasarkan jumlah pabrik (Choropleth Color Scale)
     const getKecamatanColor = (kecName: string) => {
         const count = kecamatanCounts[kecName] || 0;
-        return count > 50 ? '#800026' :
-            count > 20 ? '#BD0026' :
-                count > 10 ? '#E31A1C' :
-                    count > 5 ? '#FC4E2A' :
-                        count > 0 ? '#FD8D3C' :
-                            '#FFEDA0'; // Kuning transparan jika 0
+        return count > 50 ? '#800026' : count > 20 ? '#BD0026' : count > 10 ? '#E31A1C' : count > 5 ? '#FC4E2A' : count > 0 ? '#FD8D3C' : '#FFEDA0';
     };
 
-    const geoJsonKecStyle = (feature: any) => {
-        const kecName = feature.properties?.WADMKC;
-        return {
-            fillColor: getKecamatanColor(kecName),
-            weight: 2,
-            opacity: 1,
-            color: 'white', // Garis batas putih tegas
-            dashArray: '3',
-            fillOpacity: 0.6 * (mapOpacity / 100)
-        };
-    };
+    const geoJsonKecStyle = (feature: any) => ({
+        fillColor: getKecamatanColor(feature.properties?.WADMKC),
+        weight: 2, opacity: 1, color: 'white', dashArray: '3',
+        fillOpacity: 0.6 * (mapOpacity / 100)
+    });
 
     const geoJsonDesaStyle = {
-        fillColor: '#3b82f6',
-        weight: 1,
-        opacity: 1,
-        color: '#1e3a8a',
+        fillColor: '#3b82f6', weight: 1, opacity: 1, color: '#1e3a8a',
         fillOpacity: 0.15 * (mapOpacity / 100)
     };
 
     // ------------------------------------------------------------------------
-    // FASE 3: IMPACT RADIUS LOGIC (Lingkaran Bencana)
+    // IMPACT RADIUS (5KM)
     // ------------------------------------------------------------------------
-    const activeTaskPanel = activePanels.find(p => p.type === 'detail-tugas' || p.type === 'detil-perusahaan');
-    const activeLat = parseFloat(activeTaskPanel?.data?.lat);
-    const activeLng = parseFloat(activeTaskPanel?.data?.lng);
-    const impactCenter: [number, number] | null = (!isNaN(activeLat) && !isNaN(activeLng)) ? [activeLat, activeLng] : null;
-
-    // ------------------------------------------------------------------------
-    // DATA LAYER A: POLIGON INDUSTRI (Hanya untuk Admin & Auditor)
-    // ------------------------------------------------------------------------
-    const companyPolygons = useMemo(() => {
-        if (isOfficer) return [];
-
-        let contextualCompanies = currentUser?.role === "AUDITOR"
-            ? companies.filter(c => c.status === "APPROVED")
-            : companies;
-
-        return contextualCompanies.map(c => {
-            const lat = parseFloat(c.lat);
-            const lng = parseFloat(c.lng);
-            const offset = 0.0008;
-
-            const poly: [number, number][] = isNaN(lat) || isNaN(lng)
-                ? [DEFAULT_CENTER, DEFAULT_CENTER, DEFAULT_CENTER, DEFAULT_CENTER]
-                : [
-                    [lat - offset, lng - offset], [lat + offset, lng - offset],
-                    [lat + offset, lng + offset], [lat - offset, lng + offset],
-                ];
-
-            let style = { color: '#22c55e', fillColor: '#22c55e', layerId: 'layer-sppl' };
-            if (c.status === "PENDING" || c.status === "REVIEW") style = { color: '#3b82f6', fillColor: '#3b82f6', layerId: 'layer-sppl' };
-            else if (c.status === "SUSPENDED" || c.status === "REJECTED") style = { color: '#64748b', fillColor: '#64748b', layerId: 'layer-sppl' };
-            else {
-                if (c.docType === 'AMDAL') style = { color: '#ef4444', fillColor: '#ef4444', layerId: 'layer-amdal' };
-                else if (c.docType === 'UKL-UPL' || c.docType === 'UKL_UPL') style = { color: '#f59e0b', fillColor: '#f59e0b', layerId: 'layer-uklupl' };
-            }
-            return { ...c, polygon: poly, style };
-        });
-    }, [companies, currentUser, isOfficer]);
+    const activeTaskPanel = activePanels.find(p => p.type === 'detail-tugas' || p.type === 'detil-perusahaan' || p.type === 'telemetri-lingkungan');
+    const impactCenter: [number, number] | null = (!isNaN(parseFloat(activeTaskPanel?.data?.lat)) && !isNaN(parseFloat(activeTaskPanel?.data?.lng)))
+        ? [parseFloat(activeTaskPanel?.data?.lat), parseFloat(activeTaskPanel?.data?.lng)]
+        : null;
 
     // ------------------------------------------------------------------------
-    // DATA LAYER B: TITIK TUGAS SOLID (Hanya untuk Inspektur Lapangan)
+    // DATA: TUGAS PETUGAS LAPANGAN
     // ------------------------------------------------------------------------
     const officerTasks = useMemo(() => {
         if (!isOfficer) return [];
-
         const userId = currentUser?.id;
         const officerId = currentUser?.officerId;
 
-        const activeTasks = inspections.filter(
-            (i) => (i.inspectorId === userId || i.inspectorId === officerId) && i.status === "Terjadwal"
-        );
-
-        return activeTasks.map(task => {
-            let lat = NaN, lng = NaN;
-            const isUnknown = task.companyId === "COM-UNKNOWN";
-
-            if (isUnknown && task.location.includes(",")) {
-                const coords = task.location.split(",");
-                lat = parseFloat(coords[0]);
-                lng = parseFloat(coords[1]);
-            } else {
-                const comp = companies.find((c) => c.id === task.companyId);
-                if (comp) {
-                    lat = parseFloat(comp.lat);
-                    lng = parseFloat(comp.lng);
+        return inspections
+            .filter((i) => (i.inspectorId === userId || i.inspectorId === officerId) && i.status === "Terjadwal")
+            .map(task => {
+                let lat = NaN, lng = NaN;
+                const isUnknown = task.companyId === "COM-UNKNOWN";
+                if (isUnknown && task.location.includes(",")) {
+                    const coords = task.location.split(",");
+                    lat = parseFloat(coords[0]);
+                    lng = parseFloat(coords[1]);
+                } else {
+                    const comp = companies.find((c) => c.id === task.companyId);
+                    if (comp) { lat = parseFloat(comp.lat); lng = parseFloat(comp.lng); }
                 }
-            }
-
-            return { ...task, lat, lng, isUnknown };
-        }).filter(t => !isNaN(t.lat) && !isNaN(t.lng));
+                return { ...task, lat, lng, isUnknown };
+            }).filter(t => !isNaN(t.lat) && !isNaN(t.lng));
     }, [inspections, currentUser, companies, isOfficer]);
 
-    // ------------------------------------------------------------------------
-    // EVENT HANDLERS
-    // ------------------------------------------------------------------------
-    const handlePolygonClick = (c: any, e: L.LeafletMouseEvent) => {
-        e.originalEvent.stopPropagation();
-        e.target._map.flyToBounds(e.target.getBounds(), { padding: [100, 100], duration: 1.5 });
-        setSelectedCompanyId(c.id);
-        closePanelsToTheRight(-1);
-        openPanel("detil-perusahaan", `Detail: ${c.companyName}`, c);
-    };
-
+    // Handler klik Laporan & Tugas
     const handleReportClick = (report: any, e: L.LeafletMouseEvent) => {
         e.originalEvent.stopPropagation();
         e.target._map.flyTo([parseFloat(report.lat), parseFloat(report.lng)], 16, { animate: true, duration: 1.5 });
@@ -6617,140 +7453,127 @@ export default function LimbahMap() {
     const handleTaskMarkerClick = (task: any, e: L.LeafletMouseEvent) => {
         e.originalEvent.stopPropagation();
         e.target._map.flyTo([task.lat, task.lng], 16, { animate: true, duration: 1.5 });
-
-        if (!task.isUnknown) setSelectedCompanyId(task.companyId);
-        else setSelectedCompanyId(null);
-
+        setSelectedCompanyId(task.isUnknown ? null : task.companyId);
         closePanelsToTheRight(-1);
         openPanel("detail-tugas", `Sidak: ${task.id}`, task);
-    };
-
-    const getTileUrl = () => {
-        switch (activeBaseMap) {
-            case 'satellite': return "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
-            case 'osm': return "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
-            case 'voyager':
-            default: return "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
-        }
     };
 
     return (
         <div className="absolute inset-0 z-0 bg-slate-100">
             <MapContainer
                 center={DEFAULT_CENTER}
-                zoom={9} // Zoom 9 divalidasi pas menyorot seluruh luasan Kotim dari pusat Sampit [3]
+                zoom={9}
                 zoomControl={false}
                 style={{ height: '100%', width: '100%' }}
+                maxZoom={18} // Direkomendasikan jika pakai clustering
             >
                 <ExternalMapController />
-                <MapZoomListener onChange={setCurrentZoom} /> {/* Menyuntikkan pemantau zoom [3] */}
+                <MapZoomListener onChange={setCurrentZoom} />
                 <MapEventsHandler />
 
+                {/* BaseMap Layer Dinamis */}
                 <TileLayer url={getTileUrl()} />
 
-                {/* 🌑 FASE 4 RENDER: INVERTED POLYGON MASK (REDUPKAN WILAYAH LUAR KOTIM) [1][3] */}
+                {/* 🌑 INVERTED POLYGON MASK (Tingkat kegelapan dikontrol oleh maskOpacity Store) */}
                 {invertedKotimMask && (
                     <Polygon
                         positions={invertedKotimMask}
                         pathOptions={{
-                            color: "#0f172a", // Navy Slate gelap
+                            color: "#0f172a",
                             fillColor: "#0f172a",
-                            fillOpacity: 0.75, // Menggelapkan luar Kotim sebanyak 75%
+                            fillOpacity: maskOpacity / 100, // Reactive Masking Control
                             weight: 1,
                             opacity: 0.2,
-                            interactive: false // KLIK TEMBUS (Mencegah masker menangkap klik yang ditujukan untuk pin) [3]
+                            interactive: false
                         }}
                     />
                 )}
 
-                {/* 🔴 FASE 3 RENDER: BATAS KECAMATAN (CHOROPLETH) */}
+                {/* 🔴 BATAS ADMINISTRASI (CHOROPLETH) */}
                 {activeAdminBoundary === 'kecamatan' && (
-                    <GeoJSON
-                        key={`kec-${mapOpacity}`}
-                        data={kecData as any}
-                        style={geoJsonKecStyle}
-                    />
+                    <GeoJSON key={`kec-${mapOpacity}`} data={kecData as any} style={geoJsonKecStyle} />
                 )}
-
-                {/* 🔴 FASE 3 RENDER: BATAS DESA */}
                 {activeAdminBoundary === 'desa' && (
-                    <GeoJSON
-                        key={`desa-${mapOpacity}`}
-                        data={desaData as any}
-                        style={geoJsonDesaStyle}
-                    />
+                    <GeoJSON key={`desa-${mapOpacity}`} data={desaData as any} style={geoJsonDesaStyle} />
                 )}
 
-                {/* 🔴 FASE 3 RENDER: IMPACT RADIUS (Cincin Bencana 5 KM) */}
+                {/* 🔴 IMPACT RADIUS (Cincin Bencana 5 KM) */}
                 {showImpactRadius && impactCenter && (
                     <Circle
                         center={impactCenter}
-                        radius={5000} // 5.000 Meter = 5 Kilometer
-                        pathOptions={{
-                            color: '#ef4444',
-                            fillColor: '#ef4444',
-                            fillOpacity: 0.15,
-                            weight: 2,
-                            dashArray: '8, 8'
-                        }}
+                        radius={5000}
+                        pathOptions={{ color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.15, weight: 2, dashArray: '8, 8' }}
                     >
-                        <Popup>
-                            <span className="text-xs font-bold text-rose-700">Radius Dampak 5 KM</span>
-                        </Popup>
+                        <Popup><span className="text-xs font-bold text-rose-700">Radius Dampak 5 KM</span></Popup>
                     </Circle>
                 )}
 
-                {/* 🟢 RENDER 1.1 (LOD DETIL): POLIGON INDUSTRI - HANYA RENDERING JIKA ZOOM >= 16 [3] */}
-                {!isOfficer && currentZoom >= 16 && companyPolygons.map(c => {
-                    if (!activeLayers.includes(c.style.layerId)) return null;
-                    const isSelected = selectedCompanyId === c.id;
-                    return (
-                        <Polygon
-                            key={c.id}
-                            positions={c.polygon}
-                            pathOptions={{
-                                color: isSelected ? '#ffffff' : c.style.color,
-                                fillColor: c.style.fillColor,
-                                fillOpacity: isSelected ? 0.7 : (0.4 * (mapOpacity / 100)),
-                                weight: isSelected ? 3 : 2,
-                                dashArray: c.style.layerId === 'layer-amdal' ? '6,4' : undefined,
-                            }}
-                            eventHandlers={{ click: (e) => handlePolygonClick(c, e) }}
-                        />
-                    );
-                })}
+                {/* 🟢 LAYER MODULAR 1: CONTINUOUS AQI SURFACE MAP (Canvas Blending Engine) */}
+                {!isOfficer && activeLayers.includes("layer-aqi") && (
+                    <AqiSurfaceLayer companies={companies} mapOpacity={mapOpacity} />
+                )}
 
-                {/* 🟢 RENDER 1.2 (LOD MAKRO): MARKER INDUSTRI SOLID - RENDERING HANYA JIKA ZOOM < 16 [3] */}
-                {!isOfficer && currentZoom < 16 && companies.map(c => {
-                    // Petakan Layer ID berdasarkan Dokumen agar sinkron dengan kontrol switch sidebar
-                    const layerId = c.docType === 'AMDAL' ? 'layer-amdal' :
-                        (c.docType === 'UKL-UPL' || c.docType === 'UKL_UPL') ? 'layer-uklupl' :
-                            'layer-sppl';
+                {/* 🟢 LAYER MODULAR 2: WIND FLOW FIELD (Vector Animation) */}
+                {!isOfficer && activeLayers.includes("layer-aqi") && (
+                    <WindFlowLayer companies={companies} />
+                )}
 
-                    if (!activeLayers.includes(layerId)) return null;
+                {/* 🟢 LAYER MODULAR 3: COMPANY POLYGON & MARKER (Level of Detail System) */}
+                <CompanyMarkerLayer
+                    companies={companies}
+                    currentZoom={currentZoom}
+                    mapOpacity={mapOpacity}
+                    isOfficer={isOfficer}
+                />
 
-                    const lat = parseFloat(c.lat);
-                    const lng = parseFloat(c.lng);
-                    if (isNaN(lat) || isNaN(lng)) return null;
+                {/* 🟢 LAYER MODULAR 4: AQI NUMERIC BADGES DENGAN CLUSTERING */}
+                {!isOfficer && activeLayers.includes("layer-aqi") && (
+                    <MarkerClusterGroup
+                        chunkedLoading
+                        iconCreateFunction={createClusterCustomIcon}
+                        maxClusterRadius={60} // Semakin besar jarak piksel, semakin cepat marker tergabung
+                        spiderfyOnMaxZoom={true}
+                    >
+                        {companies.map(c => {
+                            const lat = parseFloat(c.lat);
+                            const lng = parseFloat(c.lng);
+                            if (isNaN(lat) || isNaN(lng)) return null;
 
-                    return (
-                        <Marker
-                            key={`comp-marker-${c.id}`}
-                            position={[lat, lng]}
-                            icon={createCompanyMarkerIcon(c.score, c.docType)}
-                            eventHandlers={{
-                                click: (e) => {
-                                    e.originalEvent.stopPropagation();
-                                    setSelectedCompanyId(c.id);
-                                    closePanelsToTheRight(-1);
-                                    openPanel("detil-perusahaan", `Detail Industri`, c);
-                                }
-                            }}
-                        />
-                    );
-                })}
+                            // Dapatkan nilai AQI simulasi berdasarkan koordinat
+                            const aqi = getSimulatedAqi(lat, lng);
+                            const [r, g, b] = spatialMath.interpolateColorRgb(aqi);
+                            const bgColorRgb = `rgb(${r}, ${g}, ${b})`;
 
-                {/* RENDER 2: PIN PENGADUAN KELIP KELIP (ADMIN / AUDITOR TRIAGE) */}
+                            return (
+                                <Marker
+                                    key={`aqi-num-badge-${c.id}`}
+                                    position={[lat, lng]}
+                                    // Inject nilai AQI ke marker internal options agar terbaca oleh Leaflet
+                                    {...{ aqiData: aqi }}
+                                    icon={createAqiBadgeIcon(aqi, bgColorRgb, false)}
+                                    eventHandlers={{
+                                        click: (e) => {
+                                            e.originalEvent.stopPropagation();
+
+                                            if (currentZoom >= 16) {
+                                                e.target._map.flyToBounds(e.target.getBounds(), { padding: [100, 100], duration: 1.5 });
+                                            } else {
+                                                e.target._map.flyTo([lat, lng], 16, { animate: true, duration: 1.5 });
+                                            }
+
+                                            setSelectedCompanyId(c.id);
+                                            closePanelsToTheRight(-1);
+                                            openPanel("detil-perusahaan", `Detail Industri`, c);
+                                            openPanel("telemetri-lingkungan", `Telemetri Spasial`, c);
+                                        }
+                                    }}
+                                />
+                            );
+                        })}
+                    </MarkerClusterGroup>
+                )}
+
+                {/* 📍 PIN PENGADUAN KELIP KELIP (ADMIN / AUDITOR TRIAGE) */}
                 {!isOfficer && activeLayers.includes("layer-complaints") &&
                     adminReports.map((report) => {
                         const latNum = parseFloat(report.lat);
@@ -6768,7 +7591,7 @@ export default function LimbahMap() {
                     })
                 }
 
-                {/* RENDER 3: PIN TUGAS SOLID (HANYA UNTUK INSPEKTUR) */}
+                {/* 📍 PIN TUGAS SOLID (HANYA UNTUK INSPEKTUR) */}
                 {isOfficer && officerTasks.map((task) => (
                     <Marker
                         key={`task-${task.id}`}
@@ -6779,6 +7602,9 @@ export default function LimbahMap() {
                 ))}
 
             </MapContainer>
+
+            {/* LEGENDA HORIZONTAL (Diluar Kanvas Peta, Tetap Melayang di Z-30) */}
+            {!isOfficer && <AqiHorizontalLegend />}
         </div>
     );
 }
@@ -6792,22 +7618,32 @@ import { useSijagaStore } from "@/store/useSijagaStore";
 import { cn } from "@/lib/utils";
 
 /**
- * MapHUD - Kontrol Navigasi & Legenda (Frameless)
+ * ============================================================================
+ * MAP HUD (HEADS-UP DISPLAY) & TACTICAL LEGEND
+ * ============================================================================
  * Mengadopsi desain sharp edges, flat, tanpa shadow tebal.
- * Terletak absolut di kanan bawah layar.
+ * Terletak absolut di kanan bawah layar. Murni untuk memandu status perusahaan.
  */
 export default function MapHUD() {
     const { activeLayers } = useGisUIStore();
     const { currentUser } = useSijagaStore();
 
-    // Custom events untuk Leaflet yang akan ditangkap oleh LimbahMap.tsx
+    const isOfficer = currentUser?.role === "PETUGAS_LAPANGAN";
+
+    // Cek apakah mode Telemetri AQI sedang aktif
+    const isAqiActive = activeLayers.includes("layer-aqi");
+
+    // UX FIX: Jika layer AQI aktif, matikan SELURUH HUD Kanan Bawah
+    // Hal ini memberi ruang layar maksimal untuk Focus Mode analisis lingkungan.
+    if (isAqiActive) {
+        return null;
+    }
+
+    // Custom events untuk Leaflet
     const triggerZoomIn = () => window.dispatchEvent(new Event('map-zoom-in'));
     const triggerZoomOut = () => window.dispatchEvent(new Event('map-zoom-out'));
     const triggerResetView = () => window.dispatchEvent(new Event('map-reset-view'));
 
-    const isOfficer = currentUser?.role === "PETUGAS_LAPANGAN";
-
-    // FASE 2: Polimorfisme Data Legenda (Menyesuaikan Role)
     type LegendItem = {
         label: string;
         color: string;
@@ -6818,13 +7654,11 @@ export default function MapHUD() {
     let legendItems: LegendItem[] = [];
 
     if (isOfficer) {
-        // Legenda Khusus Inspektur (Sesuai titik marker solid di LimbahMap)
         legendItems = [
             { label: "Tugas: Audit Rutin DLH", color: "bg-emerald-500", layerId: "always_active", shape: 'circle' },
             { label: "Tugas: Penindakan Aduan", color: "bg-rose-500", layerId: "always_active", shape: 'circle' }
         ];
     } else {
-        // Legenda Khusus Admin & Auditor (Poligon Industri + Krisis Pengaduan)
         legendItems = [
             { label: "Wajib AMDAL (Risiko Tinggi)", color: "bg-red-500", layerId: "layer-amdal", shape: 'square' },
             { label: "Wajib UKL-UPL (Menengah)", color: "bg-amber-500", layerId: "layer-uklupl", shape: 'square' },
@@ -6838,18 +7672,18 @@ export default function MapHUD() {
     return (
         <div className="absolute bottom-8 right-8 z-30 pointer-events-none flex flex-row items-end gap-4 select-none">
 
-            {/* 1. KOTAK LEGENDA (Frameless Continuous List) */}
-            <div className="pointer-events-auto bg-white border border-slate-300 shadow-sm rounded-none w-56 animate-in fade-in slide-in-from-bottom-4">
+            {/* 1. KOTAK LEGENDA KEPATUHAN (Frameless Continuous List) */}
+            <div className="pointer-events-auto bg-white/90 backdrop-blur border border-slate-300 shadow-sm rounded-none w-56 animate-in fade-in slide-in-from-bottom-4 flex flex-col max-h-[75vh] overflow-y-auto custom-scrollbar">
 
                 {/* Header Legenda */}
-                <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 border-b border-slate-200">
+                <div className="flex items-center gap-2 px-3 py-2 bg-slate-50/90 border-b border-slate-200 sticky top-0 z-10 text-left">
                     <MapIcon size={12} className="text-emerald-700" />
                     <h4 className="text-[9px] font-black text-slate-700 uppercase tracking-widest">
                         {isOfficer ? "Legenda Sasaran Tugas" : "Legenda Kepatuhan"}
                     </h4>
                 </div>
 
-                {/* Isi Legenda (Flush List) */}
+                {/* Isi Legenda Utama (Flush List) */}
                 <div className="flex flex-col">
                     {legendItems.map((item, idx) => {
                         const isActive = item.layerId === "always_active" || activeLayers.includes(item.layerId);
@@ -6862,12 +7696,12 @@ export default function MapHUD() {
                                     isActive ? "opacity-100" : "opacity-30"
                                 )}
                             >
-                                {/* Rendering Shape berdasarkan Tipe Data (Polymorphic Indicator) */}
+                                {/* Rendering Shape berdasarkan Tipe Data */}
                                 <div className="relative w-3 h-3 shrink-0 flex items-center justify-center">
                                     {item.shape === 'pulsing' && (
                                         <span className={cn(
                                             "absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping",
-                                            item.color.replace('600', '400') // Efek glow lebih terang dari warna dasar
+                                            item.color.replace('600', '400')
                                         )} />
                                     )}
                                     <div className={cn(
@@ -6876,8 +7710,7 @@ export default function MapHUD() {
                                         item.color
                                     )} />
                                 </div>
-
-                                <span className="text-[10px] font-bold text-slate-600 tracking-tight leading-none">
+                                <span className="text-[10px] font-bold text-slate-600 tracking-tight leading-none text-left">
                                     {item.label}
                                 </span>
                             </div>
@@ -6887,7 +7720,7 @@ export default function MapHUD() {
             </div>
 
             {/* 2. KONTROL ZOOM PETA (Frameless Stack) */}
-            <div className="pointer-events-auto flex flex-col bg-white border border-slate-300 shadow-none rounded-none overflow-hidden divide-y divide-slate-200 shrink-0">
+            <div className="pointer-events-auto flex flex-col bg-white/90 backdrop-blur border border-slate-300 shadow-none rounded-none overflow-hidden divide-y divide-slate-200 shrink-0">
                 <button
                     onClick={triggerZoomIn}
                     className="w-10 h-10 flex items-center justify-center text-slate-600 hover:bg-slate-100 hover:text-emerald-700 transition-colors active:bg-slate-200 rounded-none outline-none"
@@ -6929,7 +7762,9 @@ import LayerPanel from "./panels/LayerPanel";
 import CompanyPanel from "./panels/CompanyPanel";
 import DetailPanel from "./panels/DetailPanel";
 import PatrolTaskPanel from "./panels/PatrolTaskPanel";
-import TaskDetailPanel from "./panels/TaskDetailPanel"; // INJEKSI FASE 2: Panel Detail Tugas
+import TaskDetailPanel from "./panels/TaskDetailPanel";
+import EnvironmentalTelemetryPanel from "./panels/EnvironmentalTelemetryPanel";
+import BasemapPanel from "./panels/BasemapPanel"; // IMPOR BARU: Panel khusus Basemap
 
 // MODULAR: Mengimpor laci taktis telemetri live dari modul transport
 import ActiveFleetPanel from "@/modules/transport/components/gis/panels/ActiveFleetPanel";
@@ -6938,7 +7773,9 @@ import ActiveFleetPanel from "@/modules/transport/components/gis/panels/ActiveFl
  * PanelOrchestrator - The Stacking Drawer (GFW Paradigm)
  * Mengatur dua jenis perilaku panel dengan Sumbu X (Width) yang ramping:
  * 1. Panel Menu (Flush/Docked): 280px, menempel rapat di kiri (Zero Gap).
- * 2. Panel Detail (Floating): Melayang secara dinamis mengikuti jumlah tumpukan.
+ * 2. Panel Detail (Floating): Melayang secara dinamis berdampingan mengikuti jumlah tumpukan.
+ * 
+ * GRASP: Indirection & Pure Fabrication
  */
 export default function PanelOrchestrator() {
     const { activePanels, closePanel, closePanelsToTheRight } = useGisUIStore();
@@ -6951,19 +7788,34 @@ export default function PanelOrchestrator() {
         return () => window.removeEventListener("resize", handleResize);
     }, []);
 
-    // Sumbu X: Base width 280px (Ultra Slim untuk ruang peta maksimal)
+    // Sumbu X: Base width 280px untuk panel menu statis kiri
     const PANEL_WIDTH = isMobile ? (typeof window !== 'undefined' ? window.innerWidth - 64 : 280) : 280;
     const PANEL_GAP = 0; // Zero Gap Policy (Flush)
 
     return (
         <div className="absolute top-16 bottom-0 left-16 z-30 pointer-events-none flex items-start">
             {activePanels.map((panel, index) => {
-                // Cek apakah ini panel detail yang harus melayang (Floating Panel)
-                // FASE 2: Memastikan panel 'detail-tugas' juga melayang
-                const isFloating = panel.type === "detil-perusahaan" || panel.type === "detail-tugas";
+                // 1. EVALUASI TIPOLOGI PANEL SECARA DINAMIS
+                const isFloating =
+                    panel.type === "detil-perusahaan" ||
+                    panel.type === "detail-tugas" ||
+                    panel.type === "telemetri-lingkungan";
+
+                // 2. FORMULA KALKULASI SUMBU X BAGI FLOATING STACKING LAYOUT
+                const dockedPanelsCount = activePanels.filter(
+                    (p, i) => i < index && p.type !== "detil-perusahaan" && p.type !== "detail-tugas" && p.type !== "telemetri-lingkungan"
+                ).length;
+
+                const floatingPanelsBefore = activePanels.filter(
+                    (p, i) => i < index && (p.type === "detil-perusahaan" || p.type === "detail-tugas" || p.type === "telemetri-lingkungan")
+                ).length;
+
+                const floatingOffset = floatingPanelsBefore * 320;
 
                 const xOffset = index * (PANEL_WIDTH + PANEL_GAP);
-                const floatingLeft = isMobile ? 16 : (index * PANEL_WIDTH) + 16;
+                const floatingLeft = isMobile
+                    ? 16
+                    : (dockedPanelsCount * PANEL_WIDTH) + floatingOffset + 16;
 
                 return (
                     <div
@@ -6978,7 +7830,7 @@ export default function PanelOrchestrator() {
                                     left: `${floatingLeft}px`,
                                     top: '16px',
                                     bottom: '16px',
-                                    width: '320px', // Panel detail sedikit lebih lebar
+                                    width: '320px',
                                     maxWidth: 'calc(100vw - 80px)',
                                     zIndex: 50,
                                 }
@@ -6993,8 +7845,8 @@ export default function PanelOrchestrator() {
                         }
                     >
                         {/* HEADER PANEL */}
-                        <div className="px-4 py-3 border-b border-slate-200 flex justify-between items-center bg-slate-50 shrink-0">
-                            <div className="flex flex-col">
+                        <div className="px-4 py-3 border-b border-slate-200 flex justify-between items-center bg-slate-50 shrink-0 select-none">
+                            <div className="flex flex-col text-left">
                                 <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest leading-none">
                                     {panel.type.replace("-", " ")}
                                 </span>
@@ -7026,7 +7878,7 @@ export default function PanelOrchestrator() {
     );
 }
 
-// Fungsi Delegasi Rendering Konten Panel secara Modular (GRASP - High Cohesion) [3]
+// Fungsi Delegasi Rendering Konten Panel secara Modular (GRASP - High Cohesion)
 function renderPanelContent(type: GisPanelType, data: any) {
     switch (type) {
         case "layer-kewajiban":
@@ -7036,25 +7888,115 @@ function renderPanelContent(type: GisPanelType, data: any) {
         case "tugas-patroli":
             return <PatrolTaskPanel />;
         case "armada-tracking":
-            return <ActiveFleetPanel />; // <-- MODULAR: Mengarahkan laci ke modul transport
+            return <ActiveFleetPanel />;
         case "detil-perusahaan":
             return <DetailPanel companyData={data} />;
+        case "telemetri-lingkungan":
+            return <EnvironmentalTelemetryPanel companyData={data} />;
         case "detail-tugas":
-            // FASE 2 INJEKSI: Meneruskan data tugas ke komponen panel baru
             return <TaskDetailPanel taskData={data} />;
+        case "basemap-gallery": // <-- REGISTRASI RENDERER BARU
+            return <BasemapPanel />;
         case "tentang":
             return (
                 <div className="p-6 text-center space-y-3 text-slate-500 font-sans">
                     <MapIcon size={32} className="mx-auto text-emerald-600/40 animate-pulse" />
                     <div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-600 leading-none">PANTAU LIMBAH GIS</p>
-                        <p className="text-[11px] mt-2 font-medium leading-relaxed">Sistem Pemetaan Geospasial Kepatuhan Lingkungan v1.0</p>
+                        <p className="text-[11px] mt-2 font-medium leading-relaxed text-justify">Sistem Pemetaan Geospasial Kepatuhan Lingkungan v1.0</p>
                     </div>
                 </div>
             );
         default:
-            return <div className="p-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Modul sedang dikonstruksi...</div>;
+            return <div className="p-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-left">Modul sedang dikonstruksi...</div>;
     }
+}
+
+--- FILE: src\modules\admin\components\gis\panels\BasemapPanel.tsx ---
+// src/modules/admin/components/gis/panels/BasemapPanel.tsx
+import React from "react";
+import { Map as MapIcon, Sun, Moon, Layers, Info } from "lucide-react";
+import { useGisUIStore } from "@/store/useGisUIStore";
+
+/**
+ * BasemapPanel - GFW Paradigm (High-Density Data & Solid UI)
+ * Komponen terisolasi khusus mengatur kanvas peta dasar.
+ * Memisahkan logika ini dari LayerPanel meningkatkan kohesi arsitektur.
+ */
+export default function BasemapPanel() {
+    const { activeBaseMap, setActiveBaseMap } = useGisUIStore();
+
+    // 5 Standar Peta Dasar
+    const baseMaps = [
+        { id: "dark", label: "Carto Dark", icon: Moon, desc: "Kanvas Gelap (Mode Optimal AQI)" },
+        { id: "satellite", label: "Google Satellite", icon: Sun, desc: "Citra Satelit Resolusi Tinggi" },
+        { id: "street", label: "Google Roadmap", icon: MapIcon, desc: "Navigasi Jalan & Fasilitas" },
+        { id: "esri", label: "Esri World Imagery", icon: MapIcon, desc: "Citra Satelit Alternatif" },
+        { id: "osm", label: "OpenStreetMap", icon: Layers, desc: "Peta Komunitas Global" },
+    ];
+
+    return (
+        <div className="flex flex-col h-full bg-white pb-10 font-sans">
+
+            {/* HEADER INFORMASI */}
+            <div className="px-4 py-3 bg-emerald-50/50 border-b border-slate-200 flex items-start gap-2.5 text-left">
+                <MapIcon size={14} className="text-emerald-600 mt-0.5 shrink-0" />
+                <p className="text-[10px] text-slate-600 leading-relaxed font-medium">
+                    Ubah kanvas peta dasar sesuai kebutuhan pengamatan spasial Anda.
+                    <strong className="text-slate-800 font-bold"> Carto Dark</strong> direkomendasikan untuk melihat persebaran Kualitas Udara (AQI).
+                </p>
+            </div>
+
+            {/* LIST BASEMAP (FLUSH LIST) */}
+            <div className="flex flex-col">
+                <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border-b border-slate-200 text-slate-500 text-left">
+                    <Layers size={14} className="text-emerald-700" />
+                    <h4 className="text-[11px] font-bold uppercase tracking-wider">Katalog Peta Dasar</h4>
+                </div>
+
+                <div className="flex flex-col">
+                    {baseMaps.map((map) => {
+                        const isActive = activeBaseMap === map.id;
+
+                        return (
+                            <button
+                                key={map.id}
+                                onClick={() => setActiveBaseMap(map.id)}
+                                className="group flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-white hover:bg-slate-50 transition-colors text-left w-full outline-none"
+                            >
+                                <div className="flex items-center gap-3">
+                                    {/* Custom UI Toggle Switch */}
+                                    <div className={`relative inline-flex h-3.5 w-7 shrink-0 items-center rounded-full transition-colors duration-200 ease-in-out ${isActive ? 'bg-emerald-500' : 'bg-slate-300'}`}>
+                                        <span className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white shadow-sm transition duration-200 ease-in-out ${isActive ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+                                    </div>
+
+                                    <div className="flex items-center gap-2.5">
+                                        {/* Ikon Dinamis */}
+                                        <div className={`transition-colors ${isActive ? "text-emerald-700" : "text-slate-400 group-hover:text-slate-600"}`}>
+                                            <map.icon size={16} strokeWidth={2} />
+                                        </div>
+
+                                        {/* Label Tipografi Rapat */}
+                                        <div className="flex flex-col">
+                                            <span className={`text-[12px] transition-colors ${isActive ? 'text-emerald-800 font-bold' : 'text-slate-700 font-medium group-hover:text-slate-900'}`}>
+                                                {map.label}
+                                            </span>
+                                            <span className="text-[10px] font-medium text-slate-500 leading-none mt-0.5">{map.desc}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="p-1 hover:bg-slate-200 rounded-none transition-colors" title="Informasi Peta Dasar">
+                                    <Info size={14} className="text-slate-400 group-hover:text-emerald-600" />
+                                </div>
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+
+        </div>
+    );
 }
 
 --- FILE: src\modules\admin\components\gis\panels\CompanyPanel.tsx ---
@@ -7271,8 +8213,14 @@ export default function CompanyPanel() {
 // src/modules/admin/components/gis/panels/DetailPanel.tsx
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { MapPin, Activity, ShieldCheck, Factory, FileText, Calendar, Users, Phone, Zap } from "lucide-react";
+import {
+    MapPin, Activity, ShieldCheck, Factory, FileText,
+    Calendar, Users, Phone, Zap, CloudSun, Loader2,
+    Badge
+} from "lucide-react";
 import { useSijagaStore } from "@/store/useSijagaStore";
+import { apiService } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 interface DetailPanelProps {
@@ -7291,6 +8239,10 @@ export default function DetailPanel({ companyData }: DetailPanelProps) {
     const [activeTab, setActiveTab] = useState<DetailTabType>("umum");
     const [animateBars, setAnimateBars] = useState(false);
 
+    // [NEW STATE] Menyimpan status loading & payload telemetri kualitas udara
+    const [aqiData, setAqiData] = useState<any>(null);
+    const [aqiLoading, setAqiLoading] = useState(false);
+
     // Trigger animasi saat masuk ke tab ESG
     useEffect(() => {
         if (activeTab === "esg") {
@@ -7299,6 +8251,28 @@ export default function DetailPanel({ companyData }: DetailPanelProps) {
             setAnimateBars(false);
         }
     }, [activeTab]);
+
+    // [NEW SINKRONISASI]: Pemicu pemanggilan API telemetri udara real-time berdasarkan koordinat industri [3]
+    useEffect(() => {
+        if (companyData && companyData.lat && companyData.lng) {
+            const fetchAqiTelemetry = async () => {
+                setAqiLoading(true);
+                try {
+                    const response = await apiService.analytics.getAqiData(companyData.lat, companyData.lng);
+                    if (response && response.success) {
+                        setAqiData(response.data);
+                    }
+                } catch (error) {
+                    console.error("Gagal meload data sensor spasial kualitas udara:", error);
+                } finally {
+                    setAqiLoading(false);
+                }
+            };
+            fetchAqiTelemetry();
+        } else {
+            setAqiData(null);
+        }
+    }, [companyData?.id, companyData?.lat, companyData?.lng]);
 
     if (!companyData) return null;
 
@@ -7319,6 +8293,23 @@ export default function DetailPanel({ companyData }: DetailPanelProps) {
         return "KRITIS (DANGER)";
     };
 
+    // [NEW HELPERS] Standardisasi kelas warna & deskripsi label AQI US EPA
+    const getAqiColorClass = (aqiValue: number) => {
+        if (aqiValue <= 50) return "text-emerald-700 bg-emerald-50 border-emerald-200";
+        if (aqiValue <= 100) return "text-amber-700 bg-amber-50 border-amber-200";
+        if (aqiValue <= 150) return "text-orange-700 bg-orange-50 border-orange-200";
+        if (aqiValue <= 200) return "text-red-700 bg-red-50 border-red-200";
+        return "text-purple-700 bg-purple-50 border-purple-200";
+    };
+
+    const getAqiStatusLabel = (aqiValue: number) => {
+        if (aqiValue <= 50) return "Baik (Sehat)";
+        if (aqiValue <= 100) return "Sedang (Waspada)";
+        if (aqiValue <= 150) return "Tidak Sehat (Grup Sensitif)";
+        if (aqiValue <= 200) return "Tidak Sehat (Bahaya)";
+        return "Sangat Berbahaya (Evakuasi)";
+    };
+
     // Handler memulai sidak untuk petugas lapangan
     const handleStartSidak = () => {
         toast.success(`Membuka berkas Evaluasi Fisik Lapangan untuk ${companyData.companyName}`);
@@ -7330,14 +8321,14 @@ export default function DetailPanel({ companyData }: DetailPanelProps) {
     };
 
     return (
-        <div className="flex flex-col h-full w-full bg-white relative">
+        <div className="flex flex-col h-full w-full bg-white relative font-sans">
 
             {/* TABS - Gaya GFW Edge-to-Edge */}
             <div className="flex bg-slate-50 border-b border-slate-200 shrink-0">
                 <button
                     onClick={() => setActiveTab("umum")}
-                    className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest transition-colors ${activeTab === "umum"
-                        ? "bg-white text-emerald-800 border-t-[3px] border-t-emerald-600 border-r border-slate-200"
+                    className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest transition-colors outline-none ${activeTab === "umum"
+                        ? "bg-white text-emerald-800 border-t-[3px] border-t-emerald-600 border-r border-slate-200 font-bold"
                         : "bg-slate-50 text-slate-500 hover:text-slate-800 hover:bg-slate-100 border-t-[3px] border-t-transparent border-r border-slate-200"
                         }`}
                 >
@@ -7345,8 +8336,8 @@ export default function DetailPanel({ companyData }: DetailPanelProps) {
                 </button>
                 <button
                     onClick={() => setActiveTab("esg")}
-                    className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest transition-colors ${activeTab === "esg"
-                        ? "bg-white text-emerald-800 border-t-[3px] border-t-emerald-600"
+                    className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest transition-colors outline-none ${activeTab === "esg"
+                        ? "bg-white text-emerald-800 border-t-[3px] border-t-emerald-600 font-bold"
                         : "bg-slate-50 text-slate-500 hover:text-slate-800 hover:bg-slate-100 border-t-[3px] border-t-transparent"
                         }`}
                 >
@@ -7360,7 +8351,7 @@ export default function DetailPanel({ companyData }: DetailPanelProps) {
                 {activeTab === "umum" && (
                     <div className="flex flex-col pb-6 animate-in fade-in duration-300">
                         {/* Metadata Ringkas */}
-                        <div className="px-4 py-4 bg-white border-b border-slate-200">
+                        <div className="px-4 py-4 bg-white border-b border-slate-200 text-left">
                             <div className="flex items-center gap-2 mb-2">
                                 <ShieldCheck size={14} className="text-emerald-600" />
                                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Izin: {companyData.docType}</span>
@@ -7380,10 +8371,10 @@ export default function DetailPanel({ companyData }: DetailPanelProps) {
                             <DetailRow icon={Zap} label="Energi & Air" value={`${companyData.powerSource} / ${companyData.waterSource}`} />
                         </div>
 
-                        <div className="px-4 py-4 bg-slate-50 border-y border-slate-200 mt-4">
+                        <div className="px-4 py-4 bg-slate-50 border-y border-slate-200 mt-4 text-left">
                             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Kontak Penanggung Jawab</p>
                             <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 bg-slate-200 rounded-none flex items-center justify-center text-slate-600">
+                                <div className="w-8 h-8 bg-slate-200 rounded-none flex items-center justify-center text-slate-600 border border-slate-300">
                                     <Phone size={14} />
                                 </div>
                                 <div>
@@ -7397,9 +8388,9 @@ export default function DetailPanel({ companyData }: DetailPanelProps) {
 
                 {/* TAB 2: ANALISIS ESG */}
                 {activeTab === "esg" && (
-                    <div className="flex flex-col pb-6 animate-in fade-in duration-300">
+                    <div className="flex flex-col pb-6 animate-in fade-in duration-300 space-y-4">
                         {/* HERO SCORE */}
-                        <div className="px-4 py-8 bg-slate-900 border-b border-slate-800 text-center flex flex-col items-center">
+                        <div className="px-4 py-6 bg-slate-900 border-b border-slate-800 text-center flex flex-col items-center select-none shrink-0">
                             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3">Indeks Kepatuhan Lingkungan</p>
                             <div className="flex items-end gap-1 mb-2">
                                 <h2 className="text-6xl font-black italic tracking-tighter text-white leading-none">{score}</h2>
@@ -7410,8 +8401,67 @@ export default function DetailPanel({ companyData }: DetailPanelProps) {
                             </span>
                         </div>
 
+                        {/* [NEW INTEGRATION]: COMPACT REAL-TIME ATMOSPHERE TELEMETRY WIDGET */}
+                        <div className="px-4 text-left">
+                            <div className="border border-slate-200 bg-white rounded-none p-4 space-y-3">
+                                <div className="border-b pb-2 flex items-center justify-between">
+                                    <div className="flex items-center gap-1.5">
+                                        <CloudSun size={14} className="text-emerald-700 animate-pulse" />
+                                        <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-800">Telemetri Udara Terdekat</h4>
+                                    </div>
+                                    <Badge className="bg-slate-100 text-slate-500 font-mono text-[8px] rounded-none border-none py-0.5">IQAir v2</Badge>
+                                </div>
+
+                                {aqiLoading ? (
+                                    <div className="py-8 flex flex-col items-center justify-center gap-2 text-slate-400">
+                                        <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
+                                        <span className="text-[8px] font-black uppercase tracking-widest leading-none mt-1">Mengakses Pemantau Udara...</span>
+                                    </div>
+                                ) : aqiData ? (
+                                    <div className="space-y-3 animate-in fade-in duration-200">
+                                        {/* Colored AQI Box */}
+                                        <div className={cn("p-2.5 border flex items-center justify-between font-sans text-xs", getAqiColorClass(aqiData.aqi))}>
+                                            <div className="space-y-0.5 text-left">
+                                                <span className="text-[8px] font-black uppercase tracking-widest block opacity-70">Indeks Kualitas Udara (AQI)</span>
+                                                <span className="font-bold leading-none block">{getAqiStatusLabel(aqiData.aqi)}</span>
+                                            </div>
+                                            <span className="text-2xl font-black italic tracking-tighter leading-none">{aqiData.aqi}</span>
+                                        </div>
+
+                                        {/* Weather parameters grid (2x2) */}
+                                        <div className="grid grid-cols-2 gap-2 font-mono text-[10px] font-bold text-slate-500">
+                                            <div className="bg-slate-50 border p-2 text-left">
+                                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block font-sans">Suhu Udara</span>
+                                                <span className="text-xs font-black text-slate-800 leading-none block mt-1">{aqiData.weather.temperature} °C</span>
+                                            </div>
+                                            <div className="bg-slate-50 border p-2 text-left">
+                                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block font-sans">Kelembapan</span>
+                                                <span className="text-xs font-black text-slate-800 leading-none block mt-1">{aqiData.weather.humidity} %</span>
+                                            </div>
+                                            <div className="bg-slate-50 border p-2 text-left">
+                                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block font-sans">Kec. Angin</span>
+                                                <span className="text-xs font-black text-slate-800 leading-none block mt-1">{aqiData.weather.windSpeed} m/s</span>
+                                            </div>
+                                            <div className="bg-slate-50 border p-2 text-left overflow-hidden">
+                                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block font-sans">Polutan Utama</span>
+                                                <span className="text-[9px] font-black text-slate-800 leading-none truncate block mt-1.5">{aqiData.mainPollutant}</span>
+                                            </div>
+                                        </div>
+
+                                        {/* Telemetry data info */}
+                                        <div className="flex justify-between items-center text-[8px] text-slate-400 font-bold uppercase tracking-wider border-t pt-2">
+                                            <span>Sumber: {aqiData.source === 'simulation' ? 'Simulasi Spasial' : aqiData.source === 'cache' ? 'Cache Server' : 'IQAir Live'}</span>
+                                            {aqiData.cachedAt && <span>Jam: {new Date(aqiData.cachedAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="p-3 text-center text-[10px] text-slate-400 font-bold uppercase border">Koneksi sensor nihil</div>
+                                )}
+                            </div>
+                        </div>
+
                         {/* BAR CHART SIMULASI */}
-                        <div className="p-4 space-y-4">
+                        <div className="px-4 space-y-4 text-left">
                             <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Parameter Penilaian Terakhir</h4>
 
                             <ProgressBar label="Manajemen Limbah B3" value={score > 0 ? 85 : 0} animate={animateBars} />
@@ -7427,7 +8477,7 @@ export default function DetailPanel({ companyData }: DetailPanelProps) {
                                 // Render Tombol "Mulai Audit / Sidak" khsusus Petugas Lapangan
                                 <button
                                     onClick={handleStartSidak}
-                                    className="w-full flex items-center justify-between px-4 py-3 bg-emerald-600 hover:bg-emerald-750 text-white transition-colors border-b border-slate-200 group"
+                                    className="w-full flex items-center justify-between px-4 py-3 bg-emerald-600 hover:bg-emerald-750 text-white transition-colors border-b border-slate-200 group outline-none"
                                 >
                                     <div className="flex items-center gap-2">
                                         <Calendar size={14} className="text-white" />
@@ -7439,7 +8489,7 @@ export default function DetailPanel({ companyData }: DetailPanelProps) {
                                 // Render Tombol "Jadwalkan" untuk Admin / Auditor biasa
                                 <button
                                     onClick={() => toast.success(`Jadwal inspeksi untuk ${companyData.companyName} disiapkan.`)}
-                                    className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-emerald-50 text-slate-750 transition-colors border-b border-slate-200 group"
+                                    className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-emerald-50 text-slate-750 transition-colors border-b border-slate-200 group outline-none"
                                 >
                                     <div className="flex items-center gap-2">
                                         <Calendar size={14} className="text-emerald-600" />
@@ -7451,7 +8501,7 @@ export default function DetailPanel({ companyData }: DetailPanelProps) {
 
                             <button
                                 onClick={() => toast.info(`Membuka riwayat logbook ${companyData.companyName}`)}
-                                className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-slate-50 transition-colors border-b border-slate-200 group"
+                                className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-slate-50 transition-colors border-b border-slate-200 group outline-none"
                             >
                                 <div className="flex items-center gap-2">
                                     <Activity size={14} className="text-slate-500" />
@@ -7506,41 +8556,337 @@ function ProgressBar({ label, value, animate }: { label: string, value: number, 
     );
 }
 
+--- FILE: src\modules\admin\components\gis\panels\EnvironmentalTelemetryPanel.tsx ---
+// src/modules/admin/components/gis/panels/EnvironmentalTelemetryPanel.tsx
+import React, { useState, useEffect, useMemo } from "react";
+import {
+    CloudSun, Wind, Thermometer, Droplets, Compass, Gauge, AlertTriangle,
+    ShieldAlert, CheckCircle2, Activity, Info, Loader2, ArrowUpRight
+} from "lucide-react";
+import { apiService } from "@/lib/api";
+import { useGisUIStore } from "@/store/useGisUIStore";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+
+interface EnvironmentalTelemetryPanelProps {
+    companyData: any; // Menerima payload entitas yang sedang di-klik/difokuskan di peta
+}
+
+export default function EnvironmentalTelemetryPanel({ companyData }: EnvironmentalTelemetryPanelProps) {
+    const { aqiCache, setAqiCache } = useGisUIStore();
+
+    // State Lokal
+    const [aqiLoading, setAqiLoading] = useState(false);
+    const [aqiData, setAqiData] = useState<any>(null);
+    const [aqiError, setAqiError] = useState<string | null>(null);
+
+    // 1. EXTRACT & CACHE RESOLVER (Information Expert / Client-side Caching)
+    const cacheKey = useMemo(() => {
+        if (!companyData || !companyData.lat || !companyData.lng) return "";
+        // Membulatkan koordinat ke 2 desimal agar selaras dengan skema caching spasial backend
+        const latNum = parseFloat(companyData.lat);
+        const lngNum = parseFloat(companyData.lng);
+        return isNaN(latNum) || isNaN(lngNum) ? "" : `${latNum.toFixed(2)}_${lngNum.toFixed(2)}`;
+    }, [companyData?.id, companyData?.lat, companyData?.lng]);
+
+    // 2. RETRIEVE TELEMETRY SENSOR EFFECT
+    useEffect(() => {
+        if (!companyData || !companyData.lat || !companyData.lng || !cacheKey) {
+            setAqiData(null);
+            setAqiError("Koordinat spasial industri tidak valid.");
+            return;
+        }
+
+        // Cek Cache Lokal Klien Terlebih Dahulu (Zero-Network Delay)
+        if (aqiCache[cacheKey]) {
+            setAqiData(aqiCache[cacheKey]);
+            setAqiError(null);
+            return;
+        }
+
+        const fetchLiveTelemetry = async () => {
+            setAqiLoading(true);
+            setAqiError(null);
+            try {
+                const response = await apiService.analytics.getAqiData(companyData.lat, companyData.lng);
+                if (response && response.success && response.data) {
+                    const parsedData = response.data;
+
+                    // Daftarkan data ke cache global UI store
+                    setAqiCache(cacheKey, parsedData);
+                    setAqiData(parsedData);
+                } else {
+                    setAqiError("API tidak mengembalikan data spasial valid.");
+                }
+            } catch (err: any) {
+                console.error("Gagal meload sensor telemetri kualitas udara:", err);
+                setAqiError("Gagal terhubung ke sensor stasiun pemantau.");
+            } finally {
+                setAqiLoading(false);
+            }
+        };
+
+        fetchLiveTelemetry();
+    }, [companyData?.id, cacheKey, aqiCache, setAqiCache]);
+
+    if (!companyData) return null;
+
+    // 3. COLOR & STATUS RESOLVERS (EPA Standard)
+    const getAqiConfig = (aqiValue: number) => {
+        if (aqiValue <= 50) return {
+            color: "text-emerald-700 bg-emerald-50 border-emerald-200",
+            barColor: "bg-emerald-500",
+            label: "Baik (Sehat)",
+            icon: <CheckCircle2 className="text-emerald-600 shrink-0" size={16} />,
+            advisory: "Sangat ideal untuk beraktivitas luar ruangan. Kualitas udara tidak mendatangkan risiko kesehatan."
+        };
+        if (aqiValue <= 100) return {
+            color: "text-amber-700 bg-amber-50 border-amber-200",
+            barColor: "bg-yellow-400",
+            label: "Sedang (Waspada)",
+            icon: <Info className="text-amber-500 shrink-0" size={16} />,
+            advisory: "Udara dapat diterima. Namun, kelompok sensitif disarankan membatasi aktivitas fisik berat di luar ruangan."
+        };
+        if (aqiValue <= 150) return {
+            color: "text-orange-700 bg-orange-50 border-orange-200",
+            barColor: "bg-orange-500",
+            label: "Tidak Sehat (Sensitif)",
+            icon: <AlertTriangle className="text-orange-500 shrink-0" size={16} />,
+            advisory: "Kelompok rentan (anak-anak, lansia, penderita asma) dapat mengalami gangguan pernapasan. Gunakan masker medis."
+        };
+        if (aqiValue <= 200) return {
+            color: "text-red-700 bg-red-50 border-red-200",
+            barColor: "bg-red-500",
+            label: "Tidak Sehat",
+            icon: <ShieldAlert className="text-red-600 shrink-0" size={16} />,
+            advisory: "Masyarakat umum berpotensi mengalami gejala iritasi tenggorokan/mata. Hindari aktivitas di luar ruangan yang terlalu lama."
+        };
+        return {
+            color: "text-purple-700 bg-purple-50 border-purple-200",
+            barColor: "bg-purple-600",
+            label: "Sangat Berbahaya",
+            icon: <ShieldAlert className="text-purple-600 shrink-0" size={16} />,
+            advisory: "Kondisi darurat polusi! Seluruh populasi berisiko tinggi terkena dampak kesehatan serius. Tutup jendela rapat-rapat."
+        };
+    };
+
+    const aqi = aqiData?.aqi || 0;
+    const aqiStyle = getAqiConfig(aqi);
+
+    // 4. PREDIKSI DATA 24 JAM SPARKLINE (SIMULASI TREN HIBRIDA)
+    const forecastBars = [
+        { time: "08:00", val: Math.max(15, Math.floor(aqi * 0.85)) },
+        { time: "12:00", val: Math.max(15, Math.floor(aqi * 0.95)) },
+        { time: "16:00", val: Math.max(15, Math.floor(aqi * 1.15)) }, // Peak hours polusi
+        { time: "20:00", val: Math.max(15, Math.floor(aqi * 1.05)) },
+        { time: "00:00", val: Math.max(15, Math.floor(aqi * 0.75)) },
+        { time: "04:00", val: Math.max(15, Math.floor(aqi * 0.65)) }
+    ];
+
+    // Rotasi panah SVG Wind Rose Kompas
+    const compassArrowStyle = aqiData ? {
+        transform: `rotate(${aqiData.weather.windDirection}deg)`,
+        transformOrigin: "center",
+        transition: "transform 1s cubic-bezier(0.25, 0.8, 0.25, 1)"
+    } : {};
+
+    return (
+        <div className="flex flex-col h-full w-full bg-white relative font-sans text-slate-800">
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
+
+                {/* STATE LOADING SENSOR */}
+                {aqiLoading && (
+                    <div className="py-24 flex flex-col items-center justify-center gap-2.5 text-slate-400">
+                        <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+                        <span className="text-[10px] font-black uppercase tracking-widest leading-none mt-1">Mengakses Pemantau Udara...</span>
+                        <span className="text-[9px] text-slate-400 font-bold uppercase leading-none">Sinkronisasi Jaringan Stasiun Sampit</span>
+                    </div>
+                )}
+
+                {/* STATE ERROR TELEMETRI */}
+                {!aqiLoading && aqiError && (
+                    <div className="py-16 p-4 text-center space-y-3">
+                        <AlertTriangle className="mx-auto text-amber-500 animate-bounce" size={24} />
+                        <div>
+                            <p className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Sinyal Udara Terputus</p>
+                            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1">{aqiError}</p>
+                        </div>
+                    </div>
+                )}
+
+                {/* MAIN CONTENT TELEMETRY VIEW */}
+                {!aqiLoading && aqiData && (
+                    <div className="space-y-4 animate-in fade-in duration-300">
+
+                        {/* WIDGET HERO: AQI VALUE HEADER */}
+                        <div className={cn("p-4 border text-left flex items-start justify-between rounded-none shadow-sm", aqiStyle.color)}>
+                            <div className="space-y-1">
+                                <span className="text-[8px] font-black uppercase tracking-[0.2em] block opacity-75">US EPA Air Quality Index</span>
+                                <h3 className="text-sm font-black uppercase tracking-tight leading-none">{aqiStyle.label}</h3>
+                                <p className="text-[9px] font-medium leading-normal opacity-90 text-justify pt-1.5">{aqiStyle.advisory}</p>
+                            </div>
+                            <div className="text-right shrink-0">
+                                <span className="text-4xl font-black italic tracking-tighter leading-none font-mono block">{aqi}</span>
+                                <span className="text-[8px] font-black opacity-70 tracking-widest block mt-1 uppercase">US-AQI</span>
+                            </div>
+                        </div>
+
+                        {/* WIDGET 2: HIGH-DENSITY WEATHER GRID */}
+                        <div className="space-y-1.5">
+                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block text-left">Telemetri Stasiun Terdekat</span>
+                            <div className="grid grid-cols-2 gap-2 font-mono text-[10px] font-bold text-slate-500">
+                                <div className="bg-slate-50 border p-2.5 text-left rounded-none">
+                                    <div className="flex justify-between items-center text-slate-400 font-sans">
+                                        <span className="text-[8px] font-black uppercase tracking-widest">Suhu Udara</span>
+                                        <Thermometer size={12} className="text-rose-500" />
+                                    </div>
+                                    <span className="text-base font-black text-slate-800 leading-none block mt-1.5">{aqiData.weather.temperature}°C</span>
+                                </div>
+
+                                <div className="bg-slate-50 border p-2.5 text-left rounded-none">
+                                    <div className="flex justify-between items-center text-slate-400 font-sans">
+                                        <span className="text-[8px] font-black uppercase tracking-widest">Kelembapan</span>
+                                        <Droplets size={12} className="text-blue-500" />
+                                    </div>
+                                    <span className="text-base font-black text-slate-800 leading-none block mt-1.5">{aqiData.weather.humidity}%</span>
+                                </div>
+
+                                <div className="bg-slate-50 border p-2.5 text-left rounded-none">
+                                    <div className="flex justify-between items-center text-slate-400 font-sans">
+                                        <span className="text-[8px] font-black uppercase tracking-widest">Kec. Angin</span>
+                                        <Wind size={12} className="text-emerald-500" />
+                                    </div>
+                                    <span className="text-base font-black text-slate-800 leading-none block mt-1.5">{aqiData.weather.windSpeed} m/s</span>
+                                </div>
+
+                                <div className="bg-slate-50 border p-2.5 text-left rounded-none overflow-hidden">
+                                    <div className="flex justify-between items-center text-slate-400 font-sans">
+                                        <span className="text-[8px] font-black uppercase tracking-widest">Polutan Utama</span>
+                                        <Gauge size={12} className="text-indigo-500" />
+                                    </div>
+                                    <span className="text-xs font-black text-slate-800 leading-none truncate block mt-2">{aqiData.mainPollutant}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* WIDGET 3: 24-HOUR FORECAST CHART (SPARKLINE DESIGN) */}
+                        <div className="bg-white border border-slate-200 p-3 text-left space-y-2.5">
+                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block border-b pb-1">Prediksi Polusi Udara 24 Jam</span>
+                            <div className="flex justify-between items-end h-16 pt-2">
+                                {forecastBars.map((bar, i) => {
+                                    const heightPercent = Math.min(100, (bar.val / 150) * 100);
+                                    const barConfig = getAqiConfig(bar.val);
+
+                                    return (
+                                        <div key={i} className="flex flex-col items-center flex-1 group relative">
+                                            {/* Tooltip Hover Sparkline */}
+                                            <div className="absolute bottom-full mb-1 bg-slate-800 text-white text-[8px] font-black px-1 py-0.5 rounded-none opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                                                {bar.val} AQI
+                                            </div>
+                                            {/* Kolom Bar */}
+                                            <div className="w-4 bg-slate-100 h-10 flex items-end">
+                                                <div
+                                                    className={cn("w-full transition-all duration-500", barConfig.barColor)}
+                                                    style={{ height: `${heightPercent}%` }}
+                                                />
+                                            </div>
+                                            {/* Waktu */}
+                                            <span className="text-[7px] font-black text-slate-400 mt-1 font-mono leading-none">{bar.time}</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* WIDGET 4: WIND ROSE COMPASS WIDGET */}
+                        <div className="bg-slate-50 border border-slate-200 p-3 grid grid-cols-12 gap-3 items-center rounded-none text-left select-none">
+                            <div className="col-span-4 flex items-center justify-center">
+                                {/* SVG Compass Dial */}
+                                <div className="relative w-14 h-14 bg-white rounded-full border border-slate-200 flex items-center justify-center shrink-0">
+                                    <span className="absolute top-0.5 text-[7px] font-black text-slate-400 leading-none">N</span>
+                                    <span className="absolute right-1 text-[7px] font-black text-slate-400 leading-none">E</span>
+                                    <span className="absolute bottom-0.5 text-[7px] font-black text-slate-400 leading-none">S</span>
+                                    <span className="absolute left-1 text-[7px] font-black text-slate-400 leading-none">W</span>
+                                    {/* Arrow Rotated based on wd degree */}
+                                    <div style={compassArrowStyle} className="w-6 h-6 flex items-center justify-center">
+                                        <svg className="w-4.5 h-4.5 text-emerald-600" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z" />
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="col-span-8 space-y-1">
+                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none block">Vektor Embusan Angin</span>
+                                <h5 className="text-[11px] font-black text-slate-800 leading-none">Arah: {aqiData.weather.windDirection}° ({getWindDirectionName(aqiData.weather.windDirection)})</h5>
+                                <p className="text-[9px] text-slate-500 font-semibold leading-normal">Kecepatan angin {aqiData.weather.windSpeed} m/s memengaruhi arah persebaran partikel asap/polutan pabrik [3].</p>
+                            </div>
+                        </div>
+
+                        {/* DATA SOURCE FOOTER */}
+                        <div className="flex justify-between items-center text-[8px] text-slate-400 font-bold uppercase tracking-wider pt-2 border-t">
+                            <span>Sektor: {companyData.companyName}</span>
+                            <span>Cache: {aqiData.source === 'simulation' ? 'Simulated' : aqiData.source === 'cache' ? 'Settle Cached' : 'Live Synchronized'}</span>
+                        </div>
+
+                    </div>
+                )}
+            </div>
+
+            {/* ACTION FOOTER */}
+            <div className="p-4 border-t border-slate-200 bg-white shrink-0">
+                <button
+                    onClick={() => toast.success(`Analisis spasial udara dicatat ke audit log.`)}
+                    className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white rounded-none font-black text-[10px] uppercase tracking-widest shadow-none transition-colors flex items-center justify-center gap-1.5"
+                >
+                    Amankan Log Telemetri <ArrowUpRight size={12} />
+                </button>
+            </div>
+        </div>
+    );
+}
+
+// Resolver Arah Angin Derajat Kompas ke Nama Arah Kardinal
+function getWindDirectionName(degree: number): string {
+    const directions = [
+        "Utara", "Timur Laut", "Timur", "Tenggara",
+        "Selatan", "Barat Daya", "Barat", "Barat Laut"
+    ];
+    // Membagi lingkaran 360 derajat menjadi 8 bagian
+    const idx = Math.round(((degree % 360) / 45)) % 8;
+    return directions[idx];
+}
+
 --- FILE: src\modules\admin\components\gis\panels\LayerPanel.tsx ---
 // src/modules/admin/components/gis/panels/LayerPanel.tsx
 import React from "react";
 import {
-    Layers, Map as MapIcon, Sun, Info, Settings2,
-    ShieldCheck, Factory, Waves, AlertTriangle, MapPin
+    Layers, Settings2, ShieldCheck,
+    AlertTriangle, MapPin, Wind
 } from "lucide-react";
 import { useGisUIStore } from "@/store/useGisUIStore";
 import { useSijagaStore } from "@/store/useSijagaStore";
 
 /**
  * LayerPanel - GFW Paradigm (High-Density Data & Solid UI)
- * Menggunakan arsitektur Flush List tanpa margin kontainer internal.
- * Lebar penuh, dipisahkan oleh hairline.
- * 
- * FASE 5 REFACTOR: Membatasi render layer secara dinamis berdasarkan role pengguna [3].
+ * Murni mengelola Feature Layers & Administratif. 
+ * Basemap & Overlay yang tidak relevan telah di-decouple ke laci terpisah (BasemapPanel).
  */
 export default function LayerPanel() {
     const {
         activeLayers, toggleLayer,
         mapOpacity, setMapOpacity,
-        activeBaseMap, setActiveBaseMap,
-        activeAdminBoundary, setActiveAdminBoundary // FASE 3 INJEKSI: State Peta Kotim
+        maskOpacity, setMaskOpacity, // INJEKSI FASE 4: Kontrol Opacity Masking Luar Wilayah
+        activeAdminBoundary, setActiveAdminBoundary
     } = useGisUIStore();
 
     const { currentUser } = useSijagaStore();
-
-    // Deteksi peran pengguna aktif (RBAC Guard)
     const isOfficer = currentUser?.role === "PETUGAS_LAPANGAN";
 
-    // UI Polymorphism: Sesuaikan terminologi layer pengaduan berdasarkan Otoritas Role
     let complaintLabel = "Aduan Masyarakat";
     let complaintDesc = "Krisis Spasial Warga";
 
-    if (currentUser?.role === "PETUGAS_LAPANGAN") {
+    if (isOfficer) {
         complaintLabel = "Aduan Ditugaskan";
         complaintDesc = "Target Investigasi Anda";
     } else if (currentUser?.role === "AUDITOR") {
@@ -7552,76 +8898,54 @@ export default function LayerPanel() {
         { id: "layer-amdal", label: "AMDAL", desc: "Risiko Tinggi", color: "bg-red-500", icon: ShieldCheck },
         { id: "layer-uklupl", label: "UKL-UPL", desc: "Risiko Menengah", color: "bg-amber-500", icon: ShieldCheck },
         { id: "layer-sppl", label: "SPPL", desc: "Risiko Rendah", color: "bg-emerald-500", icon: ShieldCheck },
+        { id: "layer-aqi", label: "Kualitas Udara (AQI)", desc: "Telemetri Udara Real-time", color: "bg-teal-500", icon: Wind },
         { id: "layer-complaints", label: complaintLabel, desc: complaintDesc, color: "bg-rose-500", icon: AlertTriangle },
-    ];
-
-    const layerOverlay = [
-        { id: "overlay-das", label: "DAS & Aliran Sungai", desc: "Area Konservasi Air", color: "bg-blue-500", icon: Waves },
-        { id: "overlay-rtrw", label: "Zonasi Industri RTRW", desc: "Tata Ruang Wilayah", color: "bg-orange-500", icon: Factory },
-    ];
-
-    const baseMaps = [
-        { id: "voyager", label: "Carto Voyager", icon: MapIcon, desc: "Peta Vektor Terang (Default)" },
-        { id: "satellite", label: "Esri Satellite", icon: Sun, desc: "Citra Satelit Resolusi Tinggi" },
-        { id: "osm", label: "OpenStreetMap", icon: MapIcon, desc: "Peta Komunitas Global" },
     ];
 
     return (
         <div className="flex flex-col h-full bg-white pb-10 font-sans">
 
-            {/* SECTION 1: FEATURE LAYERS & OVERLAY (HANYA UNTUK NON-OFFICER / ADMIN / AUDITOR) [3] */}
+            {/* SECTION 1: FEATURE LAYERS */}
             {!isOfficer && (
                 <div className="flex flex-col animate-in fade-in duration-300">
-                    {/* Header Section */}
                     <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border-b border-slate-200 text-slate-500">
                         <Layers size={14} className="text-emerald-700" />
                         <h4 className="text-[11px] font-bold uppercase tracking-wider">Feature Layers</h4>
                     </div>
 
-                    {/* List Kewajiban (Flush List) */}
                     <div className="flex flex-col">
-                        {[...layerKewajiban, ...layerOverlay].map((layer, index) => {
+                        {layerKewajiban.map((layer) => {
                             const isActive = activeLayers.includes(layer.id);
-                            // Tambah garis pemisah ekstra jika pindah dari Kewajiban ke Overlay
-                            const isSeparator = index === 4;
 
                             return (
-                                <React.Fragment key={layer.id}>
-                                    {isSeparator && (
-                                        <div className="px-4 py-1.5 bg-slate-50 border-y border-slate-200 mt-2">
-                                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Environment Overlay</p>
+                                <button
+                                    key={layer.id}
+                                    onClick={() => toggleLayer(layer.id)}
+                                    className="group flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-white hover:bg-slate-50 transition-colors text-left w-full outline-none"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className={`relative inline-flex h-3.5 w-7 shrink-0 items-center rounded-full transition-colors duration-200 ease-in-out ${isActive ? 'bg-emerald-500' : 'bg-slate-300'}`}>
+                                            <span className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white shadow-sm transition duration-200 ease-in-out ${isActive ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
                                         </div>
-                                    )}
 
-                                    <button
-                                        onClick={() => toggleLayer(layer.id)}
-                                        className="group flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-white hover:bg-slate-50 transition-colors text-left w-full outline-none"
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            {/* Custom UI Toggle Switch */}
-                                            <div className={`relative inline-flex h-3.5 w-7 shrink-0 items-center rounded-full transition-colors duration-200 ease-in-out ${isActive ? 'bg-emerald-500' : 'bg-slate-300'}`}>
-                                                <span className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white shadow-sm transition duration-200 ease-in-out ${isActive ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
-                                            </div>
-
-                                            <div className="flex items-center gap-2.5">
-                                                <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${layer.color} shadow-sm border border-slate-200`} />
-                                                <div className="flex flex-col">
-                                                    <span className={`text-[12px] transition-colors ${isActive ? 'text-emerald-800 font-bold' : 'text-slate-700 font-medium group-hover:text-slate-900'}`}>
-                                                        {layer.label}
-                                                    </span>
-                                                    <span className="text-[10px] font-medium text-slate-500 leading-none">{layer.desc}</span>
-                                                </div>
+                                        <div className="flex items-center gap-2.5">
+                                            <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${layer.color} shadow-sm border border-slate-200`} />
+                                            <div className="flex flex-col">
+                                                <span className={`text-[12px] transition-colors ${isActive ? 'text-emerald-800 font-bold' : 'text-slate-700 font-medium group-hover:text-slate-900'}`}>
+                                                    {layer.label}
+                                                </span>
+                                                <span className="text-[10px] font-medium text-slate-500 leading-none">{layer.desc}</span>
                                             </div>
                                         </div>
-                                    </button>
-                                </React.Fragment>
+                                    </div>
+                                </button>
                             );
                         })}
                     </div>
                 </div>
             )}
 
-            {/* SECTION 2: BATAS ADMINISTRASI & SPATIAL ANALYTICS (TAMPIL UNTUK SEMUA PERAN) */}
+            {/* SECTION 2: BATAS ADMINISTRASI & SPATIAL ANALYTICS */}
             <div className="flex flex-col mt-0 border-t-4 border-slate-100">
                 <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border-b border-slate-200 text-slate-500">
                     <MapPin size={14} className="text-emerald-700" />
@@ -7629,7 +8953,6 @@ export default function LayerPanel() {
                 </div>
 
                 <div className="flex flex-col">
-                    {/* Toggle Kecamatan (Choropleth Mode) */}
                     <button
                         onClick={() => setActiveAdminBoundary(activeAdminBoundary === 'kecamatan' ? 'none' : 'kecamatan')}
                         className="group flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-white hover:bg-slate-50 transition-colors text-left w-full outline-none"
@@ -7638,7 +8961,6 @@ export default function LayerPanel() {
                             <div className={`relative inline-flex h-3.5 w-7 shrink-0 items-center rounded-full transition-colors duration-200 ease-in-out ${activeAdminBoundary === 'kecamatan' ? 'bg-indigo-500' : 'bg-slate-300'}`}>
                                 <span className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white shadow-sm transition duration-200 ease-in-out ${activeAdminBoundary === 'kecamatan' ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
                             </div>
-
                             <div className="flex items-center gap-2.5">
                                 <span className="w-2.5 h-2.5 rounded-none shrink-0 bg-indigo-500 shadow-sm border border-slate-200" />
                                 <div className="flex flex-col">
@@ -7651,7 +8973,6 @@ export default function LayerPanel() {
                         </div>
                     </button>
 
-                    {/* Toggle Desa */}
                     <button
                         onClick={() => setActiveAdminBoundary(activeAdminBoundary === 'desa' ? 'none' : 'desa')}
                         className="group flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-white hover:bg-slate-50 transition-colors text-left w-full outline-none"
@@ -7660,7 +8981,6 @@ export default function LayerPanel() {
                             <div className={`relative inline-flex h-3.5 w-7 shrink-0 items-center rounded-full transition-colors duration-200 ease-in-out ${activeAdminBoundary === 'desa' ? 'bg-blue-500' : 'bg-slate-300'}`}>
                                 <span className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white shadow-sm transition duration-200 ease-in-out ${activeAdminBoundary === 'desa' ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
                             </div>
-
                             <div className="flex items-center gap-2.5">
                                 <span className="w-2.5 h-2.5 rounded-none shrink-0 bg-transparent border-2 border-blue-500 border-dashed" />
                                 <div className="flex flex-col">
@@ -7675,75 +8995,49 @@ export default function LayerPanel() {
                 </div>
             </div>
 
-            {/* SECTION 3: OPACITY CONTROL (HANYA DI-RENDER UNTUK NON-OFFICER) [3] */}
+            {/* SECTION 3: VISUAL CONTROLS (OPACITY) */}
             {!isOfficer && (
                 <div className="flex flex-col mt-0 border-t-4 border-slate-100 animate-in fade-in duration-350">
-                    <div className="flex items-center justify-between px-4 py-2 bg-slate-50 border-b border-slate-200">
-                        <div className="flex items-center gap-2 text-slate-500">
-                            <Settings2 size={14} className="text-emerald-700" />
-                            <h4 className="text-[11px] font-bold uppercase tracking-wider">Opacity Poligon</h4>
-                        </div>
-                        <span className="text-[10px] font-black text-emerald-800 font-mono bg-emerald-50 px-1.5 py-0.5 border border-emerald-100">
-                            {mapOpacity}%
-                        </span>
+                    <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border-b border-slate-200 text-slate-500">
+                        <Settings2 size={14} className="text-emerald-700" />
+                        <h4 className="text-[11px] font-bold uppercase tracking-wider">Kontrol Visual Peta</h4>
                     </div>
 
-                    <div className="px-4 py-4 border-b border-slate-200 bg-white space-y-2">
-                        <input
-                            type="range"
-                            min="0"
-                            max="100"
-                            value={mapOpacity}
-                            onChange={(e) => setMapOpacity(parseInt(e.target.value))}
-                            className="w-full h-1.5 bg-slate-200 rounded-none appearance-none cursor-pointer accent-emerald-600 outline-none"
-                        />
-                        <div className="flex justify-between text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                            <span>Transparan</span>
-                            <span>Solid</span>
+                    <div className="flex flex-col divide-y divide-slate-100">
+                        {/* Slider 1: Poligon/Heatmap Opacity */}
+                        <div className="px-4 py-3 bg-white space-y-2.5">
+                            <div className="flex justify-between items-center">
+                                <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Opacity Layer Aktif</span>
+                                <span className="text-[9px] font-black text-emerald-800 font-mono bg-emerald-50 px-1.5 py-0.5 border border-emerald-100">{mapOpacity}%</span>
+                            </div>
+                            <input
+                                type="range"
+                                min="0"
+                                max="100"
+                                value={mapOpacity}
+                                onChange={(e) => setMapOpacity(parseInt(e.target.value))}
+                                className="w-full h-1.5 bg-slate-200 rounded-none appearance-none cursor-pointer accent-emerald-600 outline-none"
+                            />
+                        </div>
+
+                        {/* Slider 2: Masking Opacity (Area Luar) */}
+                        <div className="px-4 py-3 border-b border-slate-200 bg-white space-y-2.5">
+                            <div className="flex justify-between items-center">
+                                <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Masking Luar Wilayah</span>
+                                <span className="text-[9px] font-black text-slate-800 font-mono bg-slate-100 px-1.5 py-0.5 border border-slate-200">{maskOpacity}%</span>
+                            </div>
+                            <input
+                                type="range"
+                                min="0"
+                                max="100"
+                                value={maskOpacity}
+                                onChange={(e) => setMaskOpacity(parseInt(e.target.value))}
+                                className="w-full h-1.5 bg-slate-200 rounded-none appearance-none cursor-pointer accent-slate-800 outline-none"
+                            />
                         </div>
                     </div>
                 </div>
             )}
-
-            {/* SECTION 4: BASEMAP GALLERY (TAMPIL UNTUK SEMUA PERAN) */}
-            <div className="flex flex-col border-t-4 border-slate-100">
-                <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border-b border-slate-200 text-slate-500">
-                    <MapIcon size={14} className="text-emerald-700" />
-                    <h4 className="text-[11px] font-bold uppercase tracking-wider">Basemap Gallery</h4>
-                </div>
-
-                <div className="flex flex-col">
-                    {baseMaps.map((map) => {
-                        const isActive = activeBaseMap === map.id;
-                        return (
-                            <button
-                                key={map.id}
-                                onClick={() => setActiveBaseMap(map.id)}
-                                className="group flex items-center justify-between px-4 py-2.5 border-b border-slate-200 bg-white hover:bg-slate-50 transition-colors text-left w-full outline-none"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className={`relative inline-flex h-3.5 w-7 shrink-0 items-center rounded-full transition-colors duration-200 ease-in-out ${isActive ? 'bg-emerald-500' : 'bg-slate-300'}`}>
-                                        <span className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white shadow-sm transition duration-200 ease-in-out ${isActive ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
-                                    </div>
-
-                                    <div className="flex items-center gap-2.5">
-                                        <div className={`transition-colors ${isActive ? "text-emerald-700" : "text-slate-400 group-hover:text-slate-600"}`}>
-                                            <map.icon size={16} strokeWidth={2} />
-                                        </div>
-                                        <div className="flex flex-col">
-                                            <span className={`text-[12px] transition-colors ${isActive ? 'text-emerald-800 font-bold' : 'text-slate-700 font-medium group-hover:text-slate-900'}`}>
-                                                {map.label}
-                                            </span>
-                                            <span className="text-[10px] font-medium text-slate-500 leading-none">{map.desc}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </button>
-                        );
-                    })}
-                </div>
-            </div>
-
         </div>
     );
 }
@@ -21287,6 +22581,24 @@ export interface AuditLog {
   action: string;
 }
 
+// [NEW INTERFACE] Struktur data kualitas udara & cuaca dari API IQAir
+export interface AqiData {
+  city: string;
+  state: string;
+  country: string;
+  aqi: number;
+  mainPollutant: string;
+  weather: {
+    temperature: number;
+    humidity: number;
+    windSpeed: number;
+    windDirection: number;
+    pressure: number;
+  };
+  source: 'live' | 'cache' | 'simulation';
+  cachedAt?: string;
+}
+
 // Slice Interfaces
 export interface AuthSlice {
   currentUser: User | null;
@@ -21384,7 +22696,6 @@ export interface CitizenReport {
   updatedAt: string;
 }
 
-// Di dalam src/store/types.ts
 export interface ReportSlice {
   publicReportTrackData: CitizenReport | null;
   adminReports: CitizenReport[];
@@ -21394,12 +22705,18 @@ export interface ReportSlice {
   trackCitizenReport: (trackingId: string) => Promise<CitizenReport | null>;
   clearPublicReportData: () => void;
   fetchAdminReports: (status?: string) => Promise<void>;
+}
 
-  // verifyCitizenReport, investigateCitizenReport, dan rejectCitizenReport DIHAPUS DARI INTERFACE [3]
+// [NEW INTERFACE] Slice khusus pengelolaan kualitas udara (AQI) spasial
+export interface AqiSlice {
+  currentAqiData: AqiData | null;
+  isAqiLoading: boolean;
+  fetchAqiData: (lat: string | number, lng: string | number) => Promise<AqiData | null>;
+  clearAqiData: () => void;
 }
 
 // Combined State
-export interface SijagaState extends AuthSlice, CompanySlice, WasteSlice, PickupSlice, InvoiceSlice, InspectionSlice, NotificationSlice, AuditSlice, ReportSlice { }
+export interface SijagaState extends AuthSlice, CompanySlice, WasteSlice, PickupSlice, InvoiceSlice, InspectionSlice, NotificationSlice, AuditSlice, ReportSlice, AqiSlice { }
 
 --- FILE: src\store\useGisUIStore.ts ---
 // src/store/useGisUIStore.ts
@@ -21415,18 +22732,22 @@ interface GisUIState {
     // ==========================================
     // 2. STATE: Konteks Eksplorasi Spasial (Peta)
     // ==========================================
-    activeLayers: string[];     // Menyimpan ID layer yang nyala ('amdal', 'ukl-upl', 'sppl', 'das', 'rtrw')
-    mapOpacity: number;         // 0 - 100
-    activeBaseMap: string;      // 'voyager', 'satellite', 'osm'
+    activeLayers: string[];     // Menyimpan ID layer yang nyala
+    mapOpacity: number;         // 0 - 100 (Transparansi Poligon & Heatmap AQI)
+    maskOpacity: number;        // 0 - 100 (Transparansi Inverted Polygon Masking area luar Kotim)
+    activeBaseMap: string;      // 'dark', 'satellite', 'street', 'esri', 'osm'
     selectedCompanyId: string | null; // ID perusahaan yang sedang di-klik/difokuskan
 
-    // FASE 4 INJEKSI: Koordinat & Zoom Global Berbasis Sumber Kebenaran Tunggal [3]
+    // FASE 4 INJEKSI: Koordinat & Zoom Global Berbasis Sumber Kebenaran Tunggal
     mapCenter: [number, number]; // Koordinat pusat peta saat ini
     mapZoom: number;             // Skala zoom peta saat ini
 
     // FASE 3 INJEKSI: State untuk Advanced Spatial Analytics (Kotawaringin Timur)
-    activeAdminBoundary: 'kecamatan' | 'desa' | 'none';
+    activeAdminBoundary: 'none' | 'kecamatan' | 'desa';
     showImpactRadius: boolean;
+
+    // [NEW STATE] Cache spasial sementara di sisi klien untuk menghemat memori
+    aqiCache: Record<string, any>; // Key format: "roundedLat_roundedLng" -> Value: AqiData
 
     // ==========================================
     // ACTIONS: Manajemen Panel
@@ -21441,16 +22762,20 @@ interface GisUIState {
     // ==========================================
     toggleLayer: (layerId: string) => void;
     setMapOpacity: (opacity: number) => void;
+    setMaskOpacity: (opacity: number) => void;
     setActiveBaseMap: (baseMapId: string) => void;
     setSelectedCompanyId: (id: string | null) => void;
 
-    // FASE 4 INJEKSI: Aksi Pengubah Koordinat & Zoom Peta secara Global [3]
+    // Aksi Pengubah Koordinat & Zoom Peta secara Global
     setMapCenter: (center: [number, number]) => void;
     setMapZoom: (zoom: number) => void;
 
-    // FASE 3 INJEKSI: Aksi untuk mengontrol Peta Administratif & Radius Dampak
-    setActiveAdminBoundary: (boundary: 'kecamatan' | 'desa' | 'none') => void;
+    // Aksi untuk mengontrol Peta Administratif & Radius Dampak
+    setActiveAdminBoundary: (boundary: 'none' | 'kecamatan' | 'desa') => void;
     setShowImpactRadius: (show: boolean) => void;
+
+    // Menyimpan telemetri kualitas udara yang sukses diambil ke cache klien
+    setAqiCache: (key: string, data: any) => void;
 
     resetMapContext: () => void;
 }
@@ -21459,12 +22784,14 @@ export const useGisUIStore = create<GisUIState>((set) => ({
     // Inisialisasi State Default
     activePanels: [],
 
-    activeLayers: ['layer-amdal', 'layer-uklupl', 'layer-sppl', 'overlay-das', 'overlay-rtrw'],
+    // Default state: AQI dimatikan. Layer industri menyala sebagai basis operasional
+    activeLayers: ['layer-amdal', 'layer-uklupl', 'layer-sppl'],
     mapOpacity: 80,
-    activeBaseMap: 'voyager',
+    maskOpacity: 60, // Default 60% redup untuk area di luar Kotawaringin Timur
+    activeBaseMap: 'dark', // Default ke 'dark'
     selectedCompanyId: null,
 
-    // FASE 4 DEFAULT: Fokus otomatis dikunci ke wilayah Sampit, Kotawaringin Timur [3]
+    // Fokus otomatis dikunci ke wilayah Sampit, Kotawaringin Timur
     mapCenter: [-2.5337, 112.9515],
     mapZoom: 9,
 
@@ -21472,19 +22799,22 @@ export const useGisUIStore = create<GisUIState>((set) => ({
     activeAdminBoundary: 'none',
     showImpactRadius: false,
 
+    // Inisialisasi awal objek cache kosong
+    aqiCache: {},
+
     // ======================================================================
     // LOGIKA MUTUALLY EXCLUSIVE & STACKING (GFW PARADIGM)
     // ======================================================================
     openPanel: (type, title, data = null) =>
         set((state) => {
             // Aturan Singleton: Apakah yang mau dibuka adalah Panel Floating Detail?
-            const isDetailPanel = type === "detil-perusahaan" || type === "detail-tugas";
+            const isDetailPanel = type === "detil-perusahaan" || type === "detail-tugas" || type === "telemetri-lingkungan";
 
             let nextPanels = [...state.activePanels];
 
             if (isDetailPanel) {
-                // Hapus panel detail lama jika ada, agar tidak numpuk melayang di layar
-                nextPanels = nextPanels.filter((p) => p.type !== "detil-perusahaan" && p.type !== "detail-tugas");
+                // Hapus panel detail/telemetri lama jika ada, agar tidak numpuk melayang di layar
+                nextPanels = nextPanels.filter((p) => p.type !== "detil-perusahaan" && p.type !== "detail-tugas" && p.type !== "telemetri-lingkungan");
             } else {
                 // Untuk panel menu (Kiri), hapus panel tipe sama agar tidak duplikat
                 nextPanels = nextPanels.filter((p) => p.type !== type);
@@ -21507,70 +22837,120 @@ export const useGisUIStore = create<GisUIState>((set) => ({
 
     closePanel: (id) =>
         set((state) => {
-            const filteredPanels = state.activePanels.filter((p) => p.id !== id);
-
-            // Jika yang ditutup adalah panel detail, otomatis unselect perusahaan
             const closedPanel = state.activePanels.find((p) => p.id === id);
-            const shouldUnselectCompany = closedPanel?.type === "detil-perusahaan" || closedPanel?.type === "detail-tugas";
+            if (!closedPanel) return {};
+
+            let filteredPanels = state.activePanels.filter((p) => p.id !== id);
+
+            // SINKRONISASI DAUR HIDUP LACI: Jika laci detail industri atau laci telemetri udara ditutup,
+            // secara otomatis tutup pasangannya di peramban untuk mencegah laci melayang yatim piatu
+            const isDetailOrTelemetry = closedPanel.type === "detil-perusahaan" || closedPanel.type === "telemetri-lingkungan";
+            if (isDetailOrTelemetry) {
+                filteredPanels = filteredPanels.filter(
+                    (p) => p.type !== "detil-perusahaan" && p.type !== "telemetri-lingkungan"
+                );
+            }
+
+            const shouldClearSelection = isDetailOrTelemetry || closedPanel.type === "detail-tugas";
 
             return {
                 activePanels: filteredPanels,
-                ...(shouldUnselectCompany && { selectedCompanyId: null, showImpactRadius: false }), // Otomatis matikan radius dampak jika panel ditutup
+                ...(shouldClearSelection && {
+                    selectedCompanyId: null,
+                    showImpactRadius: false
+                })
             };
         }),
 
     closePanelsToTheRight: (index) =>
         set((state) => {
-            // Potong array panel sesuai indeks yang diklik
             const slicedPanels = state.activePanels.slice(0, index + 1);
 
-            // Cek apakah panel detail terikut tertutup (tidak ada di array sisa)
-            const isDetailStillOpen = slicedPanels.some((p) => p.type === "detil-perusahaan" || p.type === "detail-tugas");
+            const isDetailOrTelemetryStillOpen = slicedPanels.some(
+                (p) => p.type === "detil-perusahaan" || p.type === "telemetri-lingkungan" || p.type === "detail-tugas"
+            );
 
             return {
                 activePanels: slicedPanels,
-                ...(!isDetailStillOpen && { selectedCompanyId: null, showImpactRadius: false }),
+                ...(!isDetailOrTelemetryStillOpen && {
+                    selectedCompanyId: null,
+                    showImpactRadius: false
+                })
             };
         }),
 
-    clearPanels: () => set({ activePanels: [], selectedCompanyId: null, showImpactRadius: false }),
+    clearPanels: () => set({
+        activePanels: [],
+        selectedCompanyId: null,
+        showImpactRadius: false,
+        aqiCache: {}
+    }),
 
     // ======================================================================
-    // LOGIKA KONTROL PETA (LAYERS, OPACITY, BASEMAP, COORDINATES)
+    // LOGIKA KONTROL PETA (MUTUALLY EXCLUSIVE LAYER)
     // ======================================================================
     toggleLayer: (layerId) =>
         set((state) => {
             const isExists = state.activeLayers.includes(layerId);
-            return {
-                activeLayers: isExists
-                    ? state.activeLayers.filter((id) => id !== layerId)
-                    : [...state.activeLayers, layerId],
-            };
+            let nextLayers = [...state.activeLayers];
+
+            if (isExists) {
+                // Mode Matikan Layer
+                nextLayers = nextLayers.filter((id) => id !== layerId);
+            } else {
+                // Mode Hidupkan Layer dengan Logika Saling Eksklusif (Mutually Exclusive)
+                const groupIndustriPengaduan = ['layer-amdal', 'layer-uklupl', 'layer-sppl', 'layer-complaints'];
+
+                if (layerId === 'layer-aqi') {
+                    // Jika menghidupkan AQI -> Matikan paksa kelompok Industri & Pengaduan
+                    nextLayers = nextLayers.filter(id => !groupIndustriPengaduan.includes(id));
+                    nextLayers.push(layerId);
+                } else if (groupIndustriPengaduan.includes(layerId)) {
+                    // Jika menghidupkan Industri/Pengaduan -> Matikan paksa AQI
+                    nextLayers = nextLayers.filter(id => id !== 'layer-aqi');
+                    nextLayers.push(layerId);
+                } else {
+                    // Layer lain (misal jika ada) berjalan normal
+                    nextLayers.push(layerId);
+                }
+            }
+
+            return { activeLayers: nextLayers };
         }),
 
     setMapOpacity: (opacity) => set({ mapOpacity: opacity }),
+    setMaskOpacity: (opacity) => set({ maskOpacity: opacity }),
     setActiveBaseMap: (baseMapId) => set({ activeBaseMap: baseMapId }),
 
     setSelectedCompanyId: (id) => set({ selectedCompanyId: id }),
 
-    // FASE 4 INJEKSI: Setter untuk pusat koordinat & skala zoom peta
     setMapCenter: (center) => set({ mapCenter: center }),
     setMapZoom: (zoom) => set({ mapZoom: zoom }),
 
-    // FASE 3 INJEKSI: Setter Fungsi Spatial Analytics
     setActiveAdminBoundary: (boundary) => set({ activeAdminBoundary: boundary }),
     setShowImpactRadius: (show) => set({ showImpactRadius: show }),
 
-    // Mereset peta ke mode awal (Mengembalikan fokus ke Kotawaringin Timur / Sampit) [3]
+    setAqiCache: (key, data) =>
+        set((state) => ({
+            aqiCache: {
+                ...state.aqiCache,
+                [key]: data,
+            },
+        })),
+
     resetMapContext: () =>
         set({
-            activeLayers: ['layer-amdal', 'layer-uklupl', 'layer-sppl', 'overlay-das', 'overlay-rtrw'],
+            activeLayers: ['layer-amdal', 'layer-uklupl', 'layer-sppl'],
             selectedCompanyId: null,
             activePanels: [],
             activeAdminBoundary: 'none',
             showImpactRadius: false,
-            mapCenter: [-2.5337, 112.9515], // Mengunci titik reset di pusat Sampit [3]
-            mapZoom: 9                      // Mengunci skala zoom default wilayah administrasi Kotim [3]
+            mapOpacity: 80,
+            maskOpacity: 60,
+            activeBaseMap: 'dark',
+            mapCenter: [-2.5337, 112.9515],
+            mapZoom: 9,
+            aqiCache: {},
         }),
 }));
 
@@ -21880,14 +23260,16 @@ export interface UKLUPLData {
  * Membantu Orchestrator menentukan komponen mana yang harus dirender di stack.
  */
 export type GisPanelType =
-    | 'katalog-perusahaan' // Panel daftar perusahaan
-    | 'layer-kewajiban'    // Panel toggle layer AMDAL/UKL-UPL/SPPL & Overlay
-    | 'detil-perusahaan'   // Panel melayang (floating) untuk detail info perusahaan
-    | 'tugas-patroli'      // Panel daftar penugasan patroli milik petugas lapangan
-    | 'detail-tugas'       // (FASE 2 INJEKSI) Panel melayang (floating) khusus detail tugas & pengaduan
-    | 'armada-tracking'    // Panel pelacakan live armada milik transporter/pengangkut
-    | 'hasil-pencarian'    // Panel untuk hasil search global
-    | 'tentang';           // Panel informasi aplikasi
+    | 'katalog-perusahaan'   // Panel daftar perusahaan
+    | 'layer-kewajiban'      // Panel toggle layer AMDAL/UKL-UPL/SPPL & Pengaduan
+    | 'detil-perusahaan'     // Panel melayang (floating) untuk detail info perusahaan
+    | 'telemetri-lingkungan' // Panel melayang khusus visualisasi & analisis kualitas udara (AQI) & cuaca
+    | 'tugas-patroli'        // Panel daftar penugasan patroli milik petugas lapangan
+    | 'detail-tugas'         // Panel melayang (floating) khusus detail tugas & pengaduan
+    | 'armada-tracking'      // Panel pelacakan live armada milik transporter/pengangkut
+    | 'basemap-gallery'      // [NEW PANEL] Panel khusus pengaturan peta dasar (Basemap)
+    | 'hasil-pencarian'      // Panel untuk hasil search global
+    | 'tentang';             // Panel informasi aplikasi
 
 /**
  * Interface untuk mengelola state panel yang sedang terbuka.

@@ -5,14 +5,16 @@
  * Membantu Orchestrator menentukan komponen mana yang harus dirender di stack.
  */
 export type GisPanelType =
-    | 'katalog-perusahaan' // Panel daftar perusahaan
-    | 'layer-kewajiban'    // Panel toggle layer AMDAL/UKL-UPL/SPPL & Overlay
-    | 'detil-perusahaan'   // Panel melayang (floating) untuk detail info perusahaan
-    | 'tugas-patroli'      // Panel daftar penugasan patroli milik petugas lapangan
-    | 'detail-tugas'       // (FASE 2 INJEKSI) Panel melayang (floating) khusus detail tugas & pengaduan
-    | 'armada-tracking'    // Panel pelacakan live armada milik transporter/pengangkut
-    | 'hasil-pencarian'    // Panel untuk hasil search global
-    | 'tentang';           // Panel informasi aplikasi
+    | 'katalog-perusahaan'   // Panel daftar perusahaan
+    | 'layer-kewajiban'      // Panel toggle layer AMDAL/UKL-UPL/SPPL & Pengaduan
+    | 'detil-perusahaan'     // Panel melayang (floating) untuk detail info perusahaan
+    | 'telemetri-lingkungan' // Panel melayang khusus visualisasi & analisis kualitas udara (AQI) & cuaca
+    | 'tugas-patroli'        // Panel daftar penugasan patroli milik petugas lapangan
+    | 'detail-tugas'         // Panel melayang (floating) khusus detail tugas & pengaduan
+    | 'armada-tracking'      // Panel pelacakan live armada milik transporter/pengangkut
+    | 'basemap-gallery'      // [NEW PANEL] Panel khusus pengaturan peta dasar (Basemap)
+    | 'hasil-pencarian'      // Panel untuk hasil search global
+    | 'tentang';             // Panel informasi aplikasi
 
 /**
  * Interface untuk mengelola state panel yang sedang terbuka.
