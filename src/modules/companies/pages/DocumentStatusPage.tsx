@@ -37,18 +37,18 @@ export default function DocumentStatusPage() {
   // Cek Status Pembayaran Retribusi (Payment Barrier) - Gunakan invoice retribusi terbaru
   const isUklUpl = company?.docType === "UKL-UPL" || company?.docType === "UKL_UPL";
   const retribusiType = isUklUpl ? "Retribusi UKL-UPL" : "Retribusi SPPL";
-  
+
   const companyRetribusiInvoices = invoices.filter(
     i => i.companyId === company?.id && (i.type === "Retribusi UKL-UPL" || i.type === "Retribusi SPPL" || i.type.includes("Retribusi"))
   );
-  
+
   const latestRetribusiInvoice = companyRetribusiInvoices.sort((a, b) => {
     if (a.date !== b.date) {
       return b.date.localeCompare(a.date);
     }
     return b.id.localeCompare(a.id);
   })[0];
-  
+
   const isPaymentPending = company?.status === "APPROVED" && (!latestRetribusiInvoice || latestRetribusiInvoice.status !== "SETTLED");
 
   const handlePreviewPdf = async () => {
@@ -139,11 +139,10 @@ export default function DocumentStatusPage() {
             <Button
               disabled={isDownloading}
               onClick={handlePreviewPdf}
-              className={`w-full sm:w-auto h-9 font-black text-[9px] uppercase tracking-widest gap-1.5 shadow-none rounded-none px-4 ${
-                "bg-emerald-600 hover:bg-emerald-700 text-white"
-              }`}
+              className={`w-full sm:w-auto h-9 font-black text-[9px] uppercase tracking-widest gap-1.5 shadow-none rounded-none px-4 ${"bg-emerald-600 hover:bg-emerald-700 text-white"
+                }`}
             >
-              {isDownloading ? <Loader2 size={12} className="animate-spin" /> : <Eye size={12} />} 
+              {isDownloading ? <Loader2 size={12} className="animate-spin" /> : <Eye size={12} />}
               {isDownloading ? "MEMUAT BERKAS..." : "LIHAT SERTIFIKAT"}
             </Button>
           )}
@@ -192,7 +191,7 @@ export default function DocumentStatusPage() {
                 </p>
               </div>
             </div>
-          ) : company.status === "APPROVED" && !isPaymentPending ? (
+          ) : company.status === "APPROVED" && isPaymentPending ? (
             <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-none flex items-start gap-3">
               <CheckCircle2 className="text-emerald-600 shrink-0 mt-0.5" size={16} />
               <div>
@@ -203,7 +202,7 @@ export default function DocumentStatusPage() {
                 </p>
               </div>
             </div>
-          ) : company.status === "APPROVED" && isPaymentPending ? (
+          ) : company.status === "APPROVED" && !isPaymentPending ? (
             <div className="p-4 bg-rose-50 border border-rose-200 rounded-none flex flex-col items-start gap-3">
               <div className="flex items-start gap-3">
                 <AlertCircle className="text-rose-600 shrink-0 mt-0.5 animate-pulse" size={16} />
@@ -281,7 +280,7 @@ export default function DocumentStatusPage() {
         {/* 4. REAL PDF FULLSCREEN PREVIEW OVERLAY */}
         {previewPdfUrl && (
           <Dialog open={!!previewPdfUrl} onOpenChange={() => setPreviewPdfUrl(null)}>
-            <DialogContent className="max-w-5xl w-[95vw] h-[90vh] p-0 rounded-none overflow-hidden flex flex-col bg-slate-950 border border-slate-800 shadow-2xl z-[9999]">
+            <DialogContent className="w-full max-w-[95vw] lg:max-w-7xl h-[95vh] p-0 overflow-hidden rounded-none border-none shadow-2xl flex flex-col bg-slate-950 z-[9999] text-left">
               {/* Overlay Header Hitam Taktis */}
               <div className="bg-slate-900 text-white px-6 py-4 flex justify-between items-center shrink-0 border-b border-slate-800">
                 <div className="flex items-center gap-3">
@@ -294,27 +293,27 @@ export default function DocumentStatusPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <button 
-                    onClick={forceDownloadFromPreview} 
+                  <button
+                    onClick={forceDownloadFromPreview}
                     className="flex items-center gap-1.5 bg-slate-800 hover:bg-emerald-600 text-slate-300 hover:text-white px-4 py-2 rounded-none text-xs font-bold transition-colors border border-slate-700 hover:border-emerald-500 shadow-sm uppercase tracking-widest"
                   >
                     <Download size={14} /> Unduh
                   </button>
                   <div className="w-px h-6 bg-slate-700 mx-1" />
-                  <button 
-                    onClick={() => setPreviewPdfUrl(null)} 
+                  <button
+                    onClick={() => setPreviewPdfUrl(null)}
                     className="p-2 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 rounded-none transition-colors border border-transparent hover:border-rose-500/30"
                   >
                     <X size={20} />
                   </button>
                 </div>
               </div>
-              
+
               {/* Area Render PDF (Memanfaatkan iframe native browser) */}
-              <iframe 
-                src={previewPdfUrl} 
-                title="Sertifikat Digital" 
-                className="w-full flex-1 border-none bg-slate-100" 
+              <iframe
+                src={previewPdfUrl}
+                title="Sertifikat Digital"
+                className="w-full flex-1 border-none bg-slate-100"
               />
             </DialogContent>
           </Dialog>

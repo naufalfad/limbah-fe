@@ -69,7 +69,7 @@ export default function CompletedAudits() {
 
                                     {/* Nama Industri / Target Sasaran */}
                                     <h4 className="font-black text-slate-800 text-xs leading-none truncate max-w-[180px]">
-                                        {insp.companyName}
+                                        {insp.companyName || insp.company?.companyName || "Perusahaan"}
                                     </h4>
 
                                     {/* Tanggal Eksekusi BAP */}

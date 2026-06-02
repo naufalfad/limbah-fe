@@ -102,7 +102,7 @@ export const initialCompanies: Company[] = [
     address: "Jl. Soekarno-Hatta No. 500, Bandung",
     docType: "UKL-UPL",
     status: "APPROVED",
-    score: 65
+    score: 50
   }
 ];
 
@@ -165,12 +165,35 @@ export const initialInspections: Inspection[] = [
     inspectorId: "OFF-001",
     inspectorName: "Heryanto, S.T.",
     date: "2026-05-14",
-    score: 85,
+    score: 100,
     status: "Selesai",
     location: "Kec. Cicadas, Bandung",
     notes: "TPS B3 sudah tertata rapi, saluran IPAL lancar.",
     bapSigned: true,
-    checklist: { tpsB3: true, ipal: true, apar: true, noise: false, safetyEquipment: true }
+    checklist: {
+      sumberDampakStatus: "SESUAI",
+      sumberDampakNotes: "",
+      jenisDampakStatus: "SESUAI",
+      jenisDampakNotes: "",
+      besaranDampakStatus: "SESUAI",
+      besaranDampakNotes: "",
+      pengelolaanBentukStatus: "SESUAI",
+      pengelolaanBentukNotes: "",
+      pengelolaanLokasiStatus: "SESUAI",
+      pengelolaanLokasiNotes: "",
+      pengelolaanPeriodeStatus: "SESUAI",
+      pengelolaanPeriodeNotes: "",
+      pemantauanBentukStatus: "SESUAI",
+      pemantauanBentukNotes: "",
+      pemantauanLokasiStatus: "SESUAI",
+      pemantauanLokasiNotes: "",
+      pemantauanPeriodeStatus: "SESUAI",
+      pemantauanPeriodeNotes: "",
+      institusiStatus: "SESUAI",
+      institusiNotes: "",
+      keteranganStatus: "SESUAI",
+      keteranganNotes: ""
+    }
   },
   {
     id: "INSP-002",
@@ -182,7 +205,13 @@ export const initialInspections: Inspection[] = [
     score: null,
     status: "Terjadwal",
     location: "Kec. Coblong, Bandung",
-    checklist: { tpsB3: false, ipal: false, apar: false, noise: false, safetyEquipment: false }
+    checklist: {
+      spplBersih: false,
+      spplBebasLimbah: false,
+      spplDrainase: false,
+      spplBebasBakar: false,
+      spplTempatSampah: false
+    }
   },
   {
     id: "INSP-003",
@@ -191,12 +220,35 @@ export const initialInspections: Inspection[] = [
     inspectorId: "OFF-001",
     inspectorName: "Heryanto, S.T.",
     date: "2026-05-18",
-    score: 65,
+    score: 50,
     status: "Selesai",
     location: "Bandung",
     notes: "TPS B3 kurang rapi, air IPAL mendekati ambang batas pH 9.",
     bapSigned: true,
-    checklist: { tpsB3: true, ipal: true, apar: false, noise: false, safetyEquipment: false }
+    checklist: {
+      sumberDampakStatus: "SESUAI",
+      sumberDampakNotes: "",
+      jenisDampakStatus: "SESUAI",
+      jenisDampakNotes: "",
+      besaranDampakStatus: "SESUAI",
+      besaranDampakNotes: "",
+      pengelolaanBentukStatus: "SESUAI",
+      pengelolaanBentukNotes: "",
+      pengelolaanLokasiStatus: "SESUAI",
+      pengelolaanLokasiNotes: "",
+      pengelolaanPeriodeStatus: "SESUAI",
+      pengelolaanPeriodeNotes: "",
+      pemantauanBentukStatus: "TIDAK_SESUAI",
+      pemantauanBentukNotes: "Parameter pemantauan emisi cerobong tidak lengkap sesuai dokumen.",
+      pemantauanLokasiStatus: "SESUAI",
+      pemantauanLokasiNotes: "",
+      pemantauanPeriodeStatus: "SESUAI",
+      pemantauanPeriodeNotes: "",
+      institusiStatus: "SESUAI",
+      institusiNotes: "",
+      keteranganStatus: "SESUAI",
+      keteranganNotes: ""
+    }
   }
 ];
 

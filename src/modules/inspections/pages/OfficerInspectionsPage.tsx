@@ -111,7 +111,9 @@ export default function OfficerInspectionsPage() {
         const today = new Date();
         daysSince = Math.floor((today.getTime() - lastDate.getTime()) / (1000 * 3600 * 24));
 
-        if (daysSince > 30) {
+        if (lastInspection.score !== null && lastInspection.score !== undefined && lastInspection.score < 60) {
+          statusLabel = "Perlu Inspeksi Ulang";
+        } else if (daysSince > 30) {
           statusLabel = "Jatuh Tempo";
           isOverdue = true;
         } else {
@@ -196,6 +198,7 @@ export default function OfficerInspectionsPage() {
             </div>
             <div className="flex gap-1 flex-wrap">
               <Badge className="bg-rose-50 text-rose-700 rounded-none border-none text-[8px] font-black uppercase px-2 py-0.5">Jatuh Tempo</Badge>
+              <Badge className="bg-rose-100 text-rose-800 rounded-none border-none text-[8px] font-black uppercase px-2 py-0.5">Perlu Inspeksi Ulang</Badge>
               <Badge className="bg-amber-50 text-amber-700 rounded-none border-none text-[8px] font-black uppercase px-2 py-0.5">Belum Diinspeksi</Badge>
               <Badge className="bg-emerald-50 text-emerald-700 rounded-none border-none text-[8px] font-black uppercase px-2 py-0.5">Aman (Bulan Ini)</Badge>
             </div>
@@ -243,9 +246,10 @@ export default function OfficerInspectionsPage() {
                         <span className={cn(
                           "px-2 py-0.5 text-[8px] font-black border uppercase tracking-widest rounded-none",
                           row.statusLabel === "Aman" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
-                            row.statusLabel === "Jatuh Tempo" ? "bg-rose-50 text-rose-700 border-rose-200 animate-pulse" :
-                              row.statusLabel === "Menunggu Pelaksanaan" ? "bg-blue-50 text-blue-700 border-blue-200" :
-                                "bg-amber-50 text-amber-700 border-amber-200"
+                            row.statusLabel === "Jatuh Tempo" ? "bg-rose-50 text-rose-700 border-rose-200 " :
+                              row.statusLabel === "Perlu Inspeksi Ulang" ? "bg-rose-100 text-rose-800 border-rose-300 font-bold" :
+                                row.statusLabel === "Menunggu Pelaksanaan" ? "bg-blue-50 text-blue-700 border-blue-200" :
+                                  "bg-amber-50 text-amber-700 border-amber-200"
                         )}>
                           {row.statusLabel}
                         </span>
