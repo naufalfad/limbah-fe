@@ -205,7 +205,7 @@ export default function CompanyDashboard() {
               <h3 className="font-black text-xs text-slate-800 uppercase tracking-widest border-b pb-2">Menu Navigasi</h3>
               <div className="flex flex-col divide-y divide-slate-100 font-sans text-xs">
                 <QuickMenuRow label="Input Logbook Harian" desc="Pelaporan Rutin" onClick={() => navigate("/company/logbook")} />
-                <QuickMenuRow label="Settle Retribusi Daerah" desc="Virtual Account & QRIS" onClick={() => navigate("/company/payments")} />
+                {/* <QuickMenuRow label="Settle Retribusi Daerah" desc="Virtual Account & QRIS" onClick={() => navigate("/company/payments")} /> */}
                 <QuickMenuRow label="Unduh Dokumen Lingkungan" desc="SPPL / UKL-UPL Digital" onClick={() => navigate("/company/documents")} />
               </div>
             </Card>

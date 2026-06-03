@@ -41,7 +41,7 @@ export function CreateInspectionModal({ isOpen, onClose }: CreateInspectionModal
     }
   }, [isOpen, fetchCompanies]);
 
-  // Saring perusahaan aktif (APPROVED) +COM-UNKNOWN
+  // Saring perusahaan aktif (APPROVED) + COM-UNKNOWN
   const approvedCompanies = useMemo(() => {
     return companies.filter(c => c.status === "APPROVED" || c.id === "COM-UNKNOWN");
   }, [companies]);

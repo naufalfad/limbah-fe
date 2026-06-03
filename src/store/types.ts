@@ -93,6 +93,7 @@ export interface Inspection {
   id: string;
   companyId: string;
   companyName: string;
+  company?: { id: string; companyName: string };
   inspectorId: string;
   inspectorName: string;
   date: string;
@@ -103,11 +104,36 @@ export interface Inspection {
   photo?: string;
   bapSigned?: boolean;
   checklist?: {
-    tpsB3: boolean;
-    ipal: boolean;
-    apar: boolean;
-    noise: boolean;
-    safetyEquipment: boolean;
+    // UKL-UPL / AMDAL Matrix kualitatif
+    sumberDampakStatus?: "SESUAI" | "TIDAK_SESUAI";
+    sumberDampakNotes?: string;
+    jenisDampakStatus?: "SESUAI" | "TIDAK_SESUAI";
+    jenisDampakNotes?: string;
+    besaranDampakStatus?: "SESUAI" | "TIDAK_SESUAI";
+    besaranDampakNotes?: string;
+    pengelolaanBentukStatus?: "SESUAI" | "TIDAK_SESUAI";
+    pengelolaanBentukNotes?: string;
+    pengelolaanLokasiStatus?: "SESUAI" | "TIDAK_SESUAI";
+    pengelolaanLokasiNotes?: string;
+    pengelolaanPeriodeStatus?: "SESUAI" | "TIDAK_SESUAI";
+    pengelolaanPeriodeNotes?: string;
+    pemantauanBentukStatus?: "SESUAI" | "TIDAK_SESUAI";
+    pemantauanBentukNotes?: string;
+    pemantauanLokasiStatus?: "SESUAI" | "TIDAK_SESUAI";
+    pemantauanLokasiNotes?: string;
+    pemantauanPeriodeStatus?: "SESUAI" | "TIDAK_SESUAI";
+    pemantauanPeriodeNotes?: string;
+    institusiStatus?: "SESUAI" | "TIDAK_SESUAI";
+    institusiNotes?: string;
+    keteranganStatus?: "SESUAI" | "TIDAK_SESUAI";
+    keteranganNotes?: string;
+
+    // SPPL
+    spplBersih?: boolean;
+    spplBebasLimbah?: boolean;
+    spplDrainase?: boolean;
+    spplBebasBakar?: boolean;
+    spplTempatSampah?: boolean;
   };
 }
 

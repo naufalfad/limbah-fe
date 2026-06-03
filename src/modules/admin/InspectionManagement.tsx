@@ -12,6 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 import { CreateInspectionModal } from "./components/CreateInspectionModal";
 import { FollowUpModal } from "./components/FollowUpModal";
+import { InspectionDetailModal } from "./components/InspectionDetailModal"; // Menggabungkan impor modal milik rekan Anda
 import { useSijagaStore } from '@/store/useSijagaStore';
 import { toast } from "sonner";
 
@@ -26,6 +27,7 @@ export default function InspectionManagement() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isFollowUpModalOpen, setIsFollowUpModalOpen] = useState(false);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false); // State untuk modal detail rekan Anda
   const [selectedInspection, setSelectedInspection] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -133,7 +135,7 @@ export default function InspectionManagement() {
                     <TableRow key={item.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors h-14">
                       <TableCell className="pl-4 font-black text-slate-900 text-xs">{item.id}</TableCell>
                       <TableCell>
-                        <p className="font-bold text-slate-800 text-xs leading-none">{item.companyName}</p>
+                        <p className="font-bold text-slate-800 text-xs leading-none">{item.company?.companyName || item.companyName}</p>
                         <p className="text-[9px] text-slate-400 font-bold uppercase mt-1 flex items-center gap-1">
                           <User size={10} /> {item.inspectorName}
                         </p>
@@ -163,6 +165,8 @@ export default function InspectionManagement() {
                         <ComplianceBadge status={complianceStatus} />
                       </TableCell>
                       <TableCell className="pr-4 text-right">
+
+                        {/* RESOLUSI KONFLIK: Menggabungkan Dua Fitur dalam Satu Group Tombol Taktis */}
                         <div className="flex items-center justify-end gap-2">
                           <Button
                             variant="ghost"
@@ -170,13 +174,14 @@ export default function InspectionManagement() {
                             className="font-bold text-emerald-600 gap-1.5 hover:bg-emerald-50 rounded-none h-8 text-[9px] tracking-widest"
                             onClick={() => {
                               if (item.status === 'Selesai') {
-                                toast.info(`BAP Detail: ${item.notes || 'TPS B3 dan IPAL memenuhi standar.'}`);
+                                setSelectedInspection(item);
+                                setIsDetailModalOpen(true); // Memanggil modal detail rekan Anda
                               } else {
-                                toast.warning(`Tugas Aktif: "${item.notes || 'Inspeksi kepatuhan lapangan.'}"`);
+                                toast.warning("BAP belum diterbitkan oleh petugas lapangan (Status: Terjadwal).");
                               }
                             }}
                           >
-                            <FileText size={12} /> BAP
+                            <FileText size={12} /> LIHAT BAP
                           </Button>
                           <Button
                             variant="outline"
@@ -185,7 +190,7 @@ export default function InspectionManagement() {
                             onClick={() => {
                               if (item.status === 'Selesai') {
                                 setSelectedInspection(item);
-                                setIsFollowUpModalOpen(true);
+                                setIsFollowUpModalOpen(true); // Memanggil modal follow-up Anda
                               } else {
                                 toast.warning("Tindak lanjut hanya bisa dilakukan setelah inspeksi selesai.");
                               }
@@ -194,6 +199,7 @@ export default function InspectionManagement() {
                             <AlertTriangle size={12} /> TINDAK LANJUT
                           </Button>
                         </div>
+
                       </TableCell>
                     </TableRow>
                   );
@@ -205,11 +211,21 @@ export default function InspectionManagement() {
       </div>
 
       <CreateInspectionModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+
+      {/* Modul Anda */}
       <FollowUpModal
         isOpen={isFollowUpModalOpen}
         onClose={() => setIsFollowUpModalOpen(false)}
         inspection={selectedInspection}
       />
+
+      {/* Modul Teman Anda */}
+      <InspectionDetailModal
+        isOpen={isDetailModalOpen}
+        onClose={() => setIsDetailModalOpen(false)}
+        inspection={selectedInspection}
+      />
+
     </DashboardLayout>
   );
 }

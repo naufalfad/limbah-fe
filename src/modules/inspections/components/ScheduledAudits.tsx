@@ -49,7 +49,7 @@ export default function ScheduledAudits({ onStartAudit }: ScheduledAuditsProps) 
                     pendingAudits.map((insp) => {
                         // Polimorfisme UI untuk rendering baris tugas
                         const isUnknown = insp.companyId === "COM-UNKNOWN";
-                        const title = isUnknown ? "🚨 Penyelidikan Laporan Warga" : insp.companyName;
+                        const title = isUnknown ? "🚨 Penyelidikan Laporan Warga" : (insp.companyName || insp.company?.companyName || "Perusahaan");
                         const displayNotes = insp.notes ? insp.notes : (isUnknown ? "Investigasi lapangan atas laporan masyarakat." : "Inspeksi kepatuhan lingkungan rutin.");
 
                         return (

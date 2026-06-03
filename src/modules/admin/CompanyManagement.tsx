@@ -1,5 +1,6 @@
 // src/modules/admin/CompanyManagement.tsx
 import React, { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow
@@ -67,6 +68,7 @@ type StatusFilter = "ALL" | "ACTIVE" | "SUSPENDED" | "EXPIRED" | "INACTIVE";
 type DocFilter = "ALL" | "SPPL" | "UKL_UPL" | "UKL-UPL" | "AMDAL";
 
 export default function CompanyManagement() {
+  const navigate = useNavigate();
   const { companies, fetchCompanies, updateCompanyStatus, downloadCompanyCertificate } = useSijagaStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
@@ -81,47 +83,7 @@ export default function CompanyManagement() {
   const [actionTarget, setActionTarget] = useState<{ company: Company; nextStatus: "SUSPENDED" | "APPROVED" } | null>(null);
   const [isActionOpen, setIsActionOpen] = useState(false);
 
-  // States for Wajib AMDAL Registration Modal
-  const [isAmdalOpen, setIsAmdalOpen] = useState(false);
-
-  // FASE 2: Inisiasi Koordinat Default Form AMDAL diarahkan ke Sampit, Kotim [3]
-  const [amdalForm, setAmdalForm] = useState({
-    companyName: "",
-    nib: "",
-    npwp: "",
-    address: "",
-    lat: "-2.5337",
-    lng: "112.9515",
-  });
-  const [isSubmittingAmdal, setIsSubmittingAmdal] = useState(false);
-
-  const handleAmdalSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!amdalForm.companyName || !amdalForm.nib || !amdalForm.address || !amdalForm.lat || !amdalForm.lng) {
-      toast.error("Mohon lengkapi seluruh field wajib dan titik koordinat!");
-      return;
-    }
-
-    setIsSubmittingAmdal(true);
-    try {
-      const { addManualAmdalCompany } = useSijagaStore.getState();
-      await addManualAmdalCompany(amdalForm);
-      setIsAmdalOpen(false);
-      setAmdalForm({
-        companyName: "",
-        nib: "",
-        npwp: "",
-        address: "",
-        lat: "-2.5337",
-        lng: "112.9515",
-      });
-      await fetchCompanies();
-    } catch (err) {
-      // Error handled by store toast
-    } finally {
-      setIsSubmittingAmdal(false);
-    }
-  };
+  // RESOLUSI KONFLIK: Sesuai kode rekan Anda, State isAmdalOpen, amdalForm, dan handlernya dihapus sepenuhnya [3]
 
   useEffect(() => {
     fetchCompanies();
@@ -263,8 +225,9 @@ export default function CompanyManagement() {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* RESOLUSI KONFLIK: Tombol mengarahkan ke halaman rute baru sesuai kode rekan Anda */}
             <Button
-              onClick={() => setIsAmdalOpen(true)}
+              onClick={() => navigate("/admin/companies/add-amdal")}
               className="bg-rose-600 hover:bg-rose-700 text-white flex items-center gap-2 font-black rounded-none h-9 px-4 text-[10px] uppercase tracking-widest shadow-sm"
             >
               + Wajib AMDAL
@@ -579,7 +542,7 @@ export default function CompanyManagement() {
 
       {/* --- CONFIRMATION DIALOG (SUSPEND / RESTORE) --- */}
       <Dialog open={isActionOpen} onOpenChange={setIsActionOpen}>
-        <DialogContent className="rounded-none border-2 border-slate-900 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-left max-w-md">
+        <DialogContent className="rounded-none border-2 border-slate-900 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-left max-w-md bg-white">
           <DialogHeader>
             <DialogTitle className="text-sm font-black uppercase tracking-wider flex items-center gap-2 text-slate-900">
               {actionTarget?.nextStatus === "SUSPENDED" ? (
@@ -637,145 +600,9 @@ export default function CompanyManagement() {
         </DialogContent>
       </Dialog>
 
-      {/* --- REGISTRASI DOKUMEN AMDAL MANUAL (HIGH DENSITY FORM) --- */}
-      <Dialog open={isAmdalOpen} onOpenChange={setIsAmdalOpen}>
-        <DialogContent className="rounded-none border-2 border-slate-900 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] text-left max-w-3xl overflow-hidden p-0 bg-slate-50 z-50">
-          <div className="bg-white p-6 border-b-2 border-slate-900 flex justify-between items-start">
-            <div>
-              <DialogTitle className="text-xl font-black uppercase tracking-tight text-slate-900 flex items-center gap-2">
-                <MapPin className="text-rose-600" size={24} />
-                Registrasi Wajib AMDAL
-              </DialogTitle>
-              <DialogDescription className="text-xs font-bold text-slate-500 mt-1 uppercase tracking-wider">
-                Petakan koordinat spasial industri wajib AMDAL ke sistem agar terintegrasi di peta GIS.
-              </DialogDescription>
-            </div>
-            <Badge className="bg-rose-100 text-rose-700 border-rose-200 rounded-none shadow-none text-[10px] font-black px-3 py-1 uppercase tracking-widest">
-              Manual Entry
-            </Badge>
-          </div>
-
-          <form onSubmit={handleAmdalSubmit} className="flex flex-col max-h-[75vh]">
-            <div className="p-6 overflow-y-auto space-y-6">
-
-              {/* GIS MAP PICKER CANVAS */}
-              <div className="space-y-2">
-                <label className="text-xs font-black text-slate-700 uppercase tracking-widest flex items-center gap-1.5">
-                  <Info size={14} className="text-rose-600" />
-                  Pemetaan Koordinat GIS <span className="text-rose-600">*</span>
-                </label>
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Klik pada peta untuk mengambil titik lokasi perusahaan</p>
-                <div className="h-[250px] w-full bg-slate-200 border-2 border-slate-900 relative z-10 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)]">
-                  <MapContainer
-                    center={[-2.5337, 112.9515]} // SINKRONISASI KOTIM: Diubah ke Sampit [3]
-                    zoom={10} // default zoom 10 agar area Sampit langsung fokus [3]
-                    zoomControl={true}
-                    style={{ height: "100%", width: "100%" }}
-                  >
-                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                    <MapPicker
-                      lat={amdalForm.lat}
-                      lng={amdalForm.lng}
-                      onChange={(lat, lng) => setAmdalForm({ ...amdalForm, lat, lng })}
-                    />
-                    <ResizeMap />
-                  </MapContainer>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div className="space-y-2">
-                  <label className="text-xs font-black text-slate-700 uppercase tracking-widest">Latitude</label>
-                  <Input
-                    required
-                    value={amdalForm.lat}
-                    onChange={(e) => setAmdalForm({ ...amdalForm, lat: e.target.value })}
-                    placeholder="-2.5337"
-                    className="h-11 rounded-none border-2 border-slate-300 focus-visible:border-rose-600 focus-visible:ring-0 bg-white text-sm font-bold shadow-none"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-black text-slate-700 uppercase tracking-widest">Longitude</label>
-                  <Input
-                    required
-                    value={amdalForm.lng}
-                    onChange={(e) => setAmdalForm({ ...amdalForm, lng: e.target.value })}
-                    placeholder="112.9515"
-                    className="h-11 rounded-none border-2 border-slate-300 focus-visible:border-rose-600 focus-visible:ring-0 bg-white text-sm font-bold shadow-none"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div className="space-y-2">
-                  <label className="text-xs font-black text-slate-700 uppercase tracking-widest">Nama Perusahaan <span className="text-rose-600">*</span></label>
-                  <Input
-                    required
-                    value={amdalForm.companyName}
-                    onChange={(e) => setAmdalForm({ ...amdalForm, companyName: e.target.value })}
-                    placeholder="PT. Semen Indonesia AMDAL"
-                    className="h-11 rounded-none border-2 border-slate-300 focus-visible:border-rose-600 focus-visible:ring-0 bg-white text-sm font-bold shadow-none"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-black text-slate-700 uppercase tracking-widest">Nomor Induk Berusaha <span className="text-rose-600">*</span></label>
-                  <Input
-                    required
-                    value={amdalForm.nib}
-                    onChange={(e) => setAmdalForm({ ...amdalForm, nib: e.target.value })}
-                    placeholder="13 Digit NIB Resmi"
-                    className="h-11 rounded-none border-2 border-slate-300 focus-visible:border-rose-600 focus-visible:ring-0 bg-white text-sm font-bold shadow-none"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs font-black text-slate-700 uppercase tracking-widest">NPWP Perusahaan</label>
-                <Input
-                  value={amdalForm.npwp}
-                  onChange={(e) => setAmdalForm({ ...amdalForm, npwp: e.target.value })}
-                  placeholder="00.000.000.0-000.000 (Opsional)"
-                  className="h-11 rounded-none border-2 border-slate-300 focus-visible:border-rose-600 focus-visible:ring-0 bg-white text-sm font-bold shadow-none"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs font-black text-slate-700 uppercase tracking-widest">Alamat Pabrik / Operasional Detail <span className="text-rose-600">*</span></label>
-                <textarea
-                  required
-                  value={amdalForm.address}
-                  onChange={(e) => setAmdalForm({ ...amdalForm, address: e.target.value })}
-                  placeholder="Kawasan Industri Ketapang No. 44, Sampit"
-                  className="w-full min-h-[100px] rounded-none border-2 border-slate-300 p-3 text-sm font-bold focus:outline-none focus:border-rose-600 focus:ring-0 bg-white shadow-none resize-none"
-                />
-              </div>
-            </div>
-
-            <div className="p-6 bg-white border-t-2 border-slate-900 flex justify-end gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsAmdalOpen(false)}
-                className="rounded-none border-2 border-slate-300 font-bold text-xs h-11 px-6 hover:bg-slate-50 uppercase tracking-widest"
-              >
-                BATAL
-              </Button>
-              <Button
-                type="submit"
-                disabled={isSubmittingAmdal}
-                className="rounded-none border-2 border-rose-600 bg-rose-600 hover:bg-rose-700 hover:border-rose-700 text-white font-black text-xs h-11 px-8 uppercase tracking-wider"
-              >
-                {isSubmittingAmdal ? "MENYIMPAN..." : "SIMPAN DATA AMDAL"}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-
       {/* --- DETAIL MODAL (HIGH DENSITY METADATA INSPECT) --- */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="rounded-none border-2 border-slate-900 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] text-left max-w-2xl overflow-y-auto max-h-[85vh] p-6">
-
+        <DialogContent className="rounded-none border-2 border-slate-900 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] text-left w-[95vw] max-w-5xl overflow-y-auto max-h-[85vh] p-6 bg-white">
           <DialogHeader className="border-b border-slate-200 pb-4">
             <div className="flex justify-between items-start gap-4">
               <div>
@@ -896,13 +723,11 @@ export default function CompanyManagement() {
                   </div>
                   <div className="flex justify-between border-b border-slate-100 pb-1.5">
                     <span className="text-slate-500 font-semibold">Jam Operasional</span>
-                    <span className="font-bold text-slate-900">{selectedCompany.operationalHours || "-"}</span>
+                    <span className="font-bold text-slate-800 font-mono">{selectedCompany.operationalHours || "-"}</span>
                   </div>
                   <div className="flex justify-between border-b border-slate-100 pb-1.5">
                     <span className="text-slate-500 font-semibold">Sumber Air / Listrik</span>
-                    <span className="font-bold text-slate-900">
-                      {selectedCompany.waterSource} / {selectedCompany.powerSource}
-                    </span>
+                    <span className="font-bold text-slate-800 font-mono">{selectedCompany.waterSource} / {selectedCompany.powerSource}</span>
                   </div>
                 </div>
 
@@ -951,7 +776,6 @@ export default function CompanyManagement() {
   );
 }
 
-// --- Status Badge Helper Component ---
 function StatusIndicator({ state, docType }: { state: StatusFilter; docType: string }) {
   const normalizedDoc = docType === "UKL_UPL" ? "UKL-UPL" : docType;
 

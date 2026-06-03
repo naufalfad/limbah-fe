@@ -47,13 +47,46 @@ export const createInspectionSlice: StateCreator<
 
     // --- FALLBACK OFFLINE ---
     const newId = `INSP-${String(get().inspections.length + 1).padStart(3, "0")}`;
+    const company = get().companies.find(c => c.id === inspectionData.companyId);
+    const isSppl = company?.docType === "SPPL";
+
     const newInspection: Inspection = {
       ...inspectionData,
       id: newId,
       status: "Terjadwal",
       score: null,
-      bapSigned: false, // Mengeset nilai default false secara eksplisit agar aman di render UI [3]
-      checklist: { tpsB3: false, ipal: false, apar: false, noise: false, safetyEquipment: false }
+      bapSigned: false, // SINKRONISASI COHESION: Menjaga UI Safety agar tidak crash saat membaca status tanda tangan [3]
+      // RESOLUSI KONFLIK: Memakai data struktur checklist detail spasial SPPL/UKL-UPL milik rekan Anda
+      checklist: isSppl ? {
+        spplBersih: false,
+        spplBebasLimbah: false,
+        spplDrainase: false,
+        spplBebasBakar: false,
+        spplTempatSampah: false
+      } : {
+        sumberDampakStatus: "SESUAI",
+        sumberDampakNotes: "",
+        jenisDampakStatus: "SESUAI",
+        jenisDampakNotes: "",
+        besaranDampakStatus: "SESUAI",
+        besaranDampakNotes: "",
+        pengelolaanBentukStatus: "SESUAI",
+        pengelolaanBentukNotes: "",
+        pengelolaanLokasiStatus: "SESUAI",
+        pengelolaanLokasiNotes: "",
+        pengelolaanPeriodeStatus: "SESUAI",
+        pengelolaanPeriodeNotes: "",
+        pemantauanBentukStatus: "SESUAI",
+        pemantauanBentukNotes: "",
+        pemantauanLokasiStatus: "SESUAI",
+        pemantauanLokasiNotes: "",
+        pemantauanPeriodeStatus: "SESUAI",
+        pemantauanPeriodeNotes: "",
+        institusiStatus: "SESUAI",
+        institusiNotes: "",
+        keteranganStatus: "SESUAI",
+        keteranganNotes: ""
+      }
     };
 
     set((state) => ({
@@ -94,11 +127,26 @@ export const createInspectionSlice: StateCreator<
 
       if (response && response.success) {
         const updatedInsp: Inspection = response.inspection;
+        const targetCompanyId = updatedInsp.companyId;
         set((state) => ({
-          inspections: state.inspections.map((insp) => insp.id === id ? updatedInsp : insp),
+          inspections: state.inspections
+            .filter((insp) => {
+              if (
+                insp.id !== id &&
+                insp.companyId === targetCompanyId &&
+                insp.status === "Selesai" &&
+                insp.score !== null &&
+                insp.score !== undefined &&
+                insp.score < 60
+              ) {
+                return false;
+              }
+              return true;
+            })
+            .map((insp) => insp.id === id ? updatedInsp : insp),
           // DATA INTEGRITY GUARD: Hanya update skor ESG perusahaan jika BAP memiliki skor valid
           companies: state.companies.map((c) => {
-            if (c.id === updatedInsp.companyId) {
+            if (c.id === targetCompanyId) {
               return typeof score === 'number' ? { ...c, score } : c;
             }
             return c;
@@ -112,32 +160,49 @@ export const createInspectionSlice: StateCreator<
     }
 
     // --- FALLBACK OFFLINE ---
+    const currentInsp = get().inspections.find((i) => i.id === id);
+    const targetCompanyId = correctedCompanyId || currentInsp?.companyId;
+
     set((state) => ({
-      inspections: state.inspections.map((insp) =>
-        insp.id === id ? {
-          ...insp,
-          score,
-          notes,
-          checklist: checklist ?? undefined,
-          photo,
-          status: "Selesai",
-          bapSigned: true,
-          // Update companyId di dalam state luring jika petugas melakukan koreksi sasaran
-          ...(correctedCompanyId && { companyId: correctedCompanyId })
-        } : insp
-      )
+      inspections: state.inspections
+        .filter((insp) => {
+          if (
+            insp.id !== id &&
+            insp.companyId === targetCompanyId &&
+            insp.status === "Selesai" &&
+            insp.score !== null &&
+            insp.score !== undefined &&
+            insp.score < 60
+          ) {
+            return false;
+          }
+          return true;
+        })
+        .map((insp) =>
+          insp.id === id ? {
+            ...insp,
+            score,
+            notes,
+            checklist: checklist ?? undefined,
+            photo,
+            status: "Selesai",
+            bapSigned: true,
+            // Update companyId di dalam state luring jika petugas melakukan koreksi sasaran
+            ...(correctedCompanyId && { companyId: correctedCompanyId })
+          } : insp
+        )
     }));
 
     const insp = get().inspections.find((i) => i.id === id);
     if (!insp) return;
 
     // Tentukan entitas sasaran luring
-    const targetCompanyId = correctedCompanyId || insp.companyId;
+    const finalTargetCompanyId = correctedCompanyId || insp.companyId;
 
     // DATA INTEGRITY GUARD: Update state perusahaan lokal HANYA JIKA score adalah angka
     if (typeof score === 'number') {
       set((state) => ({
-        companies: state.companies.map((c) => (c.id === targetCompanyId ? { ...c, score } : c))
+        companies: state.companies.map((c) => (c.id === finalTargetCompanyId ? { ...c, score } : c))
       }));
     }
 
