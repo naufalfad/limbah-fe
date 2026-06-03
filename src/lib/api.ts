@@ -55,6 +55,11 @@ export const apiService = {
     updateUserRole: async (id: string, role: string) => {
       const response = await api.patch(`/api/admin/users/${id}/role`, { role });
       return response.data;
+    },
+    // Membuat user baru oleh Super Admin / Admin DLH
+    createUser: async (payload: any) => {
+      const response = await api.post("/api/admin/users", payload);
+      return response.data;
     }
   },
   companies: {
@@ -89,8 +94,10 @@ export const apiService = {
       const response = await api.post(`/api/companies/${id}/retribusi-invoice`);
       return response.data;
     },
-    createManualAmdal: async (payload: { companyName: string; nib: string; npwp?: string; lat: string; lng: string; address: string }) => {
-      const response = await api.post("/api/companies/manual-amdal", payload);
+    createManualAmdal: async (formData: FormData) => {
+      const response = await api.post("/api/companies/manual-amdal", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
       return response.data;
     }
   },

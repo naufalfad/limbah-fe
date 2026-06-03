@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import {
   Building2, MapPin, FileText, ArrowLeft, Save,
-  Map, Trash2, ShieldCheck, CheckCircle2, AlertCircle, Info, UploadCloud
+  Trash2, CheckCircle2, AlertCircle, Info, UploadCloud
 } from "lucide-react";
 import { useSijagaStore } from "@/store/useSijagaStore";
 import { toast } from "sonner";
@@ -56,24 +56,12 @@ function MapPicker({ lat, lng, onChange }: { lat: string; lng: string; onChange:
   return <Marker position={[parsedLat, parsedLng]} />;
 }
 
-interface AmdalFileState {
-  fileName: string;
-  fileSize: string;
-  base64Data: string;
-}
-
 const AMDAL_DOCS_CONFIG = [
-  { key: "skPersetujuan", label: "SK Persetujuan Lingkungan", isRequired: true },
-  { key: "skKelayakan", label: "SK Kelayakan Lingkungan", isRequired: true },
-  { key: "ringkasanAmdal", label: "Ringkasan AMDAL", isRequired: false },
-  { key: "dokumenAndal", label: "Dokumen ANDAL", isRequired: true },
-  { key: "dokumenRkl", label: "Dokumen RKL", isRequired: true },
-  { key: "dokumenRpl", label: "Dokumen RPL", isRequired: true },
-  { key: "petaLokasi", label: "Peta Lokasi Spasial", isRequired: true },
-  { key: "layoutIpal", label: "Layout IPAL Teknis", isRequired: false },
-  { key: "layoutTpsB3", label: "Layout TPS B3", isRequired: false },
-  { key: "hasilUjiLab", label: "Hasil Uji Laboratorium", isRequired: false },
-  { key: "dokumentasiLokasi", label: "Dokumentasi Foto Lokasi", isRequired: false },
+  { key: "andalDoc", label: "Dokumen ANDAL", isRequired: true, accept: ".pdf", acceptLabel: "PDF (.pdf) Saja" },
+  { key: "rklDoc", label: "Matriks RKL (Pengelolaan)", isRequired: true, accept: ".xlsx,.xls", acceptLabel: "Excel (.xlsx/.xls) Saja" },
+  { key: "rplDoc", label: "Matriks RPL (Pemantauan)", isRequired: true, accept: ".xlsx,.xls", acceptLabel: "Excel (.xlsx/.xls) Saja" },
+  { key: "skKelayakanDoc", label: "SK Kelayakan Lingkungan", isRequired: false, accept: ".pdf", acceptLabel: "PDF (.pdf) Saja" },
+  { key: "persetujuanDoc", label: "Persetujuan Lingkungan", isRequired: false, accept: ".pdf", acceptLabel: "PDF (.pdf) Saja" },
 ] as const;
 
 export default function AddAmdalPage() {
@@ -85,17 +73,24 @@ export default function AddAmdalPage() {
   // Form State Default dialihkan ke pusat wilayah Kabupaten Bogor (Cibinong)
   const [form, setForm] = useState({
     companyName: "",
+    activityName: "",
+    address: "",
+    lat: "-6.9175",
+    lng: "107.6191",
+    envApprovalNo: "",
+    envApprovalDate: "",
+    amdalNo: "",
+    amdalYear: String(new Date().getFullYear()),
+    businessSector: "",
+    status: "APPROVED",
     nib: "",
     npwp: "",
-    address: "",
-    lat: "-6.4816",
-    lng: "106.8560",
   });
 
-  // Document Uploads State
-  const [uploadedFiles, setUploadedFiles] = useState<Record<string, AmdalFileState>>({});
+  // Document Uploads State (Simpan langsung instansi File)
+  const [uploadedFiles, setUploadedFiles] = useState<Record<string, File>>({});
 
-  const handleTextChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleTextChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setForm(prev => ({ ...prev, [name]: value }));
   };
@@ -108,23 +103,22 @@ export default function AddAmdalPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const fileSizeStr = file.size > 1024 * 1024
-      ? `${(file.size / (1024 * 1024)).toFixed(2)} MB`
-      : `${(file.size / 1024).toFixed(1)} KB`;
+    // Check extension
+    const ext = "." + file.name.split(".").pop()?.toLowerCase();
+    const config = AMDAL_DOCS_CONFIG.find(c => c.key === key);
+    if (config) {
+      const allowedExts = config.accept.split(",");
+      if (!allowedExts.includes(ext)) {
+        toast.error(`Format berkas ${file.name} tidak sesuai! Hanya menerima ${config.acceptLabel}.`);
+        return;
+      }
+    }
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setUploadedFiles(prev => ({
-        ...prev,
-        [key]: {
-          fileName: file.name,
-          fileSize: fileSizeStr,
-          base64Data: reader.result as string
-        }
-      }));
-      toast.success(`Berkas ${file.name} berhasil dimuat.`);
-    };
-    reader.readAsDataURL(file);
+    setUploadedFiles(prev => ({
+      ...prev,
+      [key]: file
+    }));
+    toast.success(`Berkas ${file.name} berhasil dimuat.`);
   };
 
   const removeFile = (key: string) => {
@@ -142,12 +136,28 @@ export default function AddAmdalPage() {
       toast.error("Nama Perusahaan wajib diisi!");
       return false;
     }
-    if (!form.nib.trim()) {
-      toast.error("Nomor NIB wajib diisi!");
+    if (!form.activityName.trim()) {
+      toast.error("Nama Kegiatan wajib diisi!");
       return false;
     }
-    if (form.nib.trim().length < 5) {
-      toast.error("Nomor Induk Berusaha (NIB) minimal 5 karakter!");
+    if (!form.businessSector.trim()) {
+      toast.error("Jenis / Sektor Usaha wajib diisi!");
+      return false;
+    }
+    if (!form.envApprovalNo.trim()) {
+      toast.error("Nomor Persetujuan Lingkungan wajib diisi!");
+      return false;
+    }
+    if (!form.envApprovalDate) {
+      toast.error("Tanggal Persetujuan Lingkungan wajib dipilih!");
+      return false;
+    }
+    if (!form.amdalNo.trim()) {
+      toast.error("Nomor Dokumen AMDAL wajib diisi!");
+      return false;
+    }
+    if (!form.amdalYear.trim()) {
+      toast.error("Tahun AMDAL wajib diisi!");
       return false;
     }
     return true;
@@ -156,6 +166,10 @@ export default function AddAmdalPage() {
   const validateStep2 = () => {
     if (!form.address.trim()) {
       toast.error("Alamat detail wajib diisi!");
+      return false;
+    }
+    if (form.address.trim().length < 10) {
+      toast.error("Alamat detail minimal 10 karakter!");
       return false;
     }
     if (!form.lat.trim() || !form.lng.trim()) {
@@ -180,7 +194,6 @@ export default function AddAmdalPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // 1. Validasi seluruh step
     if (!validateStep1()) {
       setStep(1);
       return;
@@ -190,7 +203,7 @@ export default function AddAmdalPage() {
       return;
     }
 
-    // 2. Validasi Dokumen Wajib (6 Dokumen)
+    // Validasi Dokumen Wajib
     const missingDocs: string[] = [];
     AMDAL_DOCS_CONFIG.forEach(doc => {
       if (doc.isRequired && !uploadedFiles[doc.key]) {
@@ -200,26 +213,31 @@ export default function AddAmdalPage() {
 
     if (missingDocs.length > 0) {
       toast.error(`Dokumen wajib berikut belum diunggah: ${missingDocs.join(", ")}`);
+      setStep(3);
       return;
     }
 
     setLoading(true);
     try {
-      // 3. Serialisasi Berkas ke JSON di docTemplateUrl
-      const amdalDocsJson = JSON.stringify(uploadedFiles);
+      // Konstruksi FormData multipart/form-data
+      const formData = new FormData();
+      
+      // Lampirkan data tekstual
+      Object.entries(form).forEach(([key, val]) => {
+        if (val !== undefined && val !== null) {
+          formData.append(key, val);
+        }
+      });
 
-      const payload = {
-        companyName: form.companyName,
-        nib: form.nib,
-        npwp: form.npwp || "-",
-        address: form.address,
-        lat: form.lat,
-        lng: form.lng,
-        docTemplateUrl: amdalDocsJson // Menyimpan seluruh dokumen AMDAL di sini
-      };
+      // Lampirkan berkas fisik
+      Object.entries(uploadedFiles).forEach(([key, file]) => {
+        if (file) {
+          formData.append(key, file);
+        }
+      });
 
       const { addManualAmdalCompany } = useSijagaStore.getState();
-      await addManualAmdalCompany(payload);
+      await addManualAmdalCompany(formData);
       await fetchCompanies();
 
       toast.success("Perusahaan Wajib AMDAL Baru berhasil didaftarkan secara manual!");
@@ -248,7 +266,7 @@ export default function AddAmdalPage() {
               >
                 <ArrowLeft size={16} />
               </Button>
-              <span className="bg-rose-50 text-rose-700 border border-rose-250 px-2 py-0.5 rounded-none text-[8px] font-black uppercase tracking-widest leading-none">
+              <span className="bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 rounded-none text-[8px] font-black uppercase tracking-widest leading-none">
                 MANUAL ENTRY
               </span>
             </div>
@@ -269,7 +287,7 @@ export default function AddAmdalPage() {
             )}
           >
             <span className="text-[10px] opacity-70 font-mono">STEP 1</span>
-            <span className="tracking-wide uppercase text-[10px] sm:text-xs">LEGALITAS</span>
+            <span className="tracking-wide uppercase text-[10px] sm:text-xs">LEGALITAS & KEGIATAN</span>
             {step > 1 && <span className="text-[10px] text-emerald-500 font-bold">✓</span>}
           </div>
           <div
@@ -292,24 +310,24 @@ export default function AddAmdalPage() {
             )}
           >
             <span className="text-[10px] opacity-70 font-mono">STEP 3</span>
-            <span className="tracking-wide uppercase text-[10px] sm:text-xs">DOKUMEN AMDAL</span>
+            <span className="tracking-wide uppercase text-[10px] sm:text-xs">DOKUMEN & MATRIKS</span>
           </div>
         </div>
 
         {/* --- FORM BODY CONTROLLER --- */}
         <div className="bg-white border border-slate-200 rounded-none shadow-sm p-6">
 
-          {/* STEP 1: INFORMASI LEGALITAS */}
+          {/* STEP 1: INFORMASI LEGALITAS & KEGIATAN */}
           {step === 1 && (
             <div className="space-y-5">
               <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
                 <Building2 size={18} className="text-rose-600" />
                 <h3 className="text-xs font-black uppercase tracking-wider text-slate-900">
-                  Langkah 1: Informasi Legalitas Perusahaan
+                  Langkah 1: Informasi Legalitas & Kegiatan AMDAL
                 </h3>
               </div>
 
-              <div className="space-y-4 max-w-2xl">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="companyName" className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
                     Nama Perusahaan <span className="text-rose-600">*</span>
@@ -324,34 +342,137 @@ export default function AddAmdalPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="nib" className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
-                      Nomor NIB <span className="text-rose-600">*</span>
-                    </Label>
-                    <Input
-                      id="nib"
-                      name="nib"
-                      maxLength={13}
-                      value={form.nib}
-                      onChange={handleTextChange}
-                      placeholder="13 Digit NIB"
-                      className="h-10 rounded-none border-slate-200 font-bold text-xs focus:ring-0 focus:border-rose-500"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="npwp" className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
-                      NPWP (Opsional)
-                    </Label>
-                    <Input
-                      id="npwp"
-                      name="npwp"
-                      value={form.npwp}
-                      onChange={handleTextChange}
-                      placeholder="NPWP Perusahaan"
-                      className="h-10 rounded-none border-slate-200 font-bold text-xs focus:ring-0 focus:border-rose-500"
-                    />
-                  </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="activityName" className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                    Nama Kegiatan <span className="text-rose-600">*</span>
+                  </Label>
+                  <Input
+                    id="activityName"
+                    name="activityName"
+                    value={form.activityName}
+                    onChange={handleTextChange}
+                    placeholder="Pembangunan Pabrik Semen Terintegrasi"
+                    className="h-10 rounded-none border-slate-200 font-bold text-xs focus:ring-0 focus:border-rose-500"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="businessSector" className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                    Jenis/Sektor Usaha <span className="text-rose-600">*</span>
+                  </Label>
+                  <Input
+                    id="businessSector"
+                    name="businessSector"
+                    value={form.businessSector}
+                    onChange={handleTextChange}
+                    placeholder="Industri Semen / Manufaktur"
+                    className="h-10 rounded-none border-slate-200 font-bold text-xs focus:ring-0 focus:border-rose-500"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="status" className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                    Status AMDAL <span className="text-rose-600">*</span>
+                  </Label>
+                  <select
+                    id="status"
+                    name="status"
+                    value={form.status}
+                    onChange={handleTextChange}
+                    className="w-full h-10 px-3 bg-white border border-slate-200 rounded-none font-bold text-xs focus:outline-none focus:border-rose-500"
+                  >
+                    <option value="APPROVED">APPROVED (Disetujui)</option>
+                    <option value="REVIEW">REVIEW (Dalam Penelaahan)</option>
+                    <option value="PENDING">PENDING (Menunggu)</option>
+                    <option value="REJECTED">REJECTED (Ditolak)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="envApprovalNo" className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                    Nomor Persetujuan Lingkungan <span className="text-rose-600">*</span>
+                  </Label>
+                  <Input
+                    id="envApprovalNo"
+                    name="envApprovalNo"
+                    value={form.envApprovalNo}
+                    onChange={handleTextChange}
+                    placeholder="S.120/MENLHK/SETJEN/PLA.4/3/2026"
+                    className="h-10 rounded-none border-slate-200 font-bold text-xs focus:ring-0 focus:border-rose-500"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="envApprovalDate" className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                    Tanggal Persetujuan Lingkungan <span className="text-rose-600">*</span>
+                  </Label>
+                  <Input
+                    id="envApprovalDate"
+                    name="envApprovalDate"
+                    type="date"
+                    value={form.envApprovalDate}
+                    onChange={handleTextChange}
+                    className="h-10 rounded-none border-slate-200 font-bold text-xs focus:ring-0 focus:border-rose-500"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="amdalNo" className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                    Nomor AMDAL <span className="text-rose-600">*</span>
+                  </Label>
+                  <Input
+                    id="amdalNo"
+                    name="amdalNo"
+                    value={form.amdalNo}
+                    onChange={handleTextChange}
+                    placeholder="AMDAL/REG/BDG/0091"
+                    className="h-10 rounded-none border-slate-200 font-bold text-xs focus:ring-0 focus:border-rose-500"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="amdalYear" className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                    Tahun AMDAL <span className="text-rose-600">*</span>
+                  </Label>
+                  <Input
+                    id="amdalYear"
+                    name="amdalYear"
+                    type="number"
+                    maxLength={4}
+                    value={form.amdalYear}
+                    onChange={handleTextChange}
+                    placeholder="2026"
+                    className="h-10 rounded-none border-slate-200 font-bold text-xs focus:ring-0 focus:border-rose-500"
+                  />
+                </div>
+
+                {/* Optional Fallbacks for database integrity */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="nib" className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                    Nomor NIB (Opsional)
+                  </Label>
+                  <Input
+                    id="nib"
+                    name="nib"
+                    value={form.nib}
+                    onChange={handleTextChange}
+                    placeholder="Jika ada, kosongkan untuk auto-generate"
+                    className="h-10 rounded-none border-slate-200 font-bold text-xs focus:ring-0 focus:border-rose-500"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="npwp" className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                    NPWP Perusahaan (Opsional)
+                  </Label>
+                  <Input
+                    id="npwp"
+                    name="npwp"
+                    value={form.npwp}
+                    onChange={handleTextChange}
+                    placeholder="NPWP Perusahaan"
+                    className="h-10 rounded-none border-slate-200 font-bold text-xs focus:ring-0 focus:border-rose-500"
+                  />
                 </div>
               </div>
 
@@ -472,18 +593,24 @@ export default function AddAmdalPage() {
                 <div className="flex items-center gap-2">
                   <FileText size={18} className="text-rose-600" />
                   <h3 className="text-xs font-black uppercase tracking-wider text-slate-900">
-                    Langkah 3: Unggahan 11 Dokumen AMDAL Pendukung
+                    Langkah 3: Unggahan Berkas AMDAL Pendukung & Matriks Excel
                   </h3>
                 </div>
                 <div className="flex items-center gap-1.5 text-[8.5px] font-black uppercase tracking-wide">
-                  <span className="bg-rose-500 text-white px-2 py-0.5 rounded-none">6 Wajib</span>
-                  <span className="bg-slate-700 text-white px-2 py-0.5 rounded-none">5 Opsional</span>
+                  <span className="bg-rose-500 text-white px-2 py-0.5 rounded-none">3 Wajib</span>
+                  <span className="bg-slate-700 text-white px-2 py-0.5 rounded-none">2 Opsional</span>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {AMDAL_DOCS_CONFIG.map((doc, idx) => {
                   const uploaded = uploadedFiles[doc.key];
+                  const fileSizeStr = uploaded
+                    ? uploaded.size > 1024 * 1024
+                      ? `${(uploaded.size / (1024 * 1024)).toFixed(2)} MB`
+                      : `${(uploaded.size / 1024).toFixed(1)} KB`
+                    : "";
+
                   return (
                     <div key={doc.key} className={cn(
                       "p-3.5 rounded-none border flex flex-col justify-between gap-3 shadow-sm hover:border-slate-350 transition-all bg-white relative",
@@ -495,6 +622,7 @@ export default function AddAmdalPage() {
                         <div className="space-y-0.5">
                           <span className="text-[7.5px] font-black text-slate-400 uppercase tracking-widest block">DOKUMEN KE-{idx + 1}</span>
                           <h4 className="text-xs font-black text-slate-800 leading-snug">{doc.label}</h4>
+                          <span className="text-[8.5px] font-bold text-rose-550 block">{doc.acceptLabel}</span>
                         </div>
 
                         <span className={cn(
@@ -513,13 +641,14 @@ export default function AddAmdalPage() {
                           <div className="min-w-0 flex items-center gap-2">
                             <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
                             <div className="min-w-0">
-                              <p className="truncate text-[10.5px] font-bold text-emerald-950">{uploaded.fileName}</p>
-                              <p className="text-[8px] font-bold text-emerald-650 uppercase tracking-wider">{uploaded.fileSize}</p>
+                              <p className="truncate text-[10.5px] font-bold text-emerald-950">{uploaded.name}</p>
+                              <p className="text-[8px] font-bold text-emerald-650 uppercase tracking-wider">{fileSizeStr}</p>
                             </div>
                           </div>
                           <Button
                             variant="ghost"
                             size="sm"
+                            type="button"
                             onClick={() => removeFile(doc.key)}
                             className="h-7 w-7 p-0 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-none"
                           >
@@ -530,7 +659,7 @@ export default function AddAmdalPage() {
                         <div className="relative">
                           <input
                             type="file"
-                            accept="application/pdf,image/*,.docx,.xlsx"
+                            accept={doc.accept}
                             id={`file-upload-${doc.key}`}
                             className="hidden"
                             onChange={(e) => handleFileUpload(doc.key, e)}

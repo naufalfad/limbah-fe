@@ -10,8 +10,11 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle
+} from "@/components/ui/dialog";
+import {
   Settings, Users, ShieldAlert, Key,
-  Map as MapIcon, Activity, Lock, Database, Globe, Search, Download, Loader2
+  Map as MapIcon, Activity, Lock, Database, Globe, Search, Download, Loader2, UserPlus
 } from "lucide-react";
 import { toast } from "sonner";
 import { MapContainer, TileLayer, Circle, FeatureGroup, useMap } from "react-leaflet";
@@ -38,9 +41,12 @@ export default function SuperAdminPage() {
   const {
     currentUser,
     users,
+    companies,
     auditLogs,
     fetchUsers,
     updateUserRole,
+    createUser,
+    fetchCompanies,
     fetchAuditLogs,
     addAuditLog
   } = useSijagaStore();
@@ -63,6 +69,17 @@ export default function SuperAdminPage() {
   const [selectedGateway, setSelectedGateway] = useState<"XENDIT" | "MIDTRANS">("XENDIT");
   const [searchLogQuery, setSearchLogQuery] = useState("");
 
+  // States for Tambah Pengguna Form
+  const [isAddUserOpen, setIsAddUserOpen] = useState(false);
+  const [newUserName, setNewUserName] = useState("");
+  const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserPassword, setNewUserPassword] = useState("");
+  const [newUserRole, setNewUserRole] = useState<UserRole>("PERUSAHAAN");
+  const [newUserTransporterId, setNewUserTransporterId] = useState("");
+  const [newUserOfficerId, setNewUserOfficerId] = useState("");
+  const [newUserCompanyId, setNewUserCompanyId] = useState("");
+  const [isSubmittingUser, setIsSubmittingUser] = useState(false);
+
   // FASE 3: Fetch Data dari Backend saat pertama kali render
   useEffect(() => {
     const loadMasterData = async () => {
@@ -70,6 +87,7 @@ export default function SuperAdminPage() {
       try {
         await Promise.all([
           fetchUsers(),
+          fetchCompanies(),
           fetchAuditLogs()
         ]);
       } catch (error) {
@@ -79,7 +97,7 @@ export default function SuperAdminPage() {
       }
     };
     loadMasterData();
-  }, [fetchUsers, fetchAuditLogs]);
+  }, [fetchUsers, fetchCompanies, fetchAuditLogs]);
 
   // FASE 3: Fungsi pengubah Role terkoneksi ke Backend
   const handleRoleChange = async (userId: string, newRole: string) => {
@@ -87,6 +105,56 @@ export default function SuperAdminPage() {
     await updateUserRole(userId, newRole as UserRole);
     // Refresh Audit Log untuk menarik log riwayat perubahan dari backend secara instan
     await fetchAuditLogs();
+  };
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newUserName.trim() || !newUserEmail.trim() || !newUserPassword.trim()) {
+      toast.error("Nama, Email, dan Password wajib diisi.");
+      return;
+    }
+    if (newUserPassword.length < 6) {
+      toast.error("Password minimal harus 6 karakter.");
+      return;
+    }
+
+    setIsSubmittingUser(true);
+    try {
+      const payload: any = {
+        name: newUserName,
+        email: newUserEmail,
+        password: newUserPassword,
+        role: newUserRole,
+      };
+
+      if (newUserRole === "PETUGAS_LAPANGAN") {
+        payload.officerId = newUserOfficerId || undefined;
+      } else if (newUserRole === "PENGANGKUT") {
+        payload.transporterId = newUserTransporterId || undefined;
+      } else if (newUserRole === "PERUSAHAAN") {
+        payload.companyId = newUserCompanyId || undefined;
+      }
+
+      const success = await createUser(payload);
+      if (success) {
+        setIsAddUserOpen(false);
+        // Reset form
+        setNewUserName("");
+        setNewUserEmail("");
+        setNewUserPassword("");
+        setNewUserRole("PERUSAHAAN");
+        setNewUserTransporterId("");
+        setNewUserOfficerId("");
+        setNewUserCompanyId("");
+        // Log action in audit log
+        addAuditLog(currentUser?.email || "super@sijaga.id", "SUPER_ADMIN", `Menambahkan user baru: ${newUserEmail} dengan role ${newUserRole}`);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Terjadi kesalahan saat membuat user.");
+    } finally {
+      setIsSubmittingUser(false);
+    }
   };
 
   const handleSetRiverLayer = (val: boolean) => {
@@ -101,11 +169,11 @@ export default function SuperAdminPage() {
     addAuditLog(currentUser?.email || "super@sijaga.id", "SUPER_ADMIN", `Mengubah status GIS Layer Zonasi Industri ke: ${val ? "AKTIF" : "NONAKTIF"}`);
   };
 
-  const handleToggleSandbox = (checked: boolean) => {
-    setSandboxMode(checked);
-    addAuditLog(currentUser?.email || "super@sijaga.id", "SUPER_ADMIN", `Mengubah Sandbox Payment Gateway ke: ${checked ? "ACTIVE" : "INACTIVE"}`);
-    toast.success(`Payment Sandbox Mode: ${checked ? "Enabled" : "Disabled"}`);
-  };
+  // const handleToggleSandbox = (checked: boolean) => {
+  //   setSandboxMode(checked);
+  //   addAuditLog(currentUser?.email || "super@sijaga.id", "SUPER_ADMIN", `Mengubah Sandbox Payment Gateway ke: ${checked ? "ACTIVE" : "INACTIVE"}`);
+  //   toast.success(`Payment Sandbox Mode: ${checked ? "Enabled" : "Disabled"}`);
+  // };
 
   const filteredLogs = auditLogs.filter(log =>
     log.action.toLowerCase().includes(searchLogQuery.toLowerCase()) ||
@@ -147,7 +215,7 @@ export default function SuperAdminPage() {
         <div className="flex gap-1.5 p-1 bg-slate-100 rounded-none w-fit border border-slate-200">
           <TabNavButton active={activeTab === "overview"} label="Overview" icon={<Settings size={14} />} onClick={() => navigate("/super-admin")} />
           <TabNavButton active={activeTab === "users"} label="Kelola Pengguna" icon={<Users size={14} />} onClick={() => navigate("/super-admin/users")} />
-          <TabNavButton active={activeTab === "gateway"} label="Payment Gateway" icon={<Key size={14} />} onClick={() => navigate("/super-admin/gateway")} />
+          {/* <TabNavButton active={activeTab === "gateway"} label="Payment Gateway" icon={<Key size={14} />} onClick={() => navigate("/super-admin/gateway")} /> */}
           <TabNavButton active={activeTab === "layers"} label="GIS Layers" icon={<Globe size={14} />} onClick={() => navigate("/super-admin/layers")} />
           <TabNavButton active={activeTab === "logs"} label="Audit Logs" icon={<Activity size={14} />} onClick={() => navigate("/super-admin/logs")} />
         </div>
@@ -160,7 +228,7 @@ export default function SuperAdminPage() {
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <StatCard label="Total Pengguna" value={users.length.toString()} icon={<Users size={20} />} color="blue" />
-              <StatCard label="API Gateway" value={selectedGateway} icon={<Key size={20} />} color="emerald" />
+              {/* <StatCard label="API Gateway" value={selectedGateway} icon={<Key size={20} />} color="emerald" /> */}
               <StatCard label="GIS Layers" value={(Number(riverLayer) + Number(industrialLayer)).toString()} icon={<Globe size={20} />} color="amber" />
               <StatCard label="Audit Logs" value={auditLogs.length.toString()} icon={<Activity size={20} />} color="red" />
             </div>
@@ -208,10 +276,20 @@ export default function SuperAdminPage() {
 
         {/* 2. USERS TAB (LIVE DATA DARI API) */}
         {activeTab === "users" && (
-          <Card className="rounded-none p-4 border border-slate-200 shadow-sm bg-white animate-in fade-in duration-300">
-            <div className="mb-4">
-              <h3 className="font-bold text-sm tracking-tight text-slate-800 uppercase">User Management</h3>
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Kelola tingkat akses otorisasi RBAC (Role-Based Access Control) pengguna.</p>
+          <Card className="rounded-none p-6 border border-slate-200 shadow-sm bg-white animate-in fade-in duration-300">
+            <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <h3 className="font-bold text-sm tracking-tight text-slate-800 uppercase flex items-center gap-2">
+                  <Users className="text-emerald-600" size={16} /> User Management
+                </h3>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Kelola tingkat akses otorisasi RBAC (Role-Based Access Control) pengguna.</p>
+              </div>
+              <Button
+                onClick={() => setIsAddUserOpen(true)}
+                className="rounded-none bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[11px] h-10 px-4 uppercase tracking-wider gap-2 flex items-center shadow-lg shadow-emerald-600/10 transition-all active:scale-95"
+              >
+                <UserPlus size={14} /> Tambah Pengguna Baru
+              </Button>
             </div>
 
             <div className="border border-slate-100 rounded-none overflow-hidden shadow-sm">
@@ -267,9 +345,8 @@ export default function SuperAdminPage() {
         )}
 
         {/* 3. GATEWAY TAB */}
-        {activeTab === "gateway" && (
+        {/* {activeTab === "gateway" && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 animate-in fade-in duration-300">
-            {/* Payment provider selector */}
             <Card className="rounded-none p-4 border border-slate-200 shadow-sm bg-white space-y-4 lg:col-span-2">
               <h3 className="font-bold text-sm tracking-tight text-slate-800 uppercase flex items-center gap-2">
                 <Key className="text-emerald-600" size={16} /> API Gateway Credentials
@@ -309,7 +386,6 @@ export default function SuperAdminPage() {
               </div>
             </Card>
 
-            {/* Sandbox Simulation */}
             <Card className="rounded-none p-4 border border-slate-200 shadow-sm bg-white space-y-4">
               <h3 className="font-bold text-sm tracking-tight text-slate-800 uppercase">Sandbox Simulator</h3>
               <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Simulasikan virtual account & QRIS tanpa dana riil.</p>
@@ -330,7 +406,7 @@ export default function SuperAdminPage() {
               </div>
             </Card>
           </div>
-        )}
+        )} */}
 
         {/* 4. GIS LAYERS TAB */}
         {activeTab === "layers" && (
@@ -452,6 +528,135 @@ export default function SuperAdminPage() {
             </div>
           </Card>
         )}
+
+        {/* Dialog Tambah Pengguna Baru */}
+        <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
+          <DialogContent className="rounded-none border-2 border-slate-900 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] text-left w-[95vw] max-w-lg p-6 bg-white">
+            <DialogHeader className="border-b border-slate-200 pb-4">
+              <DialogTitle className="text-base font-black uppercase tracking-tight text-slate-900 flex items-center gap-2">
+                <UserPlus className="text-emerald-600" size={18} />
+                Tambah Pengguna Baru
+              </DialogTitle>
+              <DialogDescription className="text-xs font-semibold text-slate-500 mt-1">
+                Tambahkan akun baru ke sistem dengan hak akses Role-Based Access Control (RBAC).
+              </DialogDescription>
+            </DialogHeader>
+
+            <form onSubmit={handleCreateUser} className="space-y-4 mt-4 text-xs">
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nama Lengkap</label>
+                <Input
+                  value={newUserName}
+                  onChange={(e) => setNewUserName(e.target.value)}
+                  placeholder="Masukkan nama lengkap..."
+                  required
+                  className="h-10 rounded-none border-slate-200 focus:border-emerald-500 focus:ring-emerald-500 font-sans"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Email Utama</label>
+                <Input
+                  type="email"
+                  value={newUserEmail}
+                  onChange={(e) => setNewUserEmail(e.target.value)}
+                  placeholder="name@company.com"
+                  required
+                  className="h-10 rounded-none border-slate-200 focus:border-emerald-500 focus:ring-emerald-500 font-mono"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Password</label>
+                <Input
+                  type="password"
+                  value={newUserPassword}
+                  onChange={(e) => setNewUserPassword(e.target.value)}
+                  placeholder="Minimal 6 karakter..."
+                  required
+                  className="h-10 rounded-none border-slate-200 focus:border-emerald-500 focus:ring-emerald-500 font-mono"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Hak Akses Role</label>
+                <select
+                  value={newUserRole}
+                  onChange={(e) => setNewUserRole(e.target.value as UserRole)}
+                  className="w-full h-10 border border-slate-200 rounded-none px-3 bg-white font-bold text-slate-700 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                >
+                  <option value="SUPER_ADMIN">SUPER ADMIN</option>
+                  <option value="ADMIN_DLH">ADMIN DLH</option>
+                  <option value="PETUGAS_LAPANGAN">PETUGAS LAPANGAN (INSPECTOR)</option>
+                  <option value="PERUSAHAAN">PERUSAHAAN</option>
+                  <option value="PENGANGKUT">PENGANGKUT (TRANSPORTER)</option>
+                  <option value="AUDITOR">AUDITOR LH</option>
+                </select>
+              </div>
+
+              {/* Conditional Input based on Role */}
+              {newUserRole === "PETUGAS_LAPANGAN" && (
+                <div className="space-y-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">ID Petugas Lapangan (Opsional)</label>
+                  <Input
+                    value={newUserOfficerId}
+                    onChange={(e) => setNewUserOfficerId(e.target.value)}
+                    placeholder="Contoh: OFF-001..."
+                    className="h-10 rounded-none border-slate-200 focus:border-emerald-500 focus:ring-emerald-500 font-mono"
+                  />
+                </div>
+              )}
+
+              {newUserRole === "PENGANGKUT" && (
+                <div className="space-y-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">ID Transporter (Opsional)</label>
+                  <Input
+                    value={newUserTransporterId}
+                    onChange={(e) => setNewUserTransporterId(e.target.value)}
+                    placeholder="Contoh: TRANS-001..."
+                    className="h-10 rounded-none border-slate-200 focus:border-emerald-500 focus:ring-emerald-500 font-mono"
+                  />
+                </div>
+              )}
+
+              {newUserRole === "PERUSAHAAN" && (
+                <div className="space-y-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Hubungkan ke Perusahaan (Opsional)</label>
+                  <select
+                    value={newUserCompanyId}
+                    onChange={(e) => setNewUserCompanyId(e.target.value)}
+                    className="w-full h-10 border border-slate-200 rounded-none px-3 bg-white font-bold text-slate-700 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                  >
+                    <option value="">-- PILIH PERUSAHAAN (OPSIONAL) --</option>
+                    {companies?.map((comp) => (
+                      <option key={comp.id} value={comp.id}>
+                        {comp.companyName} ({comp.nib})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <DialogFooter className="pt-4 border-t border-slate-100 flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsAddUserOpen(false)}
+                  className="rounded-none border-slate-300 font-bold text-xs h-10 uppercase tracking-wider"
+                >
+                  Batal
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isSubmittingUser}
+                  className="rounded-none bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs h-10 px-6 uppercase tracking-wider shadow-lg shadow-emerald-600/15"
+                >
+                  {isSubmittingUser ? "Memproses..." : "Simpan Pengguna"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
 
       </div>
     </DashboardLayout>

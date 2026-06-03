@@ -295,9 +295,23 @@ export const createCompanySlice: StateCreator<
     }
   },
 
-  addManualAmdalCompany: async (payload) => {
+  addManualAmdalCompany: async (formData) => {
+    const companyName = formData.get("companyName") as string || "";
+    const address = formData.get("address") as string || "";
+    const lat = formData.get("lat") as string || "-6.9175";
+    const lng = formData.get("lng") as string || "107.6191";
+    const activityName = formData.get("activityName") as string || "";
+    const envApprovalNo = formData.get("envApprovalNo") as string || "";
+    const envApprovalDate = formData.get("envApprovalDate") as string || "";
+    const amdalNo = formData.get("amdalNo") as string || "";
+    const amdalYear = formData.get("amdalYear") as string || "";
+    const businessSector = formData.get("businessSector") as string || "";
+    const status = formData.get("status") as Company["status"] || "APPROVED";
+    const nib = formData.get("nib") as string || `NIB-AMD-${Date.now()}`;
+    const npwp = formData.get("npwp") as string || "-";
+
     try {
-      const response = await apiService.companies.createManualAmdal(payload);
+      const response = await apiService.companies.createManualAmdal(formData);
       if (response && response.success) {
         const newComp: Company = response.company;
         set((state) => ({
@@ -306,10 +320,10 @@ export const createCompanySlice: StateCreator<
         toast.success("Perusahaan wajib AMDAL berhasil didaftarkan secara manual!");
         
         const user = get().currentUser;
-        get().addAuditLog(user?.email || "SYSTEM", user?.role || "ADMIN_DLH", `Mendaftarkan wajib AMDAL manual: ${payload.companyName}`);
+        get().addAuditLog(user?.email || "SYSTEM", user?.role || "ADMIN_DLH", `Mendaftarkan wajib AMDAL manual: ${companyName}`);
         get().addNotification(
           "Registrasi AMDAL Manual",
-          `Admin DLH telah mendaftarkan koordinat wajib AMDAL untuk ${payload.companyName} secara manual.`,
+          `Admin DLH telah mendaftarkan koordinat wajib AMDAL untuk ${companyName} secara manual.`,
           "SUCCESS"
         );
         return;
@@ -331,14 +345,14 @@ export const createCompanySlice: StateCreator<
 
     const newCompany: Company = {
       id: newId,
-      companyName: payload.companyName,
-      nib: payload.nib,
-      npwp: payload.npwp || "-",
+      companyName,
+      nib,
+      npwp,
       picName: "Admin DLH Manual",
       picPhone: "-",
       picRole: "Admin",
       investmentType: "PMDN",
-      yearBuilt: String(new Date().getFullYear()),
+      yearBuilt: amdalYear || String(new Date().getFullYear()),
       buildingArea: 0,
       operationalHours: "-",
       rawMaterials: "-",
@@ -348,12 +362,19 @@ export const createCompanySlice: StateCreator<
       investment: 0,
       landArea: 0,
       employees: 0,
-      lat: payload.lat,
-      lng: payload.lng,
-      address: payload.address,
+      lat,
+      lng,
+      address,
       docType: "AMDAL",
-      status: "APPROVED",
+      status,
       certificateActiveUntil,
+      
+      activityName,
+      envApprovalNo,
+      envApprovalDate,
+      amdalNo,
+      amdalYear,
+      businessSector,
     };
 
     set((state) => ({
@@ -362,10 +383,10 @@ export const createCompanySlice: StateCreator<
 
     toast.success("Perusahaan wajib AMDAL disimpan (Simulasi Offline)!");
     const user = get().currentUser;
-    get().addAuditLog(user?.email || "SYSTEM", user?.role || "ADMIN_DLH", `Mendaftarkan wajib AMDAL manual (Offline): ${payload.companyName}`);
+    get().addAuditLog(user?.email || "SYSTEM", user?.role || "ADMIN_DLH", `Mendaftarkan wajib AMDAL manual (Offline): ${companyName}`);
     get().addNotification(
       "Registrasi AMDAL Manual (Offline)",
-      `Admin DLH telah mendaftarkan koordinat wajib AMDAL untuk ${payload.companyName} secara manual (Offline).`,
+      `Admin DLH telah mendaftarkan koordinat wajib AMDAL untuk ${companyName} secara manual (Offline).`,
       "SUCCESS"
     );
   },

@@ -53,7 +53,14 @@ export function DocPreviewer({ fileUrl, fileName, companyId }: DocPreviewerProps
       try {
         // JIKA file adalah Excel DAN kita punya companyId, panggil API terstruktur
         if (isExcel && companyId) {
-          const response = await api.get(`/api/companies/${companyId}/preview`);
+          let previewUrl = `/api/companies/${companyId}/preview`;
+          const urlLower = fileUrl.toLowerCase();
+          if (urlLower.includes('rkl')) {
+            previewUrl += '?type=rkl';
+          } else if (urlLower.includes('rpl')) {
+            previewUrl += '?type=rpl';
+          }
+          const response = await api.get(previewUrl);
           if (response.data.success && Array.isArray(response.data.data)) {
             setExcelSheets(response.data.data);
             setLoading(false);

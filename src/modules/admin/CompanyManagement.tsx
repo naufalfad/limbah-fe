@@ -603,7 +603,7 @@ export default function CompanyManagement() {
 
       {/* --- DETAIL MODAL (HIGH DENSITY METADATA INSPECT) --- */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="rounded-none border-2 border-slate-900 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] text-left w-[95vw] max-w-5xl overflow-y-auto max-h-[85vh] p-6 bg-white">
+        <DialogContent className="rounded-none border-2 border-slate-900 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] text-left w-[98vw] lg:max-w-[95vw] lg:w-[95vw] overflow-y-auto h-[85vh] p-8 bg-white">
           <DialogHeader className="border-b border-slate-200 pb-4">
             <div className="flex justify-between items-start gap-4">
               <div>

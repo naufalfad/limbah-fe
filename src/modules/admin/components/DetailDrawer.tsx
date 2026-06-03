@@ -136,7 +136,7 @@ export function DetailDrawer({ isOpen, onClose, data }: any) {
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-[95vw] lg:max-w-7xl p-0 overflow-hidden rounded-none border-none shadow-2xl bg-white text-left">
+        <DialogContent className="max-w-[98vw] lg:max-w-[95vw] p-0 overflow-hidden rounded-none border-none shadow-2xl bg-white text-left">
 
           {/* --- HEADER --- */}
           <div className="bg-slate-900 text-white px-8 py-6 flex justify-between items-center shrink-0">
@@ -165,7 +165,7 @@ export function DetailDrawer({ isOpen, onClose, data }: any) {
           </div>
 
           {/* --- BODY (Dua Kolom) --- */}
-          <div className="flex h-[78vh] flex-col md:flex-row bg-slate-50 overflow-hidden">
+          <div className="flex h-[85vh] flex-col md:flex-row bg-slate-50 overflow-hidden">
 
             {/* KOLOM KIRI: Tabs konten */}
             <div className="flex-1 overflow-y-auto custom-scrollbar">
@@ -198,6 +198,16 @@ export function DetailDrawer({ isOpen, onClose, data }: any) {
                     <InfoCard label="NPWP Perusahaan" value={data.npwp} icon={<ClipboardList size={16} />} />
                     <InfoCard label="KBLI (Bidang Usaha)" value={data.kbli || "-"} icon={<Factory size={16} />} />
                     <InfoCard label="Tahun Berdiri" value={data.yearBuilt || "-"} icon={<ClipboardList size={16} />} />
+                    {data.docType === "AMDAL" && (
+                      <>
+                        <InfoCard label="Nama Kegiatan" value={data.activityName || "-"} icon={<ClipboardList size={16} />} />
+                        <InfoCard label="Jenis / Sektor Usaha" value={data.businessSector || "-"} icon={<Factory size={16} />} />
+                        <InfoCard label="Nomor Persetujuan Lingkungan" value={data.envApprovalNo || "-"} icon={<FileText size={16} />} />
+                        <InfoCard label="Tanggal Persetujuan" value={data.envApprovalDate || "-"} icon={<ClipboardList size={16} />} />
+                        <InfoCard label="Nomor AMDAL" value={data.amdalNo || "-"} icon={<FileText size={16} />} />
+                        <InfoCard label="Tahun AMDAL" value={data.amdalYear || "-"} icon={<ClipboardList size={16} />} />
+                      </>
+                    )}
                     <div className="col-span-full">
                       <InfoCard label="Alamat Usaha" value={data.address} icon={<MapPin size={16} />} />
                     </div>
@@ -247,7 +257,7 @@ export function DetailDrawer({ isOpen, onClose, data }: any) {
                         <DocPreviewRow
                           label="Scan NIB (Nomor Induk Berusaha)"
                           url={nibUrl}
-                          required
+                          required={data.docType !== "AMDAL"}
                           onPreview={() => nibUrl && setPreviewDoc(nibUrl)}
                         />
                       )}
@@ -255,7 +265,7 @@ export function DetailDrawer({ isOpen, onClose, data }: any) {
                         <DocPreviewRow
                           label="Scan NPWP Perusahaan"
                           url={npwpUrl}
-                          required
+                          required={data.docType !== "AMDAL"}
                           onPreview={() => npwpUrl && setPreviewDoc(npwpUrl)}
                         />
                       )}
@@ -267,7 +277,7 @@ export function DetailDrawer({ isOpen, onClose, data }: any) {
                           onPreview={() => siteplanUrl && setPreviewDoc(siteplanUrl)}
                         />
                       )}
-                      {!isAmdalJson && (
+                      {data.docType !== "AMDAL" && !isAmdalJson && (
                         <DocPreviewRow
                           label={`Matriks Isian Teknis (${docLabel})`}
                           url={docUrl(data.docTemplateUrl)}
@@ -276,11 +286,11 @@ export function DetailDrawer({ isOpen, onClose, data }: any) {
                         />
                       )}
 
-                      {/* Jika AMDAL manual, render 11 berkas AMDAL dari JSON */}
+                      {/* Jika AMDAL manual lama, render 11 berkas AMDAL dari JSON */}
                       {isAmdalJson && parsedAmdalDocs && (
                         <div className="pt-4 border-t border-slate-200 mt-4">
                           <h4 className="text-[10px] font-black text-rose-600 uppercase tracking-wider mb-3">
-                            Daftar Berkas Wajib AMDAL & Pendukung (11 Dokumen)
+                            Daftar Berkas Wajib AMDAL & Pendukung (11 Dokumen - Legacy)
                           </h4>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {AMDAL_DOCS_CONFIG.map((doc) => {
@@ -296,6 +306,47 @@ export function DetailDrawer({ isOpen, onClose, data }: any) {
                                 />
                               );
                             })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Jika AMDAL baru (menggunakan field URL asli), render 5 berkas baru */}
+                      {data.docType === "AMDAL" && !isAmdalJson && (
+                        <div className="pt-4 border-t border-slate-200 mt-4">
+                          <h4 className="text-[10px] font-black text-rose-600 uppercase tracking-wider mb-3">
+                            Berkas AMDAL Terdaftar (Matriks RKL & RPL)
+                          </h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <DocPreviewRow
+                              label="Dokumen ANDAL (PDF)"
+                              url={docUrl(data.docAndalUrl)}
+                              required={true}
+                              onPreview={() => data.docAndalUrl && setPreviewDoc(docUrl(data.docAndalUrl))}
+                            />
+                            <DocPreviewRow
+                              label="Matriks RKL (Excel)"
+                              url={docUrl(data.docRklUrl)}
+                              required={true}
+                              onPreview={() => data.docRklUrl && setPreviewDoc(docUrl(data.docRklUrl))}
+                            />
+                            <DocPreviewRow
+                              label="Matriks RPL (Excel)"
+                              url={docUrl(data.docRplUrl)}
+                              required={true}
+                              onPreview={() => data.docRplUrl && setPreviewDoc(docUrl(data.docRplUrl))}
+                            />
+                            <DocPreviewRow
+                              label="SK Kelayakan Lingkungan (Opsional)"
+                              url={docUrl(data.docSkKelayakanUrl)}
+                              required={false}
+                              onPreview={() => data.docSkKelayakanUrl && setPreviewDoc(docUrl(data.docSkKelayakanUrl))}
+                            />
+                            <DocPreviewRow
+                              label="Persetujuan Lingkungan (Opsional)"
+                              url={docUrl(data.docPersetujuanUrl)}
+                              required={false}
+                              onPreview={() => data.docPersetujuanUrl && setPreviewDoc(docUrl(data.docPersetujuanUrl))}
+                            />
                           </div>
                         </div>
                       )}
@@ -466,7 +517,7 @@ export function DetailDrawer({ isOpen, onClose, data }: any) {
       {/* Full-screen document preview overlay */}
       {previewDoc && (
         <Dialog open={!!previewDoc} onOpenChange={() => setPreviewDoc(null)}>
-          <DialogContent className="w-full max-w-[95vw] lg:max-w-7xl h-[95vh] p-0 overflow-hidden rounded-none border-none shadow-2xl flex flex-col bg-slate-950 z-50 text-left">
+          <DialogContent className="w-full max-w-[98vw] lg:max-w-[95vw] h-[95vh] p-0 overflow-hidden rounded-none border-none shadow-2xl flex flex-col bg-slate-950 z-50 text-left">
             {/* THIN ULTRA-COMPACT HEADER */}
             <div className="bg-slate-900 text-white px-5 h-12 flex justify-between items-center shrink-0 border-b border-slate-800">
               <div className="flex items-center gap-2.5 min-w-0">

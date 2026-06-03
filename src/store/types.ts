@@ -44,6 +44,19 @@ export interface Company {
   docNpwpUrl?: string;
   docSiteplanUrl?: string;
   docTemplateUrl?: string;
+  
+  // AMDAL specific fields
+  activityName?: string;
+  envApprovalNo?: string;
+  envApprovalDate?: string;
+  amdalNo?: string;
+  amdalYear?: string;
+  businessSector?: string;
+  docAndalUrl?: string;
+  docRklUrl?: string;
+  docRplUrl?: string;
+  docSkKelayakanUrl?: string;
+  docPersetujuanUrl?: string;
 }
 
 export interface WasteLog {
@@ -220,7 +233,7 @@ export interface CompanySlice {
   updateCompanyStatus: (id: string, status: Company["status"]) => Promise<void>;
   createRetribusiInvoice: (id: string) => Promise<void>;
   downloadCompanyCertificate: (id: string, companyName: string) => Promise<void>;
-  addManualAmdalCompany: (data: { companyName: string; nib: string; npwp?: string; lat: string; lng: string; address: string }) => Promise<void>;
+  addManualAmdalCompany: (formData: FormData) => Promise<void>;
 }
 
 export interface WasteSlice {
