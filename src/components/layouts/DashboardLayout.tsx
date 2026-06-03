@@ -26,8 +26,8 @@ const MENU_CONFIG = {
     { label: "Daftar Perusahaan", icon: <Building2 size={18} />, path: "/admin/companies" },
     { label: "Monitoring Limbah", icon: <Trash2 size={18} />, path: "/admin/waste" },
     { label: "GIS Geospasial", icon: <Map size={18} />, path: "/admin/gis" },
-    { label: "List Pembayaran", icon: <CreditCard size={18} />, path: "/admin/payments" },
-    { label: "Penugasan Armada", icon: <Truck size={18} />, path: "/admin/pickups" },
+    // { label: "List Pembayaran", icon: <CreditCard size={18} />, path: "/admin/payments" },
+    // { label: "Penugasan Armada", icon: <Truck size={18} />, path: "/admin/pickups" },
     { label: "Inspeksi Lapangan", icon: <ClipboardList size={18} />, path: "/admin/inspections" },
   ],
   PETUGAS_LAPANGAN: [
@@ -37,7 +37,7 @@ const MENU_CONFIG = {
   PERUSAHAAN: [
     { label: "Dashboard", icon: <LayoutDashboard size={18} />, path: "/company" },
     { label: "Logbook Limbah", icon: <Trash2 size={18} />, path: "/company/logbook" },
-    { label: "Pembayaran Digital", icon: <CreditCard size={18} />, path: "/company/payments" },
+    // { label: "Pembayaran Digital", icon: <CreditCard size={18} />, path: "/company/payments" },
     { label: "Dokumen Lingkungan", icon: <ShieldCheck size={18} />, path: "/company/documents" },
   ],
   PENGANGKUT: [

@@ -477,16 +477,25 @@ export default function RegistrationPage() {
                         <h3 className="text-xs font-black text-slate-850 uppercase tracking-widest">2. Unggah Matriks yang Telah Dilengkapi</h3>
                       </div>
                       <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider leading-relaxed">
-                        Pastikan seluruh data matriks telah terisi dengan benar. Unggah kembali file Anda dalam format spreadsheet (.xlsx, .xls) atau dokumen (.docx, .doc, .pdf).
+                        Pastikan seluruh data matriks telah terisi dengan benar. Unggah kembali file Anda dalam format yang sesuai.
                       </p>
+
+                      {docType === "UKL-UPL" && (
+                        <div className="flex items-start gap-2.5 p-3 bg-amber-50 border border-amber-200 rounded-none mb-1">
+                          <AlertCircle size={14} className="text-amber-500 shrink-0 mt-0.5" />
+                          <p className="text-[10px] font-bold text-amber-700 leading-snug">
+                            Khusus Dokumen UKL-UPL, <span className="underline">wajib</span> diunggah dalam format Excel (.xlsx, .xls). Format lain (PDF/Word) tidak akan diterima oleh sistem.
+                          </p>
+                        </div>
+                      )}
 
                       <FileUploadBox
                         label={`Berkas Matriks ${docType} *`}
                         required={!isEdit}
-                        accept=".xlsx,.xls,.docx,.doc,.pdf"
+                        accept={docType === "UKL-UPL" ? ".xlsx,.xls" : ".xlsx,.xls,.docx,.doc,.pdf"}
                         file={docTemplateFile}
                         onFileChange={setDocTemplateFile}
-                        hint="Format Excel, Word, atau PDF, maks 5 MB"
+                        hint={docType === "UKL-UPL" ? "Format Excel (.xlsx, .xls), maks 5 MB" : "Format Excel, Word, atau PDF, maks 5 MB"}
                         existingUrl={isEdit ? existingCompany?.docTemplateUrl || undefined : undefined}
                       />
                     </div>
@@ -630,9 +639,24 @@ function FileUploadBox({ label, required, accept, file, onFileChange, hint, exis
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0] || null;
-    if (selected && selected.size > 5 * 1024 * 1024) {
-      toast.error(`File ${label} melebihi batas ukuran 5 MB.`);
-      return;
+    if (selected) {
+      if (selected.size > 5 * 1024 * 1024) {
+        toast.error(`File ${label} melebihi batas ukuran 5 MB.`);
+        if (inputRef.current) inputRef.current.value = "";
+        return;
+      }
+      
+      if (accept) {
+        const allowedExtensions = accept.split(",").map(ext => ext.trim().toLowerCase());
+        const fileName = selected.name.toLowerCase();
+        const isValidExtension = allowedExtensions.some(ext => fileName.endsWith(ext));
+        
+        if (!isValidExtension && allowedExtensions.length > 0) {
+          toast.error(`Format file tidak didukung. Harap unggah file dengan format: ${accept}`);
+          if (inputRef.current) inputRef.current.value = "";
+          return;
+        }
+      }
     }
     onFileChange(selected);
   };

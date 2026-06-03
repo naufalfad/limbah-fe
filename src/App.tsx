@@ -24,6 +24,7 @@ import InspectionManagement from "./modules/admin/InspectionManagement";
 import AdminPickupManagement from "./modules/admin/AdminPickupManagement";
 import CompanyManagement from "./modules/admin/CompanyManagement";
 import CitizenReportManagement from "./modules/admin/CitizenReportManagement"; // INJEKSI BARU: Komponen triage pengaduan warga [3]
+import AddAmdalPage from "./modules/admin/pages/AddAmdalPage";
 
 // Perusahaan
 import CompanyDashboard from "./modules/companies/pages/CompanyDashboard";
@@ -72,6 +73,7 @@ function App() {
         <Route path="/admin/reports" element={<CitizenReportManagement />} /> {/* INJEKSI BARU: Rute halaman Triage Pengaduan [3] */}
         <Route path="/admin/registrations" element={<RegistrationList />} />
         <Route path="/admin/companies" element={<CompanyManagement />} />
+        <Route path="/admin/companies/add-amdal" element={<AddAmdalPage />} />
         <Route path="/admin/waste" element={<WasteMonitoring />} />
         <Route path="/admin/gis" element={<GISMonitoring />} />
         <Route path="/admin/payments" element={<TransactionManagement />} />
