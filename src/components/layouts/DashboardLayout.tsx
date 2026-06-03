@@ -15,7 +15,7 @@ const MENU_CONFIG = {
   SUPER_ADMIN: [
     { label: "Dashboard", icon: <LayoutDashboard size={18} />, path: "/super-admin" },
     { label: "Kelola Pengguna", icon: <Users size={18} />, path: "/super-admin/users" },
-    { label: "Payment Gateway", icon: <Key size={18} />, path: "/super-admin/gateway" },
+    // { label: "Payment Gateway", icon: <Key size={18} />, path: "/super-admin/gateway" },
     { label: "GIS Layers", icon: <Layers size={18} />, path: "/super-admin/layers" },
     { label: "Audit Logs", icon: <Activity size={18} />, path: "/super-admin/logs" },
   ],

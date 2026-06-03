@@ -91,6 +91,7 @@ export interface SijagaState extends BaseSijagaState, ReportSlice {
 
   fetchUsers: () => Promise<void>;
   updateUserRole: (id: string, role: UserRole) => Promise<void>;
+  createUser: (payload: any) => Promise<boolean>;
   fetchExecutiveAnalytics: () => Promise<void>;
   fetchPerformanceAnalytics: () => Promise<void>;
   fetchAuditLogs: () => Promise<void>;
@@ -216,6 +217,27 @@ export const useSijagaStore = create<SijagaState>((set, get, store) => ({
     } catch (e) {
       console.error("API updateUserRole failed", e);
       toast.error("Gagal mengubah hak akses pengguna.");
+    }
+  },
+
+  createUser: async (payload: any) => {
+    try {
+      const response = await apiService.admin.createUser(payload);
+      if (response && response.success) {
+        toast.success("User baru berhasil ditambahkan!");
+        // Refresh users list
+        const responseUsers = await apiService.admin.getAllUsers();
+        if (responseUsers && responseUsers.success) {
+          set({ users: responseUsers.users || [] });
+        }
+        return true;
+      }
+      return false;
+    } catch (e: any) {
+      console.error("API createUser failed", e);
+      const errMsg = e.response?.data?.error || "Gagal membuat user baru.";
+      toast.error(errMsg);
+      return false;
     }
   },
 

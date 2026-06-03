@@ -159,13 +159,13 @@ export default function CompanyDashboard() {
             icon={<Clock />}
             color="blue"
           />
-          <GFWStatCard
+          {/* <GFWStatCard
             label="Tagihan Belum Bayar"
             value={`Rp ${stats.unpaidAmount.toLocaleString()}`}
             sub={`${stats.unpaidCount} INVOICE DI-SETTLE KAS DAERAH`}
             icon={<CreditCard />}
             color="amber"
-          />
+          /> */}
           <GFWStatCard
             label="Indeks Kepatuhan ESG"
             value={activeCompany.score ? `${activeCompany.score}/100` : "WAITING"}
