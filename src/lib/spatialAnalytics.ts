@@ -5,10 +5,10 @@ import * as turf from '@turf/turf';
 
 /**
  * 1. MENGHITUNG KEPADATAN INDUSTRI PER KECAMATAN (Choropleth Aggregation)
- * Menggunakan algoritma Point-in-Polygon (PIP).
+ * Menggunakan algoritma Point-in-Polygon (PIP) untuk agregasi spasial industri.
  * 
  * @param companies - Array data perusahaan dari store (memiliki lat & lng)
- * @param geojsonKecamatan - FeatureCollection GeoJSON dari Kecamatan Kotim
+ * @param geojsonKecamatan - FeatureCollection GeoJSON dari Kecamatan Kabupaten Bogor
  * @returns Object Record berisi { "Nama Kecamatan": JumlahPabrik }
  */
 export const calculateCompaniesPerKecamatan = (
@@ -49,12 +49,12 @@ export const calculateCompaniesPerKecamatan = (
 
 /**
  * 2. MENGHITUNG RADIUS DAMPAK BENCANA PENCEMARAN (Buffer Intersection)
- * Membuat lingkaran (Buffer) lalu mendeteksi poligon Desa mana saja yang tertabrak.
+ * Membuat lingkaran (Buffer) lalu mendeteksi poligon Kelurahan/Desa mana saja yang tertabrak.
  * 
  * @param lat - Latitude pusat kejadian / pabrik
  * @param lng - Longitude pusat kejadian / pabrik
  * @param radiusKm - Jarak radius dampak dalam Kilometer (misal: 5)
- * @param geojsonDesa - FeatureCollection GeoJSON dari Desa Kotim
+ * @param geojsonDesa - FeatureCollection GeoJSON dari Desa/Kelurahan Kabupaten Bogor
  * @returns Array object berisi Desa dan Kecamatan yang terdampak
  */
 export const getAffectedVillages = (
@@ -87,7 +87,7 @@ export const getAffectedVillages = (
             }
         });
     } catch (error) {
-        console.error("Gagal menghitung radius dampak spasial:", error);
+        console.error("Gagal menghitung radius dampak spasial Kabupaten Bogor:", error);
     }
 
     return affected;

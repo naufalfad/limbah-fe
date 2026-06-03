@@ -16,7 +16,9 @@ FORBIDDEN_DIRS = {
 # Masukkan nama file spesifik yang tidak ingin diproses di sini
 FORBIDDEN_FILES = {
     "kotim-desa.json", 
-    "kotim-kecamatan.json"
+    "kotim-kecamatan.json",
+    'bogor-desa.json',
+    'bogor-kecamatan.json',
 }
 
 # 2. Folder yang BOLEH diambil(Whitelist)

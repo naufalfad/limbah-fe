@@ -172,6 +172,15 @@ export interface AqiData {
   cachedAt?: string;
 }
 
+// [NEW INTERFACE] Struktur penampung batch data kualitas udara klaster geospasial
+export interface BogorClusterTelemetry {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+  telemetry: AqiData;
+}
+
 // [NEW INTERFACE] Kontrak Data ketat untuk Output AI Agent Forensik
 export interface AiForensicResult {
   culpritName: string;
@@ -180,6 +189,11 @@ export interface AiForensicResult {
   analysis: string;
   recommendedAction: "INSPECTION" | "WARNING_LETTER" | "MONITORING" | "MANUAL_INVESTIGATION";
   evidencePoints: string[];
+  suspectsDistribution: Array<{
+    companyName: string;
+    probabilityScore: number;
+    complianceScore: number;
+  }>;
 }
 
 // Slice Interfaces
@@ -292,8 +306,10 @@ export interface ReportSlice {
 
 export interface AqiSlice {
   currentAqiData: AqiData | null;
+  batchAqiData: BogorClusterTelemetry[]; // PENYELARASAN BATCH KLASTER SPASIAL
   isAqiLoading: boolean;
   fetchAqiData: (lat: string | number, lng: string | number) => Promise<AqiData | null>;
+  fetchBatchAqiData: () => Promise<BogorClusterTelemetry[]>; // AKSES BATCH TERPADU
   clearAqiData: () => void;
 }
 

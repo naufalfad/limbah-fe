@@ -4,16 +4,19 @@ import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { spatialMath, WindNode } from '@/lib/spatialMath';
 
+// Impor GeoJSON Wilayah Kabupaten Bogor untuk pembuatan Path Clipping (Information Expert)
+import kecData from '@/assets/geojson/bogor-kecamatan.json';
+
 interface WindFlowLayerProps {
     companies: any[];
 }
 
-// Bounding Box Kotim (Disamakan persis dengan AqiSurfaceLayer)
-const KOTIM_BOUNDS = {
-    latMin: -3.40,
-    latMax: -1.30,
-    lngMin: 112.00,
-    lngMax: 113.60
+// Bounding Box Kabupaten Bogor (Disamakan persis dengan AqiSurfaceLayer)
+const BOGOR_BOUNDS = {
+    latMin: -6.80,  // Batas Selatan (Area Megamendung / Cisarua)
+    latMax: -6.25,  // Batas Utara (Area Gunung Putri / Cileungsi)
+    lngMin: 106.35, // Batas Barat (Area Jasinga)
+    lngMax: 107.25  // Batas Timur (Area Jonggol)
 };
 
 // ============================================================================
@@ -27,16 +30,18 @@ const FADE_RATE = 0.04;          // Kecepatan Pudar Ekor Komet (Semakin kecil = 
 
 /**
  * ============================================================================
- * WIND FLOW LAYER (CUSTOM CANVAS PARTICLE ENGINE)
+ * WIND FLOW LAYER (CUSTOM CANVAS PARTICLE ENGINE - CLIPPED)
  * ============================================================================
  * Menciptakan ilusi Fluid Dynamics (seperti IQAir) menggunakan HTML5 Canvas.
- * Dilengkapi dengan arsitektur "Fade & Pause" (Debounced Rendering) untuk
- * mencegah frame drop dan flickering saat peta digeser.
+ * Seluruh pergerakan partikel angin dikunci rapi di dalam poligon Kabupaten Bogor.
  */
 export default function WindFlowLayer({ companies }: WindFlowLayerProps) {
     const map = useMap();
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const animationRef = useRef<number | null>(null);
+
+    // Cache Memori untuk menahan bentuk koordinat piksel Kabupaten Bogor (Mencegah Lag 60FPS)
+    const clipPathRef = useRef<Path2D | null>(null);
 
     // 1. Ekstrak Data Sensor Angin
     const windSensors = useMemo(() => {
@@ -57,7 +62,7 @@ export default function WindFlowLayer({ companies }: WindFlowLayerProps) {
     // 2. PRE-COMPUTE VECTOR FIELD (O(1) Lookup untuk Animasi)
     const vectorField = useMemo(() => {
         if (windSensors.length === 0) return [];
-        const grid = spatialMath.generateCanvasGrid(KOTIM_BOUNDS, RESOLUTION, RESOLUTION);
+        const grid = spatialMath.generateCanvasGrid(BOGOR_BOUNDS, RESOLUTION, RESOLUTION);
 
         return grid.map(pt => {
             const wind = spatialMath.interpolateWind(pt.lat, pt.lng, windSensors);
@@ -103,6 +108,44 @@ export default function WindFlowLayer({ companies }: WindFlowLayerProps) {
             const topLeft = map.containerPointToLayerPoint([0, 0]);
             L.DomUtil.setPosition(canvas, topLeft);
 
+            // ====================================================================
+            // OPTIMASI KRITIS: GENERATE BOGOR PATH2D SAAT ZOOM / PAN (BUKAN DI RENDERING LOOP)
+            // ====================================================================
+            const path = new Path2D();
+            const kecGeoJson = kecData as any;
+
+            if (kecGeoJson && kecGeoJson.features) {
+                kecGeoJson.features.forEach((feature: any) => {
+                    const geometry = feature.geometry;
+                    if (!geometry) return;
+
+                    if (geometry.type === "Polygon") {
+                        geometry.coordinates.forEach((ring: any[]) => {
+                            ring.forEach((coord, i) => {
+                                // Memetakan LatLng global ke piksel kontainer lokal Leaflet
+                                const pt = map.latLngToContainerPoint([coord[1], coord[0]]);
+                                if (i === 0) path.moveTo(pt.x, pt.y);
+                                else path.lineTo(pt.x, pt.y);
+                            });
+                            path.closePath();
+                        });
+                    } else if (geometry.type === "MultiPolygon") {
+                        geometry.coordinates.forEach((polygon: any[][]) => {
+                            polygon.forEach((ring: any[]) => {
+                                ring.forEach((coord, i) => {
+                                    const pt = map.latLngToContainerPoint([coord[1], coord[0]]);
+                                    if (i === 0) path.moveTo(pt.x, pt.y);
+                                    else path.lineTo(pt.x, pt.y);
+                                });
+                                path.closePath();
+                            });
+                        });
+                    }
+                });
+            }
+
+            clipPathRef.current = path; // Simpan ke ref memori
+
             particles = Array.from({ length: PARTICLE_COUNT }).map(() => ({
                 x: Math.random() * size.x,
                 y: Math.random() * size.y,
@@ -147,6 +190,15 @@ export default function WindFlowLayer({ companies }: WindFlowLayerProps) {
             const width = canvas.width;
             const height = canvas.height;
 
+            ctx.save(); // 1. Amankan state grafis awal sebelum dicip
+
+            // ====================================================================
+            // CLIPPING MASK EXECUTION (Akselerasi GPU Browser Tanpa Hambatan)
+            // ====================================================================
+            if (clipPathRef.current) {
+                ctx.clip(clipPathRef.current); // Kunci rendering hanya di dalam poligon Bogor
+            }
+
             // Fading Tails menggunakan nilai FADE_RATE yang lebih rendah untuk jejak komet yang mulus
             ctx.globalCompositeOperation = 'destination-out';
             ctx.fillStyle = `rgba(0, 0, 0, ${FADE_RATE})`;
@@ -156,8 +208,6 @@ export default function WindFlowLayer({ companies }: WindFlowLayerProps) {
             ctx.lineWidth = 1.2; // Sedikit ditipiskan agar lebih elegan
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
             ctx.lineCap = 'round';
-
-            const bounds = map.getBounds();
 
             ctx.beginPath();
 
@@ -170,8 +220,8 @@ export default function WindFlowLayer({ companies }: WindFlowLayerProps) {
 
                 const pLatLng = map.containerPointToLatLng([p.x, p.y]);
 
-                const gridX = Math.floor(((pLatLng.lng - KOTIM_BOUNDS.lngMin) / (KOTIM_BOUNDS.lngMax - KOTIM_BOUNDS.lngMin)) * RESOLUTION);
-                const gridY = Math.floor(((KOTIM_BOUNDS.latMax - pLatLng.lat) / (KOTIM_BOUNDS.latMax - KOTIM_BOUNDS.latMin)) * RESOLUTION);
+                const gridX = Math.floor(((pLatLng.lng - BOGOR_BOUNDS.lngMin) / (BOGOR_BOUNDS.lngMax - BOGOR_BOUNDS.lngMin)) * RESOLUTION);
+                const gridY = Math.floor(((BOGOR_BOUNDS.latMax - pLatLng.lat) / (BOGOR_BOUNDS.latMax - BOGOR_BOUNDS.latMin)) * RESOLUTION);
 
                 if (gridX < 0 || gridX >= RESOLUTION || gridY < 0 || gridY >= RESOLUTION) {
                     p.age = PARTICLE_LIFESPAN + 1;
@@ -195,6 +245,8 @@ export default function WindFlowLayer({ companies }: WindFlowLayerProps) {
             });
 
             ctx.stroke();
+
+            ctx.restore(); // 2. Kembalikan state grafis semula untuk iterasi render berikutnya
 
             // Loop ke frame berikutnya
             animationRef.current = requestAnimationFrame(render);

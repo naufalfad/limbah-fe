@@ -52,10 +52,41 @@ const DEFAULT_CENTER: [number, number] = [-6.4816, 106.8560];
 // HELPERS & ICONS GENERATORS
 // ============================================================================
 
+/**
+ * FAIL-SAFE FALLBACK: Simulasi matematis luring jika backend terputus.
+ */
 const getSimulatedAqi = (lat: number, lng: number): number => {
     if (isNaN(lat) || isNaN(lng)) return 35;
     const seed = Math.abs(Math.sin(lat) * Math.cos(lng));
     return Math.floor(25 + (seed * 60)); // Skala 25 - 85 (Baik - Sedang)
+};
+
+/**
+ * SPATIAL INTERPOLATION RESOLVER (Information Expert)
+ * Menentukan nilai AQI industri berdasarkan stasiun klaster real-time terdekat dari database.
+ * Jika data dari backend belum termuat, sistem secara otomatis mundur ke mode simulasi aman.
+ */
+const getRealClusterAqi = (lat: number, lng: number, batchData: any[]): number => {
+    if (!batchData || batchData.length === 0) {
+        return getSimulatedAqi(lat, lng);
+    }
+
+    let closestCluster = batchData[0];
+    let minDistanceSq = Infinity;
+
+    // Perhitungan jarak Euclidean kuadrat (optimasi CPU untuk performa O(N) real-time)
+    for (const cluster of batchData) {
+        const dLat = lat - cluster.lat;
+        const dLng = lng - cluster.lng;
+        const distSq = dLat * dLat + dLng * dLng;
+
+        if (distSq < minDistanceSq) {
+            minDistanceSq = distSq;
+            closestCluster = cluster;
+        }
+    }
+
+    return closestCluster.telemetry?.aqi ?? 35;
 };
 
 const createAqiBadgeIcon = (aqi: number, bgColorRgb: string, isCluster: boolean = false) => {
@@ -216,7 +247,16 @@ function MapEventsHandler() {
 // ============================================================================
 
 export default function LimbahMap() {
-    const { companies, adminReports, fetchAdminReports, currentUser, inspections } = useSijagaStore();
+    const {
+        companies,
+        adminReports,
+        fetchAdminReports,
+        currentUser,
+        inspections,
+        batchAqiData,        // INJEKSI BARU: State batch kualitas udara riil
+        fetchBatchAqiData    // INJEKSI BARU: Aksi sinkronisasi batch
+    } = useSijagaStore();
+
     const {
         activeLayers, activeBaseMap, mapOpacity, maskOpacity,
         setSelectedCompanyId, openPanel, closePanelsToTheRight,
@@ -224,6 +264,11 @@ export default function LimbahMap() {
     } = useGisUIStore();
 
     const [currentZoom, setCurrentZoom] = useState(11); // Zoom default diubah menjadi 11
+
+    // 1. SINKRONISASI BATCH DATA AQI SAAT AWAL LOAD PETA (Information Expert)
+    useEffect(() => {
+        fetchBatchAqiData();
+    }, [fetchBatchAqiData]);
 
     useEffect(() => {
         if (currentUser && (currentUser.role === "ADMIN_DLH" || currentUser.role === "SUPER_ADMIN")) {
@@ -342,21 +387,61 @@ export default function LimbahMap() {
     return (
         <div className="absolute inset-0 z-0 bg-slate-100">
             {/* FLOATING ACTION BUTTON AI COPILOT (Hanya untuk Eksekutif) */}
+            {/* FLOATING ACTION BUTTON AI COPILOT (Hanya untuk Eksekutif) */}
             {isExecutive && (
                 <div className="absolute top-[88px] right-6 z-[1000]">
-                    <button
-                        onClick={() => openPanel('ai-copilot', 'AI Spatial Assistant')}
-                        className="group relative flex items-center justify-center w-12 h-12 bg-slate-900 border border-emerald-500 hover:bg-emerald-600 transition-all rounded-none shadow-[0_0_15px_rgba(16,185,129,0.5)] outline-none overflow-hidden"
-                    >
-                        {/* Radar Scan Effect */}
-                        <div className="absolute inset-0 bg-emerald-400/20 animate-ping rounded-full opacity-0 group-hover:opacity-100" />
-                        <Sparkles size={20} className="text-emerald-400 group-hover:text-white transition-colors relative z-10" />
+                    <div className="relative group">
+                        {/* Button */}
+                        <button
+                            onClick={() => openPanel('ai-copilot', 'AI Spatial Assistant')}
+                            aria-label="Open AI Spatial Assistant"
+                            title="AI Spatial Assistant"
+                            className="
+                    relative
+                    flex
+                    items-center
+                    justify-center
+                    w-12
+                    h-12
 
-                        {/* Tooltip Hover Kaku */}
-                        <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-slate-900 border border-slate-700 text-emerald-400 text-[9px] font-black uppercase tracking-widest whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none rounded-none shadow-xl">
-                            AI Forensik Scan
-                        </div>
-                    </button>
+                    bg-slate-900
+                    border
+                    border-emerald-500
+
+                    text-emerald-400
+
+                    hover:bg-emerald-600
+                    hover:text-white
+                    hover:scale-105
+
+                    active:scale-95
+
+                    transition-all
+                    duration-200
+
+                    shadow-[0_0_15px_rgba(16,185,129,0.5)]
+
+                    outline-none
+                "
+                        >
+                            {/* Radar Pulse */}
+                            <div
+                                className="
+                        absolute
+                        inset-0
+                        bg-emerald-400/20
+                        animate-ping
+                        opacity-30
+                    "
+                            />
+
+                            <Sparkles
+                                size={20}
+                                className="relative z-10"
+                            />
+                        </button>
+
+                    </div>
                 </div>
             )}
 
@@ -431,7 +516,8 @@ export default function LimbahMap() {
                             const lng = parseFloat(c.lng);
                             if (isNaN(lat) || isNaN(lng)) return null;
 
-                            const aqi = getSimulatedAqi(lat, lng);
+                            // REFACTOR SINKRONISASI: Mencari stasiun klaster spasial riil dari backend
+                            const aqi = getRealClusterAqi(lat, lng, batchAqiData);
                             const [r, g, b] = spatialMath.interpolateColorRgb(aqi);
                             const bgColorRgb = `rgb(${r}, ${g}, ${b})`;
 
@@ -445,10 +531,15 @@ export default function LimbahMap() {
                                         click: (e) => {
                                             e.originalEvent.stopPropagation();
 
-                                            if (currentZoom >= 16) {
+                                            // REVISI / PENYELARASAN POLIMORFISME: Menghindari getBounds() crash pada titik L.Marker
+                                            const hasGetBounds = typeof e.target.getBounds === 'function';
+                                            if (currentZoom >= 16 && hasGetBounds) {
                                                 e.target._map.flyToBounds(e.target.getBounds(), { padding: [100, 100], duration: 1.5 });
                                             } else {
-                                                e.target._map.flyTo([lat, lng], 16, { animate: true, duration: 1.5 });
+                                                const coords = typeof e.target.getLatLng === 'function'
+                                                    ? e.target.getLatLng()
+                                                    : [lat, lng];
+                                                e.target._map.flyTo(coords, 16, { animate: true, duration: 1.5 });
                                             }
 
                                             setSelectedCompanyId(c.id);

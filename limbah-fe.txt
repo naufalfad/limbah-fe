@@ -2824,10 +2824,10 @@ import * as turf from '@turf/turf';
 
 /**
  * 1. MENGHITUNG KEPADATAN INDUSTRI PER KECAMATAN (Choropleth Aggregation)
- * Menggunakan algoritma Point-in-Polygon (PIP).
+ * Menggunakan algoritma Point-in-Polygon (PIP) untuk agregasi spasial industri.
  * 
  * @param companies - Array data perusahaan dari store (memiliki lat & lng)
- * @param geojsonKecamatan - FeatureCollection GeoJSON dari Kecamatan Kotim
+ * @param geojsonKecamatan - FeatureCollection GeoJSON dari Kecamatan Kabupaten Bogor
  * @returns Object Record berisi { "Nama Kecamatan": JumlahPabrik }
  */
 export const calculateCompaniesPerKecamatan = (
@@ -2868,12 +2868,12 @@ export const calculateCompaniesPerKecamatan = (
 
 /**
  * 2. MENGHITUNG RADIUS DAMPAK BENCANA PENCEMARAN (Buffer Intersection)
- * Membuat lingkaran (Buffer) lalu mendeteksi poligon Desa mana saja yang tertabrak.
+ * Membuat lingkaran (Buffer) lalu mendeteksi poligon Kelurahan/Desa mana saja yang tertabrak.
  * 
  * @param lat - Latitude pusat kejadian / pabrik
  * @param lng - Longitude pusat kejadian / pabrik
  * @param radiusKm - Jarak radius dampak dalam Kilometer (misal: 5)
- * @param geojsonDesa - FeatureCollection GeoJSON dari Desa Kotim
+ * @param geojsonDesa - FeatureCollection GeoJSON dari Desa/Kelurahan Kabupaten Bogor
  * @returns Array object berisi Desa dan Kecamatan yang terdampak
  */
 export const getAffectedVillages = (
@@ -2906,7 +2906,7 @@ export const getAffectedVillages = (
             }
         });
     } catch (error) {
-        console.error("Gagal menghitung radius dampak spasial:", error);
+        console.error("Gagal menghitung radius dampak spasial Kabupaten Bogor:", error);
     }
 
     return affected;
@@ -2953,18 +2953,18 @@ export interface GridPoint extends SensorNode {
 
 // --- VIRTUAL BASELINE NODES (ANCHOR MITIGATION) ---
 // Untuk mencegah "Ghost Extrapolation" (Peta merah semua karena tidak ada sensor di pedalaman),
-// kita memasang sensor bayangan di perbatasan luar Kotawaringin Timur (Kotim).
-// DIUPDATE: Menyesuaikan Bounding Box baru (-3.40 s/d -1.30 dan 112.00 s/d 113.60).
-// Membentuk cincin 8-titik simetris agar tarikan IDW (20 / Sangat Bersih) merata di seluruh pedalaman.
-const KOTIM_VIRTUAL_NODES: AqiNode[] = [
-    { lat: -1.30, lng: 112.00, aqi: 20 }, // Barat Laut ekstrem (Pedalaman)
-    { lat: -1.30, lng: 112.80, aqi: 20 }, // Utara Tengah (Pedalaman Dalam)
-    { lat: -1.30, lng: 113.60, aqi: 20 }, // Timur Laut ekstrem (Pedalaman)
-    { lat: -2.35, lng: 112.00, aqi: 20 }, // Sayap Barat
-    { lat: -2.35, lng: 113.60, aqi: 20 }, // Sayap Timur
-    { lat: -3.40, lng: 112.00, aqi: 20 }, // Barat Daya ekstrem (Pesisir Laut)
-    { lat: -3.40, lng: 112.80, aqi: 20 }, // Selatan Tengah (Pesisir)
-    { lat: -3.40, lng: 113.60, aqi: 20 }, // Tenggara ekstrem (Pesisir Laut)
+// kita memasang sensor bayangan di perbatasan luar Kabupaten Bogor.
+// DIUPDATE: Menyesuaikan Bounding Box baru Bogor (-6.80 s/d -6.25 dan 106.35 s/d 107.25).
+// Membentuk cincin 8-titik simetris agar tarikan IDW (20 / Sangat Bersih) merata di wilayah perbatasan.
+const BOGOR_VIRTUAL_NODES: AqiNode[] = [
+    { lat: -6.25, lng: 106.35, aqi: 20 }, // Barat Laut ekstrem (Perbatasan Tangerang/Banten)
+    { lat: -6.25, lng: 106.80, aqi: 20 }, // Utara Tengah (Perbatasan Depok/Bekasi)
+    { lat: -6.25, lng: 107.25, aqi: 20 }, // Timur Laut ekstrem (Perbatasan Karawang)
+    { lat: -6.525, lng: 106.35, aqi: 20 }, // Sayap Barat (Perbatasan Lebak)
+    { lat: -6.525, lng: 107.25, aqi: 20 }, // Sayap Timur (Perbatasan Cianjur/Purwakarta)
+    { lat: -6.80, lng: 106.35, aqi: 20 }, // Barat Daya ekstrem (Sukabumi barat)
+    { lat: -6.80, lng: 106.80, aqi: 20 }, // Selatan Tengah (Perbatasan Sukabumi)
+    { lat: -6.80, lng: 107.25, aqi: 20 }, // Tenggara ekstrem (Perbatasan Cianjur)
 ];
 
 // Parameter kekuatan tarikan gravitasi polusi (Power parameter).
@@ -2977,7 +2977,7 @@ const IDW_POWER = 3;
  * 
  * Menggunakan kuadrat jarak Euclidean alih-alih Haversine murni. 
  * Ini menghemat penggunaan Math.sqrt() pada iterasi canvas (2.500+ titik per frame).
- * Akurasi geografis sedikit berkurang, namun sangat bisa ditoleransi untuk skala regional (Kotim).
+ * Akurasi geografis sedikit berkurang, namun sangat bisa ditoleransi untuk skala regional (Bogor).
  */
 const getDistanceSq = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
     const dLat = lat1 - lat2;
@@ -3008,7 +3008,7 @@ export const spatialMath = {
      */
     interpolateAqi: (targetLat: number, targetLng: number, realSensors: AqiNode[]): number => {
         // Gabungkan sensor nyata (dari pabrik) dengan sensor imajiner pelindung (Virtual Nodes)
-        const allSensors = [...realSensors, ...KOTIM_VIRTUAL_NODES];
+        const allSensors = [...realSensors, ...BOGOR_VIRTUAL_NODES];
 
         if (allSensors.length === 0) return 20; // Fallback sangat bersih
 
@@ -3320,8 +3320,8 @@ export default function AdminDashboard() {
             <div className="h-[300px] bg-slate-100 relative group overflow-hidden rounded-none z-10">
               {/* Map Container Mini-Preview Taktis (MODIFIED FASE 2) */}
               <MapContainer
-                center={[-2.5337, 112.9515]} // SINKRONISASI KOTIM: Diubah ke Sampit [3]
-                zoom={9} // Diubah ke zoom level 9 agar pas melihat luasan Kotim [3]
+                center={[-6.4816, 106.8560]} // SINKRONISASI BOGOR: Diubah ke Cibinong [3]
+                zoom={11} // Diubah ke zoom level 11 agar pas melihat luasan Bogor [3]
                 className="w-full h-full rounded-none"
                 zoomControl={false}
                 scrollWheelZoom={false}
@@ -4077,7 +4077,7 @@ function ResizeMap() {
   return null;
 }
 
-// FASE 2: Penyesuaian parameter fallback lat/lng MapPicker ke Sampit, Kotim [3]
+/// FASE 2: Penyesuaian parameter fallback lat/lng MapPicker ke Cibinong, Kabupaten Bogor [3]
 function MapPicker({ lat, lng, onChange }: { lat: string; lng: string; onChange: (lat: string, lng: string) => void }) {
   useMapEvents({
     click(e) {
@@ -4085,8 +4085,9 @@ function MapPicker({ lat, lng, onChange }: { lat: string; lng: string; onChange:
     },
   });
 
-  const parsedLat = parseFloat(lat) || -2.5337;
-  const parsedLng = parseFloat(lng) || 112.9515;
+  // Fallback dialihkan ke pusat koordinat Cibinong, Kabupaten Bogor
+  const parsedLat = parseFloat(lat) || -6.4816;
+  const parsedLng = parseFloat(lng) || 106.8560;
 
   return <Marker position={[parsedLat, parsedLng]} />;
 }
@@ -6908,12 +6909,13 @@ interface WindFlowLayerProps {
     companies: any[];
 }
 
-// Bounding Box Kotim (Disamakan persis dengan AqiSurfaceLayer)
-const KOTIM_BOUNDS = {
-    latMin: -3.40,
-    latMax: -1.30,
-    lngMin: 112.00,
-    lngMax: 113.60
+// Bounding Box Kabupaten Bogor (Disamakan persis dengan AqiSurfaceLayer)
+// Dikalkulasi dari letak geografis 6°18'0" - 6°47'10" LS dan 106°23'45" - 107°13'30" BT
+const BOGOR_BOUNDS = {
+    latMin: -6.80,  // Batas Selatan (Area Megamendung / Cisarua)
+    latMax: -6.25,  // Batas Utara (Area Gunung Putri / Cileungsi)
+    lngMin: 106.35, // Batas Barat (Area Jasinga)
+    lngMax: 107.25  // Batas Timur (Area Jonggol)
 };
 
 // ============================================================================
@@ -6957,7 +6959,7 @@ export default function WindFlowLayer({ companies }: WindFlowLayerProps) {
     // 2. PRE-COMPUTE VECTOR FIELD (O(1) Lookup untuk Animasi)
     const vectorField = useMemo(() => {
         if (windSensors.length === 0) return [];
-        const grid = spatialMath.generateCanvasGrid(KOTIM_BOUNDS, RESOLUTION, RESOLUTION);
+        const grid = spatialMath.generateCanvasGrid(BOGOR_BOUNDS, RESOLUTION, RESOLUTION);
 
         return grid.map(pt => {
             const wind = spatialMath.interpolateWind(pt.lat, pt.lng, windSensors);
@@ -7057,8 +7059,6 @@ export default function WindFlowLayer({ companies }: WindFlowLayerProps) {
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
             ctx.lineCap = 'round';
 
-            const bounds = map.getBounds();
-
             ctx.beginPath();
 
             particles.forEach(p => {
@@ -7070,8 +7070,8 @@ export default function WindFlowLayer({ companies }: WindFlowLayerProps) {
 
                 const pLatLng = map.containerPointToLatLng([p.x, p.y]);
 
-                const gridX = Math.floor(((pLatLng.lng - KOTIM_BOUNDS.lngMin) / (KOTIM_BOUNDS.lngMax - KOTIM_BOUNDS.lngMin)) * RESOLUTION);
-                const gridY = Math.floor(((KOTIM_BOUNDS.latMax - pLatLng.lat) / (KOTIM_BOUNDS.latMax - KOTIM_BOUNDS.latMin)) * RESOLUTION);
+                const gridX = Math.floor(((pLatLng.lng - BOGOR_BOUNDS.lngMin) / (BOGOR_BOUNDS.lngMax - BOGOR_BOUNDS.lngMin)) * RESOLUTION);
+                const gridY = Math.floor(((BOGOR_BOUNDS.latMax - pLatLng.lat) / (BOGOR_BOUNDS.latMax - BOGOR_BOUNDS.latMin)) * RESOLUTION);
 
                 if (gridX < 0 || gridX >= RESOLUTION || gridY < 0 || gridY >= RESOLUTION) {
                     p.age = PARTICLE_LIFESPAN + 1;
@@ -7138,10 +7138,10 @@ import 'leaflet/dist/leaflet.css';
 import { useSijagaStore } from '@/store/useSijagaStore';
 import { useGisUIStore } from '@/store/useGisUIStore';
 
-// Modul Analitik & GeoJSON Wilayah
+// Modul Analitik & GeoJSON Wilayah (Penyelarasan ke Kabupaten Bogor)
 import { calculateCompaniesPerKecamatan } from '@/lib/spatialAnalytics';
-import kecData from '@/assets/geojson/kotim-kecamatan.json';
-import desaData from '@/assets/geojson/kotim-desa.json';
+import kecData from '@/assets/geojson/bogor-kecamatan.json';
+import desaData from '@/assets/geojson/bogor-desa.json';
 
 // Engine Matematika Spasial (Gradient Color)
 import { spatialMath } from '@/lib/spatialMath';
@@ -7165,8 +7165,8 @@ let DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// PUSAT PETA DIKUNCI DI KOTA SAMPIT (KOTAWARINGIN TIMUR)
-const DEFAULT_CENTER: [number, number] = [-2.5337, 112.9515];
+// PUSAT PETA DIKUNCI DI CIBINONG (KABUPATEN BOGOR)
+const DEFAULT_CENTER: [number, number] = [-6.4816, 106.8560];
 
 // ============================================================================
 // HELPERS & ICONS GENERATORS
@@ -7267,7 +7267,7 @@ function ExternalMapController() {
     useEffect(() => {
         const handleZoomIn = () => map.zoomIn();
         const handleZoomOut = () => map.zoomOut();
-        const handleResetView = () => map.setView(DEFAULT_CENTER, 9, { animate: true });
+        const handleResetView = () => map.setView(DEFAULT_CENTER, 11, { animate: true });
 
         const handleFlyToCoords = (e: Event) => {
             const customEvent = e as CustomEvent<{ lat: number; lng: number }>;
@@ -7343,7 +7343,7 @@ export default function LimbahMap() {
         activeAdminBoundary, showImpactRadius, activePanels
     } = useGisUIStore();
 
-    const [currentZoom, setCurrentZoom] = useState(9);
+    const [currentZoom, setCurrentZoom] = useState(11); // Zoom default diubah menjadi 11
 
     useEffect(() => {
         if (currentUser && (currentUser.role === "ADMIN_DLH" || currentUser.role === "SUPER_ADMIN")) {
@@ -7366,7 +7366,7 @@ export default function LimbahMap() {
         }
     };
 
-    const invertedKotimMask = useMemo(() => {
+    const invertedBogorMask = useMemo(() => {
         const kecGeoJson = kecData as any;
         if (!kecGeoJson || !kecGeoJson.features) return null;
 
@@ -7482,7 +7482,7 @@ export default function LimbahMap() {
 
             <MapContainer
                 center={DEFAULT_CENTER}
-                zoom={9}
+                zoom={11}
                 zoomControl={false}
                 style={{ height: '100%', width: '100%' }}
                 maxZoom={18}
@@ -7493,9 +7493,9 @@ export default function LimbahMap() {
 
                 <TileLayer url={getTileUrl()} />
 
-                {invertedKotimMask && (
+                {invertedBogorMask && (
                     <Polygon
-                        positions={invertedKotimMask}
+                        positions={invertedBogorMask}
                         pathOptions={{
                             color: "#0f172a",
                             fillColor: "#0f172a",
@@ -9298,9 +9298,9 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-// FASE 4 INJEKSI: Mengimpor fungsi otak analitik Turf.js dan data batas desa
+// FASE 4 INJEKSI: Mengimpor fungsi otak analitik Turf.js dan data batas desa Kabupaten Bogor
 import { getAffectedVillages } from "@/lib/spatialAnalytics";
-import desaData from "@/assets/geojson/kotim-desa.json";
+import desaData from "@/assets/geojson/bogor-desa.json";
 
 interface TaskDetailPanelProps {
     taskData: any; // Menerima payload Polimorfik (Bisa Inspection, bisa CitizenReport)
@@ -10365,8 +10365,9 @@ function MapPicker({ lat, lng, onChange }: { lat: string; lng: string; onChange:
     },
   });
 
-  const parsedLat = parseFloat(lat) || -6.9175;
-  const parsedLng = parseFloat(lng) || 107.6191;
+  // Fallback diubah ke titik pusat Cibinong, Kabupaten Bogor
+  const parsedLat = parseFloat(lat) || -6.4816;
+  const parsedLng = parseFloat(lng) || 106.8560;
 
   return <Marker position={[parsedLat, parsedLng]} />;
 }
@@ -10397,14 +10398,14 @@ export default function AddAmdalPage() {
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1);
 
-  // Form State
+  // Form State Default dialihkan ke pusat wilayah Kabupaten Bogor (Cibinong)
   const [form, setForm] = useState({
     companyName: "",
     nib: "",
     npwp: "",
     address: "",
-    lat: "-6.9175",
-    lng: "107.6191",
+    lat: "-6.4816",
+    lng: "106.8560",
   });
 
   // Document Uploads State
@@ -10570,7 +10571,7 @@ export default function AddAmdalPage() {
             <h1 className="text-xl font-black tracking-tight text-slate-900 uppercase leading-none">
               Registrasi Wajib <span className="text-rose-600">AMDAL</span> Baru
             </h1>
-            <p className="text-slate-500 text-[11px] font-semibold mt-1.5">Pendaftaran manual spasial & pemberkasan AMDAL terpadu DLH.</p>
+            <p className="text-slate-500 text-[11px] font-semibold mt-1.5">Pendaftaran manual spasial & pemberkasan AMDAL terpadu DLH Kabupaten Bogor.</p>
           </div>
         </div>
 
@@ -10703,7 +10704,7 @@ export default function AddAmdalPage() {
                       name="address"
                       value={form.address}
                       onChange={handleTextChange}
-                      placeholder="Kawasan Industri Panyileukan KM 12, Bandung"
+                      placeholder="Jl. Mayor Oking No. 1, Citeureup, Kabupaten Bogor"
                       className="w-full min-h-[120px] rounded-none border border-slate-200 bg-white p-3 text-xs font-bold text-slate-700 focus:outline-none focus:border-rose-500 transition-all shadow-inner resize-none"
                     />
                   </div>
@@ -10716,7 +10717,7 @@ export default function AddAmdalPage() {
                         name="lat"
                         value={form.lat}
                         onChange={handleTextChange}
-                        placeholder="-6.9175"
+                        placeholder="-6.4816"
                         className="h-10 rounded-none border-slate-200 font-bold text-xs"
                       />
                     </div>
@@ -10727,7 +10728,7 @@ export default function AddAmdalPage() {
                         name="lng"
                         value={form.lng}
                         onChange={handleTextChange}
-                        placeholder="107.6191"
+                        placeholder="106.8560"
                         className="h-10 rounded-none border-slate-200 font-bold text-xs"
                       />
                     </div>
@@ -10745,7 +10746,7 @@ export default function AddAmdalPage() {
 
                   <div className="h-[280px] w-full bg-slate-100 border border-slate-200 rounded-none relative z-10 overflow-hidden shadow-inner">
                     <MapContainer
-                      center={[-6.9175, 107.6191]}
+                      center={[-6.4816, 106.8560]} // Pusat peta Cibinong
                       zoom={11}
                       zoomControl={true}
                       style={{ height: "100%", width: "100%" }}
@@ -10876,7 +10877,7 @@ export default function AddAmdalPage() {
                   Kembali
                 </Button>
                 <Button
-                  onClick={handleSubmit}
+                  onSubmit={handleSubmit}
                   disabled={loading}
                   className="bg-rose-600 hover:bg-rose-700 text-white font-black text-xs px-6 h-10 rounded-none shadow-sm tracking-wider flex items-center gap-1.5 uppercase"
                 >
@@ -10893,7 +10894,6 @@ export default function AddAmdalPage() {
     </div>
   );
 }
-
 
 --- FILE: src\modules\admin\pages\SuperAdminPage.tsx ---
 // src/modules/admin/pages/SuperAdminPage.tsx
@@ -17319,8 +17319,8 @@ export const LocationPicker = ({ onLocationSelected, lat, lng }: LocationPickerP
   }
 
   return (
-    // FASE 2: Sinkronisasi Default Center diarahkan ke Sampit, Kotawaringin Timur secara global [3]
-    <MapContainer center={[-2.5337, 112.9515]} zoom={11} className="h-64 w-full rounded-md">
+    // FASE 2: Sinkronisasi Default Center diarahkan ke Cibinong, Kabupaten Bogor secara global [3]
+    <MapContainer center={[-6.4816, 106.8560]} zoom={11} className="h-64 w-full rounded-md">
       <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
       <LocationMarker />
       <ResizeMap />
@@ -20617,8 +20617,8 @@ const DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// FASE 2: PETA DEFAULT DIUBAH SECARA GLOBAL KE KOTA SAMPIT (KOTAWARINGIN TIMUR) [3]
-const DEFAULT_CENTER: [number, number] = [-2.5337, 112.9515];
+// FASE 2: PETA DEFAULT DIUBAH SECARA GLOBAL KE CIBINONG (KABUPATEN BOGOR) [3]
+const DEFAULT_CENTER: [number, number] = [-6.4816, 106.8560];
 
 // SOLUSI ARSITEKTURAL: Kunci referensi array di luar komponen agar terhindar dari re-render loop
 const EXCLUDED_FORM_FIELDS = ["evidencePhotos"];
@@ -20844,7 +20844,7 @@ export default function ReportPage() {
                     </div>
 
                     <div className="text-[10px] text-emerald-700 font-bold uppercase tracking-widest leading-none relative z-10">
-                        DINAS LINGKUNGAN HIDUP DAERAH © 2026
+                        DINAS LINGKUNGAN HIDUP KABUPATEN BOGOR © 2026
                     </div>
                 </div>
 
@@ -20970,7 +20970,7 @@ export default function ReportPage() {
                                             <Label className="text-[11px] font-bold uppercase text-slate-600 tracking-wider">Cari berdasarkan alamat atau landmark wilayah</Label>
                                             <div className="flex gap-2">
                                                 <Input
-                                                    placeholder="Contoh: Rancaekek, Coblong, atau Jl. Merdeka Bandung..."
+                                                    placeholder="Contoh: Cibinong, Citeureup, Cileungsi, atau Sentul Bogor..."
                                                     value={addressQuery}
                                                     onChange={(e) => setAddressQuery(e.target.value)}
                                                     onKeyDown={(e) => e.key === "Enter" && handleAddressSearch()}
@@ -21034,7 +21034,7 @@ export default function ReportPage() {
                                                         ? [parseFloat(watch("lat")), parseFloat(watch("lng"))]
                                                         : DEFAULT_CENTER
                                                 }
-                                                zoom={13}
+                                                zoom={11} // Disesuaikan zoom 11 untuk Kabupaten Bogor
                                                 style={{ height: "100%", width: "100%" }}
                                             >
                                                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
@@ -21198,7 +21198,7 @@ export default function ReportPage() {
 
                     <div className="py-4 text-xs space-y-3 leading-relaxed font-sans">
                         <p className="font-bold text-slate-800 text-justify">
-                            Terima kasih atas partisipasi aktif Anda dalam menjaga kelestarian lingkungan hidup daerah Kotawaringin Timur.
+                            Terima kasih atas partisipasi aktif Anda dalam menjaga kelestarian lingkungan hidup daerah Kabupaten Bogor.
                         </p>
                         <p className="text-slate-500 text-justify">
                             Laporan Anda telah tercatat dengan ID Pelacakan resmi: <strong className="font-mono text-slate-800 bg-slate-50 px-1.5 py-0.5 border border-slate-200">{submittedTrackingId}</strong>.
@@ -22903,126 +22903,689 @@ export default function TransporterTracking() {
 }
 
 --- FILE: src\store\mockData.ts ---
+// src/store/mockData.ts
 import { Company, WasteLog, PickupRequest, Invoice, Inspection, SystemNotification, AuditLog } from "./types";
 
 export const initialCompanies: Company[] = [
+  // --- KLASTER CITEUREUP (Semen, Serat Ban, & Plastik Film) ---
   {
     id: "COM-001",
-    companyName: "PT. Tekstil Sejahtera",
+    companyName: "PT. Indocement Tunggal Prakarsa Tbk",
     nib: "9120301294821",
     npwp: "01.234.567.8-401.000",
     picName: "Budi Santoso",
     picPhone: "08123456789",
-    picRole: "Direktur",
-    investmentType: "PMDN",
-    yearBuilt: "2018",
-    buildingArea: 2500,
+    picRole: "Direktur Utama",
+    investmentType: "PMA",
+    yearBuilt: "1975",
+    buildingArea: 120000,
     operationalHours: "24 Jam",
-    rawMaterials: "Kapas, Zat Pewarna Kimia",
-    waterSource: "PDAM & Sumur Bor",
-    powerSource: "PLN 150 kVA",
-    kbli: "13111",
-    investment: 8500000000,
-    landArea: 6000,
-    employees: 120,
-    lat: "-6.9147",
-    lng: "107.6098",
-    address: "Jl. Rancaekek KM 15, Kec. Cicadas, Bandung",
-    docType: "UKL-UPL",
+    rawMaterials: "Batu Kapur, Tanah Liat, Pasir Silika, Batu Bara",
+    waterSource: "Sungai Cileungsi & Recycled Water",
+    powerSource: "Captive Power Plant 120 MW",
+    kbli: "23941",
+    investment: 850000000000,
+    landArea: 250000,
+    employees: 1200,
+    lat: "-6.4862",
+    lng: "106.8833",
+    address: "Jl. Mayor Oking No. 1, Citeureup, Kabupaten Bogor",
+    docType: "AMDAL",
     status: "APPROVED",
     score: 85
   },
   {
     id: "COM-002",
-    companyName: "Bengkel Jaya Motor",
-    nib: "9120301294112",
-    npwp: "02.345.678.9-402.000",
-    picName: "Agus Pratama",
-    picPhone: "08129876543",
-    picRole: "Pemilik",
-    investmentType: "PMDN",
-    yearBuilt: "2020",
-    buildingArea: 150,
-    operationalHours: "08:00 - 17:00",
-    rawMaterials: "Sparepart, Oli, Grease",
-    waterSource: "Sumur Gali",
-    powerSource: "PLN 2200 VA",
-    kbli: "45201",
-    investment: 350000000,
-    landArea: 200,
-    employees: 8,
-    lat: "-6.9034",
-    lng: "107.6189",
-    address: "Jl. Ir. H. Djuanda No. 120, Kec. Coblong, Bandung",
-    docType: "SPPL",
-    status: "REVIEW"
+    companyName: "PT. Indo Kordsa Tbk",
+    nib: "9120301290004",
+    npwp: "01.234.567.8-401.004",
+    picName: "Hendra Wijaya",
+    picPhone: "08123456004",
+    picRole: "Manager Utility",
+    investmentType: "PMA",
+    yearBuilt: "1997",
+    buildingArea: 28000,
+    operationalHours: "24 Jam",
+    rawMaterials: "Nylon Yarn, Polyester Industrial Yarn",
+    waterSource: "Sungai Cileungsi",
+    powerSource: "PLN & Generator",
+    kbli: "13940",
+    investment: 78000000000,
+    landArea: 45000,
+    employees: 410,
+    lat: "-6.5050",
+    lng: "106.8790",
+    address: "Jl. Raya Citeureup, Desa Leuwinutug, Citeureup, Kabupaten Bogor",
+    docType: "UKL-UPL",
+    status: "APPROVED",
+    score: 92
   },
   {
     id: "COM-003",
-    companyName: "Restoran Sunda Nikmat",
-    nib: "9120301294553",
-    npwp: "03.456.789.0-403.000",
-    picName: "Siti Aminah",
-    picPhone: "08771234567",
-    picRole: "Manajer Operasional",
+    companyName: "PT. Argha Karya Prima Industry Tbk",
+    nib: "9120301290014",
+    npwp: "01.234.567.8-401.014",
+    picName: "Sarah Azhari",
+    picPhone: "08123456014",
+    picRole: "Direktur HSE",
     investmentType: "PMDN",
-    yearBuilt: "2015",
-    buildingArea: 400,
-    operationalHours: "10:00 - 22:00",
-    rawMaterials: "Bahan Makanan, Minyak Goreng",
+    yearBuilt: "1980",
+    buildingArea: 35000,
+    operationalHours: "24 Jam",
+    rawMaterials: "Polypropylene Resin, Polyethylene Resin",
+    waterSource: "Sumur Bor",
+    powerSource: "PLN 10 MVA",
+    kbli: "22211",
+    investment: 62000000000,
+    landArea: 70000,
+    employees: 520,
+    lat: "-6.4950",
+    lng: "106.8710",
+    address: "Jl. Pahlawan, Karang Asem Barat, Citeureup, Kabupaten Bogor",
+    docType: "UKL-UPL",
+    status: "APPROVED",
+    score: 35
+  },
+
+  // --- KLASTER KLAPANUNGGAL (Semen & Bahan Bangunan) ---
+  {
+    id: "COM-004",
+    companyName: "PT. Solusi Bangun Indonesia Tbk Narogong",
+    nib: "8820301294112",
+    npwp: "02.345.678.9-402.000",
+    picName: "Budi Santoso",
+    picPhone: "08129876543",
+    picRole: "HSE Superintendent",
+    investmentType: "PMDN",
+    yearBuilt: "1995",
+    buildingArea: 65000,
+    operationalHours: "24 Jam",
+    rawMaterials: "Klinker, Gypsum, Batu Bara",
+    waterSource: "Air Tanah & Air Permukaan",
+    powerSource: "PLN 45 MVA",
+    kbli: "23941",
+    investment: 420000000000,
+    landArea: 150000,
+    employees: 680,
+    lat: "-6.4520",
+    lng: "106.9210",
+    address: "Jl. Raya Narogong KM 7, Klapanunggal, Kabupaten Bogor",
+    docType: "AMDAL",
+    status: "APPROVED",
+    score: 61
+  },
+
+  // --- KLASTER GUNUNG PUTRI (Ototomotif, Farmasi & Vaksin) ---
+  {
+    id: "COM-005",
+    companyName: "PT. Mercedes-Benz Indonesia",
+    nib: "7720301294553",
+    npwp: "03.456.789.0-403.000",
+    picName: "Agus Pratama",
+    picPhone: "08771234567",
+    picRole: "Plant Manager",
+    investmentType: "PMA",
+    yearBuilt: "1982",
+    buildingArea: 25000,
+    operationalHours: "08:00 - 17:00",
+    rawMaterials: "Komponen Otomotif CKD, Cat, Cairan Kimia",
+    waterSource: "PDAM & Sungai Cikeas",
+    powerSource: "PLN 2.5 MVA",
+    kbli: "29101",
+    investment: 145000000000,
+    landArea: 50000,
+    employees: 550,
+    lat: "-6.4020",
+    lng: "106.9180",
+    address: "Jl. Mercedes-Benz, Cicadas, Gunung Putri, Kabupaten Bogor",
+    docType: "AMDAL",
+    status: "APPROVED",
+    score: 68
+  },
+  {
+    id: "COM-006",
+    companyName: "PT. Darya-Varia Laboratoria Tbk",
+    nib: "9120301290008",
+    npwp: "01.234.567.8-401.008",
+    picName: "Bambang Hartono",
+    picPhone: "08123456008",
+    picRole: "Direktur HSE",
+    investmentType: "PMA",
+    yearBuilt: "1985",
+    buildingArea: 14000,
+    operationalHours: "16 Jam",
+    rawMaterials: "Bahan Actif Farmasi, Alkohol, Solvent",
+    waterSource: "PDAM & Sumur Industri",
+    powerSource: "PLN 1.5 MVA",
+    kbli: "21012",
+    investment: 52000000000,
+    landArea: 20000,
+    employees: 380,
+    lat: "-6.4150",
+    lng: "106.9120",
+    address: "Jl. Mercedes Benz No. 105, Cicadas, Gunung Putri, Kabupaten Bogor",
+    docType: "UKL-UPL",
+    status: "APPROVED",
+    score: 55
+  },
+  {
+    id: "COM-007",
+    companyName: "PT. Vaksindo Satwa Nusantara",
+    nib: "9120301290006",
+    npwp: "01.234.567.8-401.006",
+    picName: "Agus Salim",
+    picPhone: "08123456006",
+    picRole: "Humas",
+    investmentType: "PMDN",
+    yearBuilt: "1985",
+    buildingArea: 8000,
+    operationalHours: "24 Jam",
+    rawMaterials: "Media Kultur Sel, Bahan Kimia Laboratorium",
+    waterSource: "Sumur Bor",
+    powerSource: "PLN 500 kVA",
+    kbli: "21013",
+    investment: 18000000000,
+    landArea: 12000,
+    employees: 145,
+    lat: "-6.4180",
+    lng: "106.9150",
+    address: "Jl. Mercedes Benz No. 12, Cicadas, Gunung Putri, Kabupaten Bogor",
+    docType: "UKL-UPL",
+    status: "APPROVED",
+    score: 78
+  },
+  {
+    id: "COM-008",
+    companyName: "PT. Simone Accessary Collection",
+    nib: "9120301290010",
+    npwp: "01.234.567.8-401.010",
+    picName: "Tommy Handoko",
+    picPhone: "08123456010",
+    picRole: "HSE Manager",
+    investmentType: "PMA",
+    yearBuilt: "1998",
+    buildingArea: 18000,
+    operationalHours: "08:00 - 17:00",
+    rawMaterials: "Kulit Sintetis, Lem Polyurethane, Zat Pewarna",
     waterSource: "PDAM",
-    powerSource: "PLN 5500 VA",
-    kbli: "56101",
-    investment: 1200000000,
-    landArea: 600,
-    employees: 25,
-    lat: "-6.8245",
-    lng: "107.6190",
-    address: "Jl. Raya Lembang No. 45, Kec. Lembang, Bandung",
+    powerSource: "PLN 800 kVA",
+    kbli: "15121",
+    investment: 35000000000,
+    landArea: 25000,
+    employees: 1200,
+    lat: "-6.4050",
+    lng: "106.9050",
+    address: "Jl. Raya Wanaherang, Gunung Putri, Kabupaten Bogor",
+    docType: "UKL-UPL",
+    status: "APPROVED",
+    score: 81
+  },
+  {
+    id: "COM-009",
+    companyName: "PT. Coates Indonesia",
+    nib: "9120301290011",
+    npwp: "01.234.567.8-401.011",
+    picName: "Rudi Hartawan",
+    picPhone: "08123456011",
+    picRole: "Superintendent",
+    investmentType: "PMA",
+    yearBuilt: "1995",
+    buildingArea: 4500,
+    operationalHours: "08:00 - 17:00",
+    rawMaterials: "Pigmen Kimia, Solvent, Polimer Cair",
+    waterSource: "Sumur Bor",
+    powerSource: "PLN 400 kVA",
+    kbli: "20222",
+    investment: 15000000000,
+    landArea: 6000,
+    employees: 85,
+    lat: "-6.4450",
+    lng: "106.8850",
+    address: "Jl. Karanggan Muda, Gunung Putri, Kabupaten Bogor",
+    docType: "SPPL",
+    status: "APPROVED",
+    score: 52
+  },
+
+  // --- KLASTER CILEUNGSI (Kimia, Kertas, Saniter, & Makanan) ---
+  {
+    id: "COM-010",
+    companyName: "PT. Indesso Aroma",
+    nib: "9120301290013",
+    npwp: "01.234.567.8-401.013",
+    picName: "Yusuf Habibi",
+    picPhone: "08123456013",
+    picRole: "HSE Manager",
+    investmentType: "PMDN",
+    yearBuilt: "1990",
+    buildingArea: 15000,
+    operationalHours: "24 Jam",
+    rawMaterials: "Minyak Cengkeh, Minyak Atsiri, Alkohol",
+    waterSource: "Sungai Cileungsi & Air Tanah",
+    powerSource: "PLN & Genset 1.5 MVA",
+    kbli: "20119",
+    investment: 48000000000,
+    landArea: 35000,
+    employees: 320,
+    lat: "-6.3919",
+    lng: "106.9558",
+    address: "Jl. Alternatif Cibubur Cileungsi KM 9, Cileungsi, Kabupaten Bogor",
+    docType: "UKL-UPL",
+    status: "APPROVED",
+    score: 71
+  },
+  {
+    id: "COM-011",
+    companyName: "PT. American Standard Indonesia",
+    nib: "9120301290009",
+    npwp: "01.234.567.8-401.009",
+    picName: "Basuki Hadimuljono",
+    picPhone: "08123456009",
+    picRole: "Plant Manager",
+    investmentType: "PMA",
+    yearBuilt: "1985",
+    buildingArea: 22000,
+    operationalHours: "24 Jam",
+    rawMaterials: "Tanah Liat Kaolin, Silika, Bahan Pelapis Glaze",
+    waterSource: "PDAM",
+    powerSource: "PLN & Gas Alam",
+    kbli: "23921",
+    investment: 68000000000,
+    landArea: 40000,
+    employees: 480,
+    lat: "-6.3933",
+    lng: "106.9642",
+    address: "Jl. Raya Narogong KM 52, Desa Limusnunggal, Cileungsi, Kabupaten Bogor",
+    docType: "UKL-UPL",
+    status: "APPROVED",
+    score: 69
+  },
+  {
+    id: "COM-012",
+    companyName: "PT. Aspex Kumbong",
+    nib: "9120301290025",
+    npwp: "01.234.567.8-401.025",
+    picName: "Prabowo Subianto",
+    picPhone: "08123456025",
+    picRole: "Kepala Divisi Boiler",
+    investmentType: "PMA",
+    yearBuilt: "1983",
+    buildingArea: 85000,
+    operationalHours: "24 Jam",
+    rawMaterials: "Bubur Kertas (Pulp), Kertas Bekas, Gas Klorin",
+    waterSource: "Sungai Cileungsi & Water Treatment",
+    powerSource: "PLN & Turbin Gas 15 MW",
+    kbli: "17012",
+    investment: 125000000000,
+    landArea: 180000,
+    employees: 920,
+    lat: "-6.4120",
+    lng: "106.9850",
+    address: "Jl. Narogong KM 26, Cileungsi, Kabupaten Bogor",
+    docType: "AMDAL",
+    status: "APPROVED",
+    score: 51
+  },
+  {
+    id: "COM-013",
+    companyName: "PT. Lasallefood Indonesia",
+    nib: "9120301290015",
+    npwp: "01.234.567.8-401.015",
+    picName: "Tommy Swidodo",
+    picPhone: "08123456015",
+    picRole: "Manager QA",
+    investmentType: "PMDN",
+    yearBuilt: "2002",
+    buildingArea: 9500,
+    operationalHours: "16 Jam",
+    rawMaterials: "Gula, Pewarna Makanan, Bahan Pengawet",
+    waterSource: "PDAM",
+    powerSource: "PLN 350 kVA",
+    kbli: "10794",
+    investment: 14000000000,
+    landArea: 15000,
+    employees: 180,
+    lat: "-6.3850",
+    lng: "106.9750",
+    address: "Desa Pasir Angin, Cileungsi, Kabupaten Bogor",
+    docType: "SPPL",
+    status: "APPROVED",
+    score: 87
+  },
+  {
+    id: "COM-014",
+    companyName: "PT. Courtaulds Indonesia",
+    nib: "9120301290017",
+    npwp: "01.234.567.8-401.017",
+    picName: "Gatot Subroto",
+    picPhone: "08123456017",
+    picRole: "Safety Officer",
+    investmentType: "PMA",
+    yearBuilt: "1995",
+    buildingArea: 4800,
+    operationalHours: "08:00 - 17:00",
+    rawMaterials: "Benang Polyester, Zat Kimia Finishing, Pewarna",
+    waterSource: "Sumur Bor Dalam",
+    powerSource: "PLN 11000 VA",
+    kbli: "13112",
+    investment: 9500000000,
+    landArea: 10000,
+    employees: 140,
+    lat: "-6.3880",
+    lng: "106.9600",
+    address: "Jl. Raya Narogong KM 19, Cileungsi, Kabupaten Bogor",
+    docType: "UKL-UPL",
+    status: "APPROVED",
+    score: 93
+  },
+
+  // --- KLASTER CIBINONG (Tekstil, Elektronik, & Farmasi) ---
+  {
+    id: "COM-015",
+    companyName: "PT. Ricky Putra Globalindo Tbk",
+    nib: "9120301290007",
+    npwp: "01.234.567.8-401.007",
+    picName: "Rian Hidayat",
+    picPhone: "08123456007",
+    picRole: "HSE Manager",
+    investmentType: "PMDN",
+    yearBuilt: "1990",
+    buildingArea: 18000,
+    operationalHours: "24 Jam",
+    rawMaterials: "Benang Katun, Zat Kimia Pewarna Reaktif, Batubara Boiler",
+    waterSource: "PDAM",
+    powerSource: "PLN 1.5 MVA",
+    kbli: "14111",
+    investment: 52000000000,
+    landArea: 32000,
+    employees: 850,
+    lat: "-6.4816",
+    lng: "106.8560",
+    address: "Jl. Raya Jakarta-Bogor KM 46, Cibinong, Kabupaten Bogor",
+    docType: "UKL-UPL",
+    status: "APPROVED",
+    score: 82
+  },
+  {
+    id: "COM-016",
+    companyName: "PT. Astra Otoparts Tbk (Divisi Adiwiza)",
+    nib: "9120301290019",
+    npwp: "01.234.567.8-401.019",
+    picName: "Mega Pratiwi",
+    picPhone: "08123456019",
+    picRole: "Superintendent",
+    investmentType: "PMDN",
+    yearBuilt: "1998",
+    buildingArea: 12000,
+    operationalHours: "24 Jam",
+    rawMaterials: "Logam Baja, Cairan Pelumas, Cat Pelindung",
+    waterSource: "PDAM & Air Sumur",
+    powerSource: "PLN 3.2 MVA",
+    kbli: "29300",
+    investment: 48000000000,
+    landArea: 25000,
+    employees: 320,
+    lat: "-6.4750",
+    lng: "106.8500",
+    address: "Jl. Raya Jakarta-Bogor KM 47, Cibinong, Kabupaten Bogor",
+    docType: "UKL-UPL",
+    status: "APPROVED",
+    score: 71
+  },
+  {
+    id: "COM-017",
+    companyName: "PT. Capsugel Indonesia",
+    nib: "9120301290020",
+    npwp: "01.234.567.8-401.020",
+    picName: "Maimunah",
+    picPhone: "08123456020",
+    picRole: "Manajer QA",
+    investmentType: "PMA",
+    yearBuilt: "1980",
+    buildingArea: 8500,
+    operationalHours: "24 Jam",
+    rawMaterials: "Gelatin Sapi, Zat Pewarna Makanan, Bahan Pengawet",
+    waterSource: "PDAM",
+    powerSource: "PLN 1.2 MVA",
+    kbli: "21012",
+    investment: 35000000000,
+    landArea: 15000.0,
+    employees: 180,
+    lat: "-6.4620",
+    lng: "106.8450",
+    address: "Jl. Raya Jakarta-Bogor KM 42, Cibinong, Kabupaten Bogor",
     docType: "SPPL",
     status: "APPROVED",
     score: 90
   },
   {
-    id: "COM-004",
-    companyName: "Pabrik Kimia Farma",
-    nib: "9120301294001",
-    npwp: "01.111.222.3-401.000",
-    picName: "Indra Wijaya",
-    picPhone: "081122334455",
-    picRole: "Kepala Pabrik",
-    investmentType: "PMDN",
-    yearBuilt: "2012",
-    buildingArea: 4000,
-    operationalHours: "24 Jam",
-    rawMaterials: "Bahan Aktif Obat, Alkohol",
+    id: "COM-018",
+    companyName: "PT. Clariant Indonesia",
+    nib: "9120301290021",
+    npwp: "01.234.567.8-401.021",
+    picName: 'Anies Handoko',
+    picPhone: '08123456021',
+    picRole: 'Safety Officer',
+    investmentType: "PMA",
+    yearBuilt: "1995",
+    buildingArea: 9500,
+    operationalHours: "16 Jam",
+    rawMaterials: "Bahan Kimia Organik, Pigmen Sintetis, Solven",
     waterSource: "PDAM",
-    powerSource: "PLN 300 kVA",
-    kbli: "21012",
-    investment: 15000000000,
-    landArea: 8000,
-    employees: 200,
-    lat: "-6.9388",
-    lng: "107.6255",
-    address: "Jl. Soekarno-Hatta No. 500, Bandung",
+    powerSource: "PLN 800 kVA",
+    kbli: "20114",
+    investment: 42000000000,
+    landArea: 14000,
+    employees: 110,
+    lat: "-6.5350",
+    lng: "106.8280",
+    address: "Jl. Raya Jakarta-Bogor KM 38, Ciluar, Kabupaten Bogor",
     docType: "UKL-UPL",
     status: "APPROVED",
-    score: 50
+    score: 42
+  },
+
+  // --- KLASTER BABAKAN MADANG & SENTUL (Makanan & Industri Pendukung) ---
+  {
+    id: "COM-019",
+    companyName: "PT. Sorin Maharasa",
+    nib: "9120301290022",
+    npwp: "01.234.567.8-401.022",
+    picName: "Rudy Salim",
+    picPhone: "08123456022",
+    picRole: "Manager Utility",
+    investmentType: "PMDN",
+    yearBuilt: "2005",
+    buildingArea: 5500,
+    operationalHours: "16 Jam",
+    rawMaterials: "Daging Sapi, Tepung Tapioka, Penyedap Rasa",
+    waterSource: "PDAM",
+    powerSource: "PLN 450 kVA",
+    kbli: "10120",
+    investment: 12000000000,
+    landArea: 8000,
+    employees: 150,
+    lat: "-6.5096",
+    lng: "106.8552",
+    address: "Jl. Pembina Rawa Haur No. 3, Cigandaria, Sentul, Babakan Madang, Kabupaten Bogor",
+    docType: "SPPL",
+    status: "APPROVED",
+    score: 65
+  },
+  {
+    id: "COM-020",
+    companyName: "PT. United Tractors Tbk (Workshop Sentul)",
+    nib: "9120301290023",
+    npwp: "01.234.567.8-401.023",
+    picName: "Agus Sutrisno",
+    picPhone: "08123456023",
+    picRole: "Workshop Manager",
+    investmentType: "PMDN",
+    yearBuilt: "2010",
+    buildingArea: 14000,
+    operationalHours: "08:00 - 17:00",
+    rawMaterials: "Sparepart Alat Berat, Oli Transmisi, Grease",
+    waterSource: "Sumur Bor",
+    powerSource: "PLN & Genset 300 kVA",
+    kbli: "33121",
+    investment: 24000000000,
+    landArea: 35000,
+    employees: 120,
+    lat: "-6.5680",
+    lng: "106.8910",
+    address: "Kawasan Industri Sentul, Babakan Madang, Kabupaten Bogor",
+    docType: "UKL-UPL",
+    status: "APPROVED",
+    score: 83
+  },
+
+  // --- KLASTER CARINGIN & CIAWI (Air Minum & Susu) ---
+  {
+    id: "COM-021",
+    companyName: "PT. Milko Beverage Industry",
+    nib: "9120301290024",
+    npwp: "01.234.567.8-401.024",
+    picName: "Tommy Hartono",
+    picPhone: "08123456024",
+    picRole: "Safety Specialist",
+    investmentType: "PMDN",
+    yearBuilt: "2014",
+    buildingArea: 15000,
+    operationalHours: "24 Jam",
+    rawMaterials: "Susu Bubuk, Pewarna Makanan, Gula Cair",
+    waterSource: "Sumur Bor Dalam",
+    powerSource: "PLN 800 kVA",
+    kbli: "10520",
+    investment: 35000000000,
+    landArea: 30000,
+    employees: 210,
+    lat: "-6.6936",
+    lng: "106.8352",
+    address: "Jl. H.R.E Sukma KM 15, Ciherang Pondok, Caringin, Kabupaten Bogor",
+    docType: "UKL-UPL",
+    status: "APPROVED",
+    score: 84
+  },
+  {
+    id: "COM-022",
+    companyName: "PT. Mayora Indah Tbk (Pabrik Caringin)",
+    nib: "9120301290026",
+    npwp: "01.234.567.8-401.026",
+    picName: "Joko Widodo",
+    picPhone: "08123456026",
+    picRole: "Plant HSE Manager",
+    investmentType: "PMDN",
+    yearBuilt: "2015",
+    buildingArea: 40000,
+    operationalHours: "24 Jam",
+    rawMaterials: "Tepung Terigu, Gula, Cokelat Bubuk, Minyak Nabati",
+    waterSource: "PDAM & Sumur Industri",
+    powerSource: "PLN 4 MVA",
+    kbli: "10712",
+    investment: 125000000000,
+    landArea: 75000,
+    employees: 950,
+    lat: "-6.6956",
+    lng: "106.8340",
+    address: "Jl. Raya Bogor - Sukabumi KM 16, Cimande Hilir, Caringin, Kabupaten Bogor",
+    docType: "AMDAL",
+    status: "APPROVED",
+    score: 95
+  },
+  {
+    id: "COM-023",
+    companyName: "PT. Nutrifood Indonesia (Pabrik Ciawi)",
+    nib: "9120301290027",
+    npwp: "01.234.567.8-401.027",
+    picName: "Sandiaga Uno",
+    picPhone: "08123456027",
+    picRole: "HSE Manager",
+    investmentType: "PMDN",
+    yearBuilt: "1995",
+    buildingArea: 18000,
+    operationalHours: "24 Jam",
+    rawMaterials: "Asam Sitrat, Ekstrak Buah, Pemanis Rendah Kalori",
+    waterSource: "Sumur Industri",
+    powerSource: "PLN 1.2 MVA",
+    kbli: "10793",
+    investment: 48000000000,
+    landArea: 25000,
+    employees: 350,
+    lat: "-6.6850",
+    lng: "106.8380",
+    address: "Jl. Raya Bogor-Sukabumi KM 15, Caringin, Kabupaten Bogor",
+    docType: "UKL-UPL",
+    status: "APPROVED",
+    score: 90
+  },
+
+  // --- KLASTER CIGOMBONG & PARUNG (Air Minum & Peternakan) ---
+  {
+    id: "COM-024",
+    companyName: "PT. Tirta Investama (Aqua Cigombong)",
+    nib: "9120301290028",
+    npwp: "01.234.567.8-401.028",
+    picName: "Erick Thohir",
+    picPhone: "08123456028",
+    picRole: "GM Operation",
+    investmentType: "PMA",
+    yearBuilt: "2010",
+    buildingArea: 32000,
+    operationalHours: "24 Jam",
+    rawMaterials: "Sumber Mata Air Gunung Salak, Resin PET (Botol)",
+    waterSource: "Mata Air Alami",
+    powerSource: "PLN 2.5 MVA",
+    kbli: "11050",
+    investment: 85000000000,
+    landArea: 60000,
+    employees: 450,
+    lat: "-6.7120",
+    lng: "106.7943",
+    address: "Kp. Coblong, Desa Ciburayut, Cigombong, Kabupaten Bogor",
+    docType: "AMDAL",
+    status: "APPROVED",
+    score: 88
+  },
+  {
+    id: "COM-025",
+    companyName: "PT. Sreeya Sewu Indonesia Tbk",
+    nib: "9120301290029",
+    npwp: "01.234.567.8-401.029",
+    picName: "Luhut Binsar",
+    picPhone: "08123456029",
+    picRole: "Plant Director",
+    investmentType: "PMDN",
+    yearBuilt: "2012",
+    buildingArea: 14000,
+    operationalHours: "24 Jam",
+    rawMaterials: "Daging Ayam, Tepung Pelapis, Gas LPG Industri",
+    waterSource: "PDAM & Sumur Bor",
+    powerSource: "PLN 1.2 MVA",
+    kbli: "10120",
+    investment: 42000000000,
+    landArea: 30000,
+    employees: 280,
+    lat: "-6.4606",
+    lng: "106.7322",
+    address: "Jl. Raya Parung, Desa Jabon Mekar, Parung, Kabupaten Bogor",
+    docType: "UKL-UPL",
+    status: "APPROVED",
+    score: 79
   }
 ];
 
 export const initialWasteLogs: WasteLog[] = [
-  { id: "W-001", companyId: "COM-002", companyName: "Bengkel Jaya Motor", type: "Oli Bekas", volume: 45, unit: "L", date: "2026-05-15", method: "Dinas", status: "Terverifikasi" },
-  { id: "LOG-006", companyId: "COM-002", companyName: "PT. Tekstil Sejahtera", type: "Limbah Cair", volume: 150, unit: "m³", date: "2026-05-18", method: "Dinas", status: "Proses_Verifikasi" },
-  { id: "LOG-007", companyId: "COM-001", companyName: "PT. Eco Industri", type: "Limbah Domestik", volume: 300, unit: "kg", date: "2026-05-19", method: "Mandiri", status: "Terjadwal_Pickup" },
-  { id: "W-004", companyId: "COM-004", companyName: "Pabrik Kimia Farma", type: "Limbah Padat B3", volume: 85, unit: "kg", date: "2026-05-17", method: "Mandiri", status: "Terverifikasi" }
+  { id: "W-001", companyId: "COM-016", companyName: "PT. Astra Otoparts Tbk (Divisi Adiwiza)", type: "Oli Bekas", volume: 45, unit: "L", date: "2026-05-15", method: "Dinas", status: "Terverifikasi" },
+  { id: "LOG-006", companyId: "COM-010", companyName: "PT. Indesso Aroma", type: "Limbah Cair Kimia", volume: 120, unit: "L", date: "2026-05-18", method: "Dinas", status: "Proses_Verifikasi" },
+  { id: "LOG-007", companyId: "COM-015", companyName: "PT. Ricky Putra Globalindo Tbk", type: "Limbah Cair", volume: 150, unit: "m³", date: "2026-05-19", method: "Dinas", status: "Proses_Verifikasi" },
+  { id: "W-004", companyId: "COM-001", companyName: "PT. Indocement Tunggal Prakarsa Tbk", type: "Limbah Padat B3", volume: 300, unit: "kg", date: "2026-05-17", method: "Mandiri", status: "Terverifikasi" }
 ];
 
 export const initialPickupRequests: PickupRequest[] = [
   {
     id: "PICK-001",
-    companyId: "COM-002",
-    companyName: "Bengkel Jaya Motor",
+    companyId: "COM-016",
+    companyName: "PT. Astra Otoparts Tbk (Divisi Adiwiza)",
     wasteType: "Oli Bekas",
     volume: "45 L",
     date: "2026-05-20",
@@ -23030,15 +23593,15 @@ export const initialPickupRequests: PickupRequest[] = [
     transporterId: "TRANS-001",
     transporterName: "PT. Transport Limbah Indonesia",
     cost: 450000,
-    plateNo: "D 1234 DLH",
-    driverName: "Budi Santoso",
+    plateNo: "B 1234 DLH",
+    driverName: "Ahmad Junaedi",
     invoiceId: "INV-001",
-    address: "Jl. Ir. H. Djuanda No. 120, Kec. Coblong, Bandung"
+    address: "Jl. Raya Jakarta-Bogor KM 47, Cibinong, Kabupaten Bogor"
   },
   {
     id: "PICK-002",
-    companyId: "COM-003",
-    companyName: "Restoran Sunda Nikmat",
+    companyId: "COM-019",
+    companyName: "PT. Sorin Maharasa",
     wasteType: "Minyak Jelantah",
     volume: "15 L",
     date: "2026-05-21",
@@ -23046,33 +23609,31 @@ export const initialPickupRequests: PickupRequest[] = [
     transporterId: "TRANS-001",
     transporterName: "PT. Transport Limbah Indonesia",
     cost: 150000,
-    plateNo: "D 5678 DLH",
-    driverName: "Agus Salim",
+    plateNo: "B 5678 DLH",
+    driverName: "Samsudin",
     invoiceId: "INV-003",
-    address: "Jl. Raya Lembang No. 45, Kec. Lembang, Bandung"
+    address: "Jl. Pembina Rawa Haur No. 3, Cigandaria, Sentul, Babakan Madang, Kabupaten Bogor"
   }
 ];
 
 export const initialInvoices: Invoice[] = [
-  { id: "INV-001", companyId: "COM-002", companyName: "Bengkel Jaya Motor", type: "Pengangkutan", amount: 450000, date: "2026-05-20", status: "SETTLED" },
-  { id: "INV-002", companyId: "COM-001", companyName: "PT. Tekstil Sejahtera", type: "Retribusi UKL-UPL", amount: 1500000, date: "2026-05-10", status: "SETTLED" },
-  { id: "INV-003", companyId: "COM-003", companyName: "Restoran Sunda Nikmat", type: "Pengangkutan", amount: 150000, date: "2026-05-20", status: "UNPAID" },
-  { id: "INV-004", companyId: "COM-004", companyName: "Pabrik Kimia Farma", type: "Denda Keterlambatan", amount: 250000, date: "2026-05-05", status: "UNPAID" },
-  { id: "INV-005", companyId: "COM-003", companyName: "Restoran Sunda Nikmat", type: "Retribusi SPPL", amount: 500000, date: "2026-05-15", status: "SETTLED" },
-  { id: "INV-006", companyId: "COM-004", companyName: "Pabrik Kimia Farma", type: "Retribusi UKL-UPL", amount: 1500000, date: "2026-05-16", status: "SETTLED" }
+  { id: "INV-001", companyId: "COM-016", companyName: "PT. Astra Otoparts Tbk (Divisi Adiwiza)", type: "Pengangkutan", amount: 450000, date: "2026-05-20", status: "SETTLED" },
+  { id: "INV-002", companyId: "COM-001", companyName: "PT. Indocement Tunggal Prakarsa Tbk", type: "Retribusi UKL-UPL", amount: 1500000, date: "2026-05-10", status: "SETTLED" },
+  { id: "INV-003", companyId: "COM-019", companyName: "PT. Sorin Maharasa", type: "Pengangkutan", amount: 150000, date: "2026-05-20", status: "UNPAID" },
+  { id: "INV-004", companyId: "COM-012", companyName: "PT. Aspex Kumbong", type: "Retribusi UKL-UPL", amount: 1500000, date: "2026-05-05", status: "UNPAID" }
 ];
 
 export const initialInspections: Inspection[] = [
   {
     id: "INSP-001",
     companyId: "COM-001",
-    companyName: "PT. Tekstil Sejahtera",
+    companyName: "PT. Indocement Tunggal Prakarsa Tbk",
     inspectorId: "OFF-001",
     inspectorName: "Heryanto, S.T.",
     date: "2026-05-14",
     score: 100,
     status: "Selesai",
-    location: "Kec. Cicadas, Bandung",
+    location: "Citeureup, Kabupaten Bogor",
     notes: "TPS B3 sudah tertata rapi, saluran IPAL lancar.",
     bapSigned: true,
     checklist: {
@@ -23102,14 +23663,14 @@ export const initialInspections: Inspection[] = [
   },
   {
     id: "INSP-002",
-    companyId: "COM-002",
-    companyName: "Bengkel Jaya Motor",
+    companyId: "COM-015",
+    companyName: "PT. Ricky Putra Globalindo Tbk",
     inspectorId: "OFF-001",
     inspectorName: "Heryanto, S.T.",
     date: "2026-05-25",
     score: null,
     status: "Terjadwal",
-    location: "Kec. Coblong, Bandung",
+    location: "Cibinong, Kabupaten Bogor",
     checklist: {
       spplBersih: false,
       spplBebasLimbah: false,
@@ -23120,14 +23681,14 @@ export const initialInspections: Inspection[] = [
   },
   {
     id: "INSP-003",
-    companyId: "COM-004",
-    companyName: "Pabrik Kimia Farma",
+    companyId: "COM-012",
+    companyName: "PT. Aspex Kumbong",
     inspectorId: "OFF-001",
     inspectorName: "Heryanto, S.T.",
     date: "2026-05-18",
     score: 50,
     status: "Selesai",
-    location: "Bandung",
+    location: "Cileungsi, Kabupaten Bogor",
     notes: "TPS B3 kurang rapi, air IPAL mendekati ambang batas pH 9.",
     bapSigned: true,
     checklist: {
@@ -23161,7 +23722,7 @@ export const initialNotifications: SystemNotification[] = [
   {
     id: "NTF-001",
     title: "Kebocoran pH Terdeteksi",
-    message: "Volume limbah cair di PT. Tekstil Sejahtera melampaui debit normal 120m\u00b3.",
+    message: "Volume limbah cair di PT. Aspex Kumbong melampaui debit normal 120m³.",
     type: "DANGER",
     timestamp: "2026-05-20T09:30:00Z",
     read: false
@@ -23169,7 +23730,7 @@ export const initialNotifications: SystemNotification[] = [
   {
     id: "NTF-002",
     title: "Jadwal Inspeksi Baru",
-    message: "Inspeksi terjadwal untuk Bengkel Jaya Motor pada 25 Mei 2026.",
+    message: "Inspeksi terjadwal untuk PT. Ricky Putra Globalindo Tbk pada 25 Mei 2026.",
     type: "INFO",
     timestamp: "2026-05-20T08:15:00Z",
     read: false
@@ -23177,7 +23738,7 @@ export const initialNotifications: SystemNotification[] = [
   {
     id: "NTF-003",
     title: "Pembayaran Diterima",
-    message: "Invoice INV-001 senilai Rp 450.000 telah dibayar oleh Bengkel Jaya Motor (Langsung disetor ke Kas Daerah).",
+    message: "Invoice INV-001 senilai Rp 450.000 telah dibayar oleh PT. Astra Otoparts Tbk (Divisi Adiwiza) (Langsung disetor ke Kas Daerah).",
     type: "SUCCESS",
     timestamp: "2026-05-20T10:10:00Z",
     read: false
@@ -23186,7 +23747,7 @@ export const initialNotifications: SystemNotification[] = [
 
 export const initialAuditLogs: AuditLog[] = [
   { id: "LOG-001", timestamp: "2026-05-20T08:00:00Z", user: "super@sijaga.id", role: "SUPER_ADMIN", action: "Konfigurasi payment gateway dimodifikasi ke Sandbox Mode." },
-  { id: "LOG-002", timestamp: "2026-05-20T09:12:00Z", user: "admin@dlh.go.id", role: "ADMIN_DLH", action: "Menyetujui dokumen UKL-UPL PT. Tekstil Sejahtera." }
+  { id: "LOG-002", timestamp: "2026-05-20T09:12:00Z", user: "admin@dlh.go.id", role: "ADMIN_DLH", action: "Menyetujui dokumen AMDAL PT. Indocement Tunggal Prakarsa Tbk." }
 ];
 
 
@@ -24886,7 +25447,7 @@ interface GisUIState {
     // ==========================================
     activeLayers: string[];     // Menyimpan ID layer yang nyala
     mapOpacity: number;         // 0 - 100 (Transparansi Poligon & Heatmap AQI)
-    maskOpacity: number;        // 0 - 100 (Transparansi Inverted Polygon Masking area luar Kotim)
+    maskOpacity: number;        // 0 - 100 (Transparansi Inverted Polygon Masking area luar Bogor)
     activeBaseMap: string;      // 'dark', 'satellite', 'street', 'esri', 'osm'
     selectedCompanyId: string | null; // ID perusahaan yang sedang di-klik/difokuskan
 
@@ -24894,7 +25455,7 @@ interface GisUIState {
     mapCenter: [number, number]; // Koordinat pusat peta saat ini
     mapZoom: number;             // Skala zoom peta saat ini (Sumber data untuk Scale-Guard AI) [3]
 
-    // FASE 3 INJEKSI: State untuk Advanced Spatial Analytics (Kotawaringin Timur)
+    // FASE 3 INJEKSI: State untuk Advanced Spatial Analytics (Kabupaten Bogor)
     activeAdminBoundary: 'none' | 'kecamatan' | 'desa';
     showImpactRadius: boolean;
 
@@ -24939,13 +25500,13 @@ export const useGisUIStore = create<GisUIState>((set) => ({
     // Default state: AQI dimatikan. Layer industri menyala sebagai basis operasional
     activeLayers: ['layer-amdal', 'layer-uklupl', 'layer-sppl'],
     mapOpacity: 80,
-    maskOpacity: 60, // Default 60% redup untuk area di luar Kotawaringin Timur
+    maskOpacity: 60, // Default 60% redup untuk area di luar Kabupaten Bogor
     activeBaseMap: 'dark', // Default ke 'dark'
     selectedCompanyId: null,
 
-    // Fokus otomatis dikunci ke wilayah Sampit, Kotawaringin Timur
-    mapCenter: [-2.5337, 112.9515],
-    mapZoom: 9, // Zoom awal default
+    // Fokus otomatis dikunci ke wilayah Cibinong, Kabupaten Bogor
+    mapCenter: [-6.4816, 106.8560],
+    mapZoom: 11, // Zoom awal default disesuaikan untuk wilayah Bogor
 
     // Inisialisasi State Spasial Lanjutan
     activeAdminBoundary: 'none',
@@ -25123,8 +25684,8 @@ export const useGisUIStore = create<GisUIState>((set) => ({
             mapOpacity: 80,
             maskOpacity: 60,
             activeBaseMap: 'dark',
-            mapCenter: [-2.5337, 112.9515],
-            mapZoom: 9, // Reset kembali ke skala default
+            mapCenter: [-6.4816, 106.8560], // Reset kembali ke pusat Bogor
+            mapZoom: 11, // Reset kembali ke skala default Bogor
             aqiCache: {},
         }),
 }));

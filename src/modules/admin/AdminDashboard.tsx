@@ -113,8 +113,8 @@ export default function AdminDashboard() {
             <div className="h-[300px] bg-slate-100 relative group overflow-hidden rounded-none z-10">
               {/* Map Container Mini-Preview Taktis (MODIFIED FASE 2) */}
               <MapContainer
-                center={[-2.5337, 112.9515]} // SINKRONISASI KOTIM: Diubah ke Sampit [3]
-                zoom={9} // Diubah ke zoom level 9 agar pas melihat luasan Kotim [3]
+                center={[-6.4816, 106.8560]} // SINKRONISASI BOGOR: Diubah ke Cibinong [3]
+                zoom={11} // Diubah ke zoom level 11 agar pas melihat luasan Bogor [3]
                 className="w-full h-full rounded-none"
                 zoomControl={false}
                 scrollWheelZoom={false}

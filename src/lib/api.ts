@@ -212,6 +212,11 @@ export const apiService = {
         params: { lat, lng }
       });
       return response.data;
+    },
+    // INJEKSI BARU: Pemanggil data batch telemetri seluruh stasiun klaster Kabupaten Bogor
+    getBatchAqiData: async () => {
+      const response = await api.get("/api/analytics/aqi-batch");
+      return response.data;
     }
   },
   // [NEW MODULE] AI Agent Spatial Forensic Services

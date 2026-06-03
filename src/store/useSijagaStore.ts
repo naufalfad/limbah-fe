@@ -1,6 +1,6 @@
 // src/store/useSijagaStore.ts
 import { create } from "zustand";
-import { apiService } from "../lib/api";
+import { apiService, api } from "../lib/api"; // PEMBARUAN IMPOR: Membawa instansi interceptor 'api'
 import { toast } from "sonner";
 
 // Mengimpor kontrak data dasar dari file types
@@ -17,7 +17,8 @@ import {
   AuditLog,
   ReportSlice,
   AiForensicResult,
-  AqiData // INJEKSI: Mengimpor tipe data AQI
+  AqiData,
+  BogorClusterTelemetry // INJEKSI: Mengimpor tipe data Klaster
 } from "./types";
 
 // Re-export seluruh kontrak data agar tidak merusak impor di file komponen lain (Backward Compatibility)
@@ -32,7 +33,8 @@ export type {
   SystemNotification,
   AuditLog,
   AiForensicResult,
-  AqiData
+  AqiData,
+  BogorClusterTelemetry
 };
 
 // Mengimpor modul laci-laci state (Slices)
@@ -138,6 +140,7 @@ export const useSijagaStore = create<SijagaState>((set, get, store) => ({
   // MANAJEMEN KUALITAS UDARA SPASIAL (AQI SLICE IMPLEMENTATION)
   // ==========================================================================
   currentAqiData: null,
+  batchAqiData: [], // NEW STATE: Penampung telemetri batch klaster Kabupaten Bogor
   isAqiLoading: false,
 
   fetchAqiData: async (lat: string | number, lng: string | number) => {
@@ -150,14 +153,37 @@ export const useSijagaStore = create<SijagaState>((set, get, store) => ({
       }
       return null;
     } catch (e) {
-      console.error("Gagal menarik telemetri AQI:", e);
+      console.error("Gagal menarik telemetri AQI individual:", e);
       return null;
     } finally {
       set({ isAqiLoading: false });
     }
   },
 
-  clearAqiData: () => set({ currentAqiData: null }),
+  /**
+   * SINKRONISASI BATCH AKSI (Pure Fabrication / Indirection)
+   * Menarik seluruh data stasiun klaster Kab. Bogor dari server dalam satu kali fetch,
+   * menghemat resource batasan rate-limit API token IQAir eksternal secara drastis.
+   */
+  fetchBatchAqiData: async () => {
+    set({ isAqiLoading: true });
+    try {
+      const response = await api.get("/api/analytics/aqi-batch");
+      if (response && response.data && response.data.success) {
+        const data = response.data.data as BogorClusterTelemetry[];
+        set({ batchAqiData: data });
+        return data;
+      }
+      return [];
+    } catch (e) {
+      console.error("Gagal menarik data batch telemetri AQI Kabupaten Bogor:", e);
+      return [];
+    } finally {
+      set({ isAqiLoading: false });
+    }
+  },
+
+  clearAqiData: () => set({ currentAqiData: null, batchAqiData: [] }),
 
   // ==========================================================================
   // AI AGENT FORENSIC ENGINE LOGIC

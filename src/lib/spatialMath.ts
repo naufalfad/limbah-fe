@@ -38,18 +38,18 @@ export interface GridPoint extends SensorNode {
 
 // --- VIRTUAL BASELINE NODES (ANCHOR MITIGATION) ---
 // Untuk mencegah "Ghost Extrapolation" (Peta merah semua karena tidak ada sensor di pedalaman),
-// kita memasang sensor bayangan di perbatasan luar Kotawaringin Timur (Kotim).
-// DIUPDATE: Menyesuaikan Bounding Box baru (-3.40 s/d -1.30 dan 112.00 s/d 113.60).
-// Membentuk cincin 8-titik simetris agar tarikan IDW (20 / Sangat Bersih) merata di seluruh pedalaman.
-const KOTIM_VIRTUAL_NODES: AqiNode[] = [
-    { lat: -1.30, lng: 112.00, aqi: 20 }, // Barat Laut ekstrem (Pedalaman)
-    { lat: -1.30, lng: 112.80, aqi: 20 }, // Utara Tengah (Pedalaman Dalam)
-    { lat: -1.30, lng: 113.60, aqi: 20 }, // Timur Laut ekstrem (Pedalaman)
-    { lat: -2.35, lng: 112.00, aqi: 20 }, // Sayap Barat
-    { lat: -2.35, lng: 113.60, aqi: 20 }, // Sayap Timur
-    { lat: -3.40, lng: 112.00, aqi: 20 }, // Barat Daya ekstrem (Pesisir Laut)
-    { lat: -3.40, lng: 112.80, aqi: 20 }, // Selatan Tengah (Pesisir)
-    { lat: -3.40, lng: 113.60, aqi: 20 }, // Tenggara ekstrem (Pesisir Laut)
+// kita memasang sensor bayangan di perbatasan luar Kabupaten Bogor.
+// DIUPDATE: Menyesuaikan Bounding Box baru Bogor (-6.80 s/d -6.25 dan 106.35 s/d 107.25).
+// Membentuk cincin 8-titik simetris agar tarikan IDW (20 / Sangat Bersih) merata di wilayah perbatasan.
+const BOGOR_VIRTUAL_NODES: AqiNode[] = [
+    { lat: -6.25, lng: 106.35, aqi: 20 }, // Barat Laut ekstrem (Perbatasan Tangerang/Banten)
+    { lat: -6.25, lng: 106.80, aqi: 20 }, // Utara Tengah (Perbatasan Depok/Bekasi)
+    { lat: -6.25, lng: 107.25, aqi: 20 }, // Timur Laut ekstrem (Perbatasan Karawang)
+    { lat: -6.525, lng: 106.35, aqi: 20 }, // Sayap Barat (Perbatasan Lebak)
+    { lat: -6.525, lng: 107.25, aqi: 20 }, // Sayap Timur (Perbatasan Cianjur/Purwakarta)
+    { lat: -6.80, lng: 106.35, aqi: 20 }, // Barat Daya ekstrem (Sukabumi barat)
+    { lat: -6.80, lng: 106.80, aqi: 20 }, // Selatan Tengah (Perbatasan Sukabumi)
+    { lat: -6.80, lng: 107.25, aqi: 20 }, // Tenggara ekstrem (Perbatasan Cianjur)
 ];
 
 // Parameter kekuatan tarikan gravitasi polusi (Power parameter).
@@ -62,7 +62,7 @@ const IDW_POWER = 3;
  * 
  * Menggunakan kuadrat jarak Euclidean alih-alih Haversine murni. 
  * Ini menghemat penggunaan Math.sqrt() pada iterasi canvas (2.500+ titik per frame).
- * Akurasi geografis sedikit berkurang, namun sangat bisa ditoleransi untuk skala regional (Kotim).
+ * Akurasi geografis sedikit berkurang, namun sangat bisa ditoleransi untuk skala regional (Bogor).
  */
 const getDistanceSq = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
     const dLat = lat1 - lat2;
@@ -93,7 +93,7 @@ export const spatialMath = {
      */
     interpolateAqi: (targetLat: number, targetLng: number, realSensors: AqiNode[]): number => {
         // Gabungkan sensor nyata (dari pabrik) dengan sensor imajiner pelindung (Virtual Nodes)
-        const allSensors = [...realSensors, ...KOTIM_VIRTUAL_NODES];
+        const allSensors = [...realSensors, ...BOGOR_VIRTUAL_NODES];
 
         if (allSensors.length === 0) return 20; // Fallback sangat bersih
 

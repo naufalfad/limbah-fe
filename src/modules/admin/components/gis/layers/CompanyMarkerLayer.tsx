@@ -37,7 +37,7 @@ const createCompanyMarkerIcon = (score?: number | null, docType?: string, isSele
     // Timpa styling jika marker sedang diklik/di-select user
     if (isSelected) {
         ringClass = "border-slate-800 bg-slate-900/30";
-        pulseClass = ""; // Hentikan kedipan jika sudah di-klik (Acknowledged)
+        pulseClass = ""; // Hentikan kedipan jika sudah di-klik (Answering feedback)
     }
 
     return L.divIcon({
@@ -112,11 +112,15 @@ export default function CompanyMarkerLayer({ companies, currentZoom, mapOpacity,
     const handleEntityClick = (c: any, e: L.LeafletMouseEvent) => {
         e.originalEvent.stopPropagation();
 
-        // Posisikan kamera secara dinamis
-        if (currentZoom >= 16) {
+        // REVISI / PENYELARASAN POLIMORFISME: Menguji eksistensi getBounds sebelum melakukan fly
+        const hasGetBounds = typeof e.target.getBounds === 'function';
+        if (currentZoom >= 16 && hasGetBounds) {
             e.target._map.flyToBounds(e.target.getBounds(), { padding: [100, 100], duration: 1.5 });
         } else {
-            e.target._map.flyTo([c.lat, c.lng], 16, { animate: true, duration: 1.5 });
+            const coords = typeof e.target.getLatLng === 'function'
+                ? e.target.getLatLng()
+                : [c.lat, c.lng];
+            e.target._map.flyTo(coords, 16, { animate: true, duration: 1.5 });
         }
 
         setSelectedCompanyId(c.id);

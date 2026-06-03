@@ -75,10 +75,10 @@ import * as turf from '@turf/turf';
 
 /**
  * 1. MENGHITUNG KEPADATAN INDUSTRI PER KECAMATAN (Choropleth Aggregation)
- * Menggunakan algoritma Point-in-Polygon (PIP).
+ * Menggunakan algoritma Point-in-Polygon (PIP) untuk agregasi spasial industri.
  * 
  * @param companies - Array data perusahaan dari store (memiliki lat & lng)
- * @param geojsonKecamatan - FeatureCollection GeoJSON dari Kecamatan Kotim
+ * @param geojsonKecamatan - FeatureCollection GeoJSON dari Kecamatan Kabupaten Bogor
  * @returns Object Record berisi { "Nama Kecamatan": JumlahPabrik }
  */
 export const calculateCompaniesPerKecamatan = (
@@ -119,12 +119,12 @@ export const calculateCompaniesPerKecamatan = (
 
 /**
  * 2. MENGHITUNG RADIUS DAMPAK BENCANA PENCEMARAN (Buffer Intersection)
- * Membuat lingkaran (Buffer) lalu mendeteksi poligon Desa mana saja yang tertabrak.
+ * Membuat lingkaran (Buffer) lalu mendeteksi poligon Kelurahan/Desa mana saja yang tertabrak.
  * 
  * @param lat - Latitude pusat kejadian / pabrik
  * @param lng - Longitude pusat kejadian / pabrik
  * @param radiusKm - Jarak radius dampak dalam Kilometer (misal: 5)
- * @param geojsonDesa - FeatureCollection GeoJSON dari Desa Kotim
+ * @param geojsonDesa - FeatureCollection GeoJSON dari Desa/Kelurahan Kabupaten Bogor
  * @returns Array object berisi Desa dan Kecamatan yang terdampak
  */
 export const getAffectedVillages = (
@@ -157,7 +157,7 @@ export const getAffectedVillages = (
             }
         });
     } catch (error) {
-        console.error("Gagal menghitung radius dampak spasial:", error);
+        console.error("Gagal menghitung radius dampak spasial Kabupaten Bogor:", error);
     }
 
     return affected;
@@ -204,18 +204,18 @@ export interface GridPoint extends SensorNode {
 
 // --- VIRTUAL BASELINE NODES (ANCHOR MITIGATION) ---
 // Untuk mencegah "Ghost Extrapolation" (Peta merah semua karena tidak ada sensor di pedalaman),
-// kita memasang sensor bayangan di perbatasan luar Kotawaringin Timur (Kotim).
-// DIUPDATE: Menyesuaikan Bounding Box baru (-3.40 s/d -1.30 dan 112.00 s/d 113.60).
-// Membentuk cincin 8-titik simetris agar tarikan IDW (20 / Sangat Bersih) merata di seluruh pedalaman.
-const KOTIM_VIRTUAL_NODES: AqiNode[] = [
-    { lat: -1.30, lng: 112.00, aqi: 20 }, // Barat Laut ekstrem (Pedalaman)
-    { lat: -1.30, lng: 112.80, aqi: 20 }, // Utara Tengah (Pedalaman Dalam)
-    { lat: -1.30, lng: 113.60, aqi: 20 }, // Timur Laut ekstrem (Pedalaman)
-    { lat: -2.35, lng: 112.00, aqi: 20 }, // Sayap Barat
-    { lat: -2.35, lng: 113.60, aqi: 20 }, // Sayap Timur
-    { lat: -3.40, lng: 112.00, aqi: 20 }, // Barat Daya ekstrem (Pesisir Laut)
-    { lat: -3.40, lng: 112.80, aqi: 20 }, // Selatan Tengah (Pesisir)
-    { lat: -3.40, lng: 113.60, aqi: 20 }, // Tenggara ekstrem (Pesisir Laut)
+// kita memasang sensor bayangan di perbatasan luar Kabupaten Bogor.
+// DIUPDATE: Menyesuaikan Bounding Box baru Bogor (-6.80 s/d -6.25 dan 106.35 s/d 107.25).
+// Membentuk cincin 8-titik simetris agar tarikan IDW (20 / Sangat Bersih) merata di wilayah perbatasan.
+const BOGOR_VIRTUAL_NODES: AqiNode[] = [
+    { lat: -6.25, lng: 106.35, aqi: 20 }, // Barat Laut ekstrem (Perbatasan Tangerang/Banten)
+    { lat: -6.25, lng: 106.80, aqi: 20 }, // Utara Tengah (Perbatasan Depok/Bekasi)
+    { lat: -6.25, lng: 107.25, aqi: 20 }, // Timur Laut ekstrem (Perbatasan Karawang)
+    { lat: -6.525, lng: 106.35, aqi: 20 }, // Sayap Barat (Perbatasan Lebak)
+    { lat: -6.525, lng: 107.25, aqi: 20 }, // Sayap Timur (Perbatasan Cianjur/Purwakarta)
+    { lat: -6.80, lng: 106.35, aqi: 20 }, // Barat Daya ekstrem (Sukabumi barat)
+    { lat: -6.80, lng: 106.80, aqi: 20 }, // Selatan Tengah (Perbatasan Sukabumi)
+    { lat: -6.80, lng: 107.25, aqi: 20 }, // Tenggara ekstrem (Perbatasan Cianjur)
 ];
 
 // Parameter kekuatan tarikan gravitasi polusi (Power parameter).
@@ -228,7 +228,7 @@ const IDW_POWER = 3;
  * 
  * Menggunakan kuadrat jarak Euclidean alih-alih Haversine murni. 
  * Ini menghemat penggunaan Math.sqrt() pada iterasi canvas (2.500+ titik per frame).
- * Akurasi geografis sedikit berkurang, namun sangat bisa ditoleransi untuk skala regional (Kotim).
+ * Akurasi geografis sedikit berkurang, namun sangat bisa ditoleransi untuk skala regional (Bogor).
  */
 const getDistanceSq = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
     const dLat = lat1 - lat2;
@@ -259,7 +259,7 @@ export const spatialMath = {
      */
     interpolateAqi: (targetLat: number, targetLng: number, realSensors: AqiNode[]): number => {
         // Gabungkan sensor nyata (dari pabrik) dengan sensor imajiner pelindung (Virtual Nodes)
-        const allSensors = [...realSensors, ...KOTIM_VIRTUAL_NODES];
+        const allSensors = [...realSensors, ...BOGOR_VIRTUAL_NODES];
 
         if (allSensors.length === 0) return 20; // Fallback sangat bersih
 
@@ -538,8 +538,8 @@ export default function AdminDashboard() {
             <div className="h-[300px] bg-slate-100 relative group overflow-hidden rounded-none z-10">
               {/* Map Container Mini-Preview Taktis (MODIFIED FASE 2) */}
               <MapContainer
-                center={[-2.5337, 112.9515]} // SINKRONISASI KOTIM: Diubah ke Sampit [3]
-                zoom={9} // Diubah ke zoom level 9 agar pas melihat luasan Kotim [3]
+                center={[-6.4816, 106.8560]} // SINKRONISASI BOGOR: Diubah ke Cibinong [3]
+                zoom={11} // Diubah ke zoom level 11 agar pas melihat luasan Bogor [3]
                 className="w-full h-full rounded-none"
                 zoomControl={false}
                 scrollWheelZoom={false}
@@ -1109,6 +1109,7 @@ export default function CitizenReportManagement() {
 --- FILE: src\modules\admin\CompanyManagement.tsx ---
 // src/modules/admin/CompanyManagement.tsx
 import React, { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow
@@ -1158,7 +1159,7 @@ function ResizeMap() {
   return null;
 }
 
-// FASE 2: Penyesuaian parameter fallback lat/lng MapPicker ke Sampit, Kotim [3]
+/// FASE 2: Penyesuaian parameter fallback lat/lng MapPicker ke Cibinong, Kabupaten Bogor [3]
 function MapPicker({ lat, lng, onChange }: { lat: string; lng: string; onChange: (lat: string, lng: string) => void }) {
   useMapEvents({
     click(e) {
@@ -1166,8 +1167,9 @@ function MapPicker({ lat, lng, onChange }: { lat: string; lng: string; onChange:
     },
   });
 
-  const parsedLat = parseFloat(lat) || -2.5337;
-  const parsedLng = parseFloat(lng) || 112.9515;
+  // Fallback dialihkan ke pusat koordinat Cibinong, Kabupaten Bogor
+  const parsedLat = parseFloat(lat) || -6.4816;
+  const parsedLng = parseFloat(lng) || 106.8560;
 
   return <Marker position={[parsedLat, parsedLng]} />;
 }
@@ -1176,6 +1178,7 @@ type StatusFilter = "ALL" | "ACTIVE" | "SUSPENDED" | "EXPIRED" | "INACTIVE";
 type DocFilter = "ALL" | "SPPL" | "UKL_UPL" | "UKL-UPL" | "AMDAL";
 
 export default function CompanyManagement() {
+  const navigate = useNavigate();
   const { companies, fetchCompanies, updateCompanyStatus, downloadCompanyCertificate } = useSijagaStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
@@ -1190,47 +1193,7 @@ export default function CompanyManagement() {
   const [actionTarget, setActionTarget] = useState<{ company: Company; nextStatus: "SUSPENDED" | "APPROVED" } | null>(null);
   const [isActionOpen, setIsActionOpen] = useState(false);
 
-  // States for Wajib AMDAL Registration Modal
-  const [isAmdalOpen, setIsAmdalOpen] = useState(false);
-
-  // FASE 2: Inisiasi Koordinat Default Form AMDAL diarahkan ke Sampit, Kotim [3]
-  const [amdalForm, setAmdalForm] = useState({
-    companyName: "",
-    nib: "",
-    npwp: "",
-    address: "",
-    lat: "-2.5337",
-    lng: "112.9515",
-  });
-  const [isSubmittingAmdal, setIsSubmittingAmdal] = useState(false);
-
-  const handleAmdalSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!amdalForm.companyName || !amdalForm.nib || !amdalForm.address || !amdalForm.lat || !amdalForm.lng) {
-      toast.error("Mohon lengkapi seluruh field wajib dan titik koordinat!");
-      return;
-    }
-
-    setIsSubmittingAmdal(true);
-    try {
-      const { addManualAmdalCompany } = useSijagaStore.getState();
-      await addManualAmdalCompany(amdalForm);
-      setIsAmdalOpen(false);
-      setAmdalForm({
-        companyName: "",
-        nib: "",
-        npwp: "",
-        address: "",
-        lat: "-2.5337",
-        lng: "112.9515",
-      });
-      await fetchCompanies();
-    } catch (err) {
-      // Error handled by store toast
-    } finally {
-      setIsSubmittingAmdal(false);
-    }
-  };
+  // RESOLUSI KONFLIK: Sesuai kode rekan Anda, State isAmdalOpen, amdalForm, dan handlernya dihapus sepenuhnya [3]
 
   useEffect(() => {
     fetchCompanies();
@@ -1372,8 +1335,9 @@ export default function CompanyManagement() {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* RESOLUSI KONFLIK: Tombol mengarahkan ke halaman rute baru sesuai kode rekan Anda */}
             <Button
-              onClick={() => setIsAmdalOpen(true)}
+              onClick={() => navigate("/admin/companies/add-amdal")}
               className="bg-rose-600 hover:bg-rose-700 text-white flex items-center gap-2 font-black rounded-none h-9 px-4 text-[10px] uppercase tracking-widest shadow-sm"
             >
               + Wajib AMDAL
@@ -1688,7 +1652,7 @@ export default function CompanyManagement() {
 
       {/* --- CONFIRMATION DIALOG (SUSPEND / RESTORE) --- */}
       <Dialog open={isActionOpen} onOpenChange={setIsActionOpen}>
-        <DialogContent className="rounded-none border-2 border-slate-900 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-left max-w-md">
+        <DialogContent className="rounded-none border-2 border-slate-900 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-left max-w-md bg-white">
           <DialogHeader>
             <DialogTitle className="text-sm font-black uppercase tracking-wider flex items-center gap-2 text-slate-900">
               {actionTarget?.nextStatus === "SUSPENDED" ? (
@@ -1746,145 +1710,9 @@ export default function CompanyManagement() {
         </DialogContent>
       </Dialog>
 
-      {/* --- REGISTRASI DOKUMEN AMDAL MANUAL (HIGH DENSITY FORM) --- */}
-      <Dialog open={isAmdalOpen} onOpenChange={setIsAmdalOpen}>
-        <DialogContent className="rounded-none border-2 border-slate-900 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] text-left max-w-3xl overflow-hidden p-0 bg-slate-50 z-50">
-          <div className="bg-white p-6 border-b-2 border-slate-900 flex justify-between items-start">
-            <div>
-              <DialogTitle className="text-xl font-black uppercase tracking-tight text-slate-900 flex items-center gap-2">
-                <MapPin className="text-rose-600" size={24} />
-                Registrasi Wajib AMDAL
-              </DialogTitle>
-              <DialogDescription className="text-xs font-bold text-slate-500 mt-1 uppercase tracking-wider">
-                Petakan koordinat spasial industri wajib AMDAL ke sistem agar terintegrasi di peta GIS.
-              </DialogDescription>
-            </div>
-            <Badge className="bg-rose-100 text-rose-700 border-rose-200 rounded-none shadow-none text-[10px] font-black px-3 py-1 uppercase tracking-widest">
-              Manual Entry
-            </Badge>
-          </div>
-
-          <form onSubmit={handleAmdalSubmit} className="flex flex-col max-h-[75vh]">
-            <div className="p-6 overflow-y-auto space-y-6">
-
-              {/* GIS MAP PICKER CANVAS */}
-              <div className="space-y-2">
-                <label className="text-xs font-black text-slate-700 uppercase tracking-widest flex items-center gap-1.5">
-                  <Info size={14} className="text-rose-600" />
-                  Pemetaan Koordinat GIS <span className="text-rose-600">*</span>
-                </label>
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Klik pada peta untuk mengambil titik lokasi perusahaan</p>
-                <div className="h-[250px] w-full bg-slate-200 border-2 border-slate-900 relative z-10 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)]">
-                  <MapContainer
-                    center={[-2.5337, 112.9515]} // SINKRONISASI KOTIM: Diubah ke Sampit [3]
-                    zoom={10} // default zoom 10 agar area Sampit langsung fokus [3]
-                    zoomControl={true}
-                    style={{ height: "100%", width: "100%" }}
-                  >
-                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                    <MapPicker
-                      lat={amdalForm.lat}
-                      lng={amdalForm.lng}
-                      onChange={(lat, lng) => setAmdalForm({ ...amdalForm, lat, lng })}
-                    />
-                    <ResizeMap />
-                  </MapContainer>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div className="space-y-2">
-                  <label className="text-xs font-black text-slate-700 uppercase tracking-widest">Latitude</label>
-                  <Input
-                    required
-                    value={amdalForm.lat}
-                    onChange={(e) => setAmdalForm({ ...amdalForm, lat: e.target.value })}
-                    placeholder="-2.5337"
-                    className="h-11 rounded-none border-2 border-slate-300 focus-visible:border-rose-600 focus-visible:ring-0 bg-white text-sm font-bold shadow-none"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-black text-slate-700 uppercase tracking-widest">Longitude</label>
-                  <Input
-                    required
-                    value={amdalForm.lng}
-                    onChange={(e) => setAmdalForm({ ...amdalForm, lng: e.target.value })}
-                    placeholder="112.9515"
-                    className="h-11 rounded-none border-2 border-slate-300 focus-visible:border-rose-600 focus-visible:ring-0 bg-white text-sm font-bold shadow-none"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div className="space-y-2">
-                  <label className="text-xs font-black text-slate-700 uppercase tracking-widest">Nama Perusahaan <span className="text-rose-600">*</span></label>
-                  <Input
-                    required
-                    value={amdalForm.companyName}
-                    onChange={(e) => setAmdalForm({ ...amdalForm, companyName: e.target.value })}
-                    placeholder="PT. Semen Indonesia AMDAL"
-                    className="h-11 rounded-none border-2 border-slate-300 focus-visible:border-rose-600 focus-visible:ring-0 bg-white text-sm font-bold shadow-none"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-black text-slate-700 uppercase tracking-widest">Nomor Induk Berusaha <span className="text-rose-600">*</span></label>
-                  <Input
-                    required
-                    value={amdalForm.nib}
-                    onChange={(e) => setAmdalForm({ ...amdalForm, nib: e.target.value })}
-                    placeholder="13 Digit NIB Resmi"
-                    className="h-11 rounded-none border-2 border-slate-300 focus-visible:border-rose-600 focus-visible:ring-0 bg-white text-sm font-bold shadow-none"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs font-black text-slate-700 uppercase tracking-widest">NPWP Perusahaan</label>
-                <Input
-                  value={amdalForm.npwp}
-                  onChange={(e) => setAmdalForm({ ...amdalForm, npwp: e.target.value })}
-                  placeholder="00.000.000.0-000.000 (Opsional)"
-                  className="h-11 rounded-none border-2 border-slate-300 focus-visible:border-rose-600 focus-visible:ring-0 bg-white text-sm font-bold shadow-none"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs font-black text-slate-700 uppercase tracking-widest">Alamat Pabrik / Operasional Detail <span className="text-rose-600">*</span></label>
-                <textarea
-                  required
-                  value={amdalForm.address}
-                  onChange={(e) => setAmdalForm({ ...amdalForm, address: e.target.value })}
-                  placeholder="Kawasan Industri Ketapang No. 44, Sampit"
-                  className="w-full min-h-[100px] rounded-none border-2 border-slate-300 p-3 text-sm font-bold focus:outline-none focus:border-rose-600 focus:ring-0 bg-white shadow-none resize-none"
-                />
-              </div>
-            </div>
-
-            <div className="p-6 bg-white border-t-2 border-slate-900 flex justify-end gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsAmdalOpen(false)}
-                className="rounded-none border-2 border-slate-300 font-bold text-xs h-11 px-6 hover:bg-slate-50 uppercase tracking-widest"
-              >
-                BATAL
-              </Button>
-              <Button
-                type="submit"
-                disabled={isSubmittingAmdal}
-                className="rounded-none border-2 border-rose-600 bg-rose-600 hover:bg-rose-700 hover:border-rose-700 text-white font-black text-xs h-11 px-8 uppercase tracking-wider"
-              >
-                {isSubmittingAmdal ? "MENYIMPAN..." : "SIMPAN DATA AMDAL"}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-
       {/* --- DETAIL MODAL (HIGH DENSITY METADATA INSPECT) --- */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="rounded-none border-2 border-slate-900 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] text-left max-w-2xl overflow-y-auto max-h-[85vh] p-6">
-
+        <DialogContent className="rounded-none border-2 border-slate-900 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] text-left w-[95vw] max-w-5xl overflow-y-auto max-h-[85vh] p-6 bg-white">
           <DialogHeader className="border-b border-slate-200 pb-4">
             <div className="flex justify-between items-start gap-4">
               <div>
@@ -2005,13 +1833,11 @@ export default function CompanyManagement() {
                   </div>
                   <div className="flex justify-between border-b border-slate-100 pb-1.5">
                     <span className="text-slate-500 font-semibold">Jam Operasional</span>
-                    <span className="font-bold text-slate-900">{selectedCompany.operationalHours || "-"}</span>
+                    <span className="font-bold text-slate-800 font-mono">{selectedCompany.operationalHours || "-"}</span>
                   </div>
                   <div className="flex justify-between border-b border-slate-100 pb-1.5">
                     <span className="text-slate-500 font-semibold">Sumber Air / Listrik</span>
-                    <span className="font-bold text-slate-900">
-                      {selectedCompany.waterSource} / {selectedCompany.powerSource}
-                    </span>
+                    <span className="font-bold text-slate-800 font-mono">{selectedCompany.waterSource} / {selectedCompany.powerSource}</span>
                   </div>
                 </div>
 
@@ -2060,7 +1886,6 @@ export default function CompanyManagement() {
   );
 }
 
-// --- Status Badge Helper Component ---
 function StatusIndicator({ state, docType }: { state: StatusFilter; docType: string }) {
   const normalizedDoc = docType === "UKL_UPL" ? "UKL-UPL" : docType;
 
@@ -2090,17 +1915,17 @@ function StatusIndicator({ state, docType }: { state: StatusFilter; docType: str
 
 --- FILE: src\modules\admin\components\DetailDrawer.tsx ---
 import React, { useState, useEffect } from 'react';
-import { 
-  Dialog, DialogContent, DialogHeader, DialogTitle 
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  Building2, MapPin, FileText, User, 
-  CheckCircle2, AlertTriangle, XCircle, 
-  Download, ExternalLink, Factory, Phone, X, 
+import {
+  Building2, MapPin, FileText, User,
+  CheckCircle2, AlertTriangle, XCircle,
+  Download, ExternalLink, Factory, Phone, X,
   Eye, Loader2, MessageSquare, ClipboardList
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -2122,6 +1947,26 @@ function ResizeMap() {
 }
 
 const BACKEND_URL = "http://localhost:5000";
+
+interface AmdalFileState {
+  fileName: string;
+  fileSize: string;
+  base64Data: string;
+}
+
+const AMDAL_DOCS_CONFIG = [
+  { key: "skPersetujuan", label: "SK Persetujuan Lingkungan", isRequired: true },
+  { key: "skKelayakan", label: "SK Kelayakan Lingkungan", isRequired: true },
+  { key: "ringkasanAmdal", label: "Ringkasan AMDAL", isRequired: false },
+  { key: "dokumenAndal", label: "Dokumen ANDAL", isRequired: true },
+  { key: "dokumenRkl", label: "Dokumen RKL", isRequired: true },
+  { key: "dokumenRpl", label: "Dokumen RPL", isRequired: true },
+  { key: "petaLokasi", label: "Peta Lokasi Spasial", isRequired: true },
+  { key: "layoutIpal", label: "Layout IPAL Teknis", isRequired: false },
+  { key: "layoutTpsB3", label: "Layout TPS B3", isRequired: false },
+  { key: "hasilUjiLab", label: "Hasil Uji Laboratorium", isRequired: false },
+  { key: "dokumentasiLokasi", label: "Dokumentasi Foto Lokasi", isRequired: false },
+] as const;
 
 export function DetailDrawer({ isOpen, onClose, data }: any) {
   const { updateCompanyStatus } = useSijagaStore();
@@ -2163,8 +2008,8 @@ export function DetailDrawer({ isOpen, onClose, data }: any) {
         mappedStatus === "APPROVED"
           ? `✅ ${data.companyName} berhasil DISETUJUI!`
           : mappedStatus === "REVIEW"
-          ? `📋 ${data.companyName} dikembalikan untuk REVISI.`
-          : `❌ ${data.companyName} DITOLAK.`
+            ? `📋 ${data.companyName} dikembalikan untuk REVISI.`
+            : `❌ ${data.companyName} DITOLAK.`
       );
       onClose();
     } catch (err) {
@@ -2185,6 +2030,16 @@ export function DetailDrawer({ isOpen, onClose, data }: any) {
   const npwpUrl = docUrl(data.docNpwpUrl);
   const siteplanUrl = docUrl(data.docSiteplanUrl);
 
+  const isAmdalJson = data.docType === "AMDAL" && data.docTemplateUrl && data.docTemplateUrl.trim().startsWith("{");
+  let parsedAmdalDocs: Record<string, AmdalFileState> | null = null;
+  if (isAmdalJson) {
+    try {
+      parsedAmdalDocs = JSON.parse(data.docTemplateUrl);
+    } catch (e) {
+      console.error("Failed to parse docTemplateUrl as AMDAL JSON:", e);
+    }
+  }
+
   const docLabel = data.docType === "UKL_UPL" ? "UKL-UPL" : (data.docType || "SPPL");
 
   const currentStatusColor: Record<string, string> = {
@@ -2197,12 +2052,12 @@ export function DetailDrawer({ isOpen, onClose, data }: any) {
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-[95vw] lg:max-w-7xl p-0 overflow-hidden rounded-3xl border-none shadow-2xl bg-white text-left">
-          
+        <DialogContent className="max-w-[95vw] lg:max-w-7xl p-0 overflow-hidden rounded-none border-none shadow-2xl bg-white text-left">
+
           {/* --- HEADER --- */}
           <div className="bg-slate-900 text-white px-8 py-6 flex justify-between items-center shrink-0">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
+              <div className="w-12 h-12 bg-emerald-500 rounded-none flex items-center justify-center shadow-lg shadow-emerald-500/20">
                 <Building2 size={24} />
               </div>
               <div>
@@ -2220,7 +2075,7 @@ export function DetailDrawer({ isOpen, onClose, data }: any) {
                 </DialogTitle>
               </div>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400">
+            <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-none transition-colors text-slate-400">
               <X size={24} />
             </button>
           </div>
@@ -2232,17 +2087,17 @@ export function DetailDrawer({ isOpen, onClose, data }: any) {
             <div className="flex-1 overflow-y-auto custom-scrollbar">
               <Tabs defaultValue="identitas" className="h-full flex flex-col">
                 <div className="bg-white border-b border-slate-100 px-8 pt-4 shrink-0">
-                  <TabsList className="bg-slate-100 rounded-xl h-10">
-                    <TabsTrigger value="identitas" className="rounded-lg text-xs font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                  <TabsList className="bg-slate-100 rounded-none h-10">
+                    <TabsTrigger value="identitas" className="rounded-none text-xs font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">
                       <User size={13} className="mr-1.5" /> Identitas
                     </TabsTrigger>
-                    <TabsTrigger value="teknis" className="rounded-lg text-xs font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                    <TabsTrigger value="teknis" className="rounded-none text-xs font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">
                       <Factory size={13} className="mr-1.5" /> Teknis & Operasional
                     </TabsTrigger>
-                    <TabsTrigger value="dokumen" className="rounded-lg text-xs font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                    <TabsTrigger value="dokumen" className="rounded-none text-xs font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">
                       <FileText size={13} className="mr-1.5" /> Lampiran Dokumen
                     </TabsTrigger>
-                    <TabsTrigger value="gis" className="rounded-lg text-xs font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                    <TabsTrigger value="gis" className="rounded-none text-xs font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">
                       <MapPin size={13} className="mr-1.5" /> GIS & Lokasi
                     </TabsTrigger>
                   </TabsList>
@@ -2278,18 +2133,18 @@ export function DetailDrawer({ isOpen, onClose, data }: any) {
                     <InfoCard label="Sumber Energi" value={data.powerSource || "-"} icon={<Factory size={16} />} />
                     <InfoCard label="Jam Operasional" value={data.operationalHours || "-"} icon={<ClipboardList size={16} />} />
                   </div>
-                  <div className="bg-white p-6 rounded-2xl border border-slate-200">
+                  <div className="bg-white p-6 rounded-none border border-slate-200">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Bahan Baku Utama</p>
                     <p className="text-sm font-semibold text-slate-700 leading-relaxed">{data.rawMaterials || "Tidak ada data."}</p>
                   </div>
                   {data.wasteInfo && (
-                    <div className="bg-white p-6 rounded-2xl border border-slate-200">
+                    <div className="bg-white p-6 rounded-none border border-slate-200">
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Informasi Limbah</p>
                       <p className="text-sm font-semibold text-slate-700 leading-relaxed">{data.wasteInfo}</p>
                     </div>
                   )}
-                  <div className="flex items-center gap-3 p-4 rounded-2xl border border-slate-200 bg-white">
-                    <div className={cn("w-5 h-5 rounded-full flex items-center justify-center shrink-0", data.hasTps ? "bg-emerald-500" : "bg-slate-300")}>
+                  <div className="flex items-center gap-3 p-4 rounded-none border border-slate-200 bg-white">
+                    <div className={cn("w-5 h-5 rounded-none flex items-center justify-center shrink-0", data.hasTps ? "bg-emerald-500" : "bg-slate-300")}>
                       <CheckCircle2 size={12} className="text-white" />
                     </div>
                     <span className="text-sm font-bold text-slate-700">
@@ -2303,30 +2158,63 @@ export function DetailDrawer({ isOpen, onClose, data }: any) {
                   <div className="space-y-4">
                     <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Berkas yang Diunggah Perusahaan</h3>
                     <div className="space-y-3">
-                      <DocPreviewRow
-                        label="Scan NIB (Nomor Induk Berusaha)"
-                        url={nibUrl}
-                        required
-                        onPreview={() => nibUrl && setPreviewDoc(nibUrl)}
-                      />
-                      <DocPreviewRow
-                        label="Scan NPWP Perusahaan"
-                        url={npwpUrl}
-                        required
-                        onPreview={() => npwpUrl && setPreviewDoc(npwpUrl)}
-                      />
-                      <DocPreviewRow
-                        label="Siteplan / Layout Lokasi"
-                        url={siteplanUrl}
-                        required={false}
-                        onPreview={() => siteplanUrl && setPreviewDoc(siteplanUrl)}
-                      />
-                      <DocPreviewRow
-                        label={`Matriks Isian Teknis (${docLabel})`}
-                        url={docUrl(data.docTemplateUrl)}
-                        required
-                        onPreview={() => data.docTemplateUrl && setPreviewDoc(docUrl(data.docTemplateUrl))}
-                      />
+                      {/* Hanya render berkas standar jika datanya ada atau jika bukan AMDAL manual */}
+                      {(!isAmdalJson || nibUrl) && (
+                        <DocPreviewRow
+                          label="Scan NIB (Nomor Induk Berusaha)"
+                          url={nibUrl}
+                          required
+                          onPreview={() => nibUrl && setPreviewDoc(nibUrl)}
+                        />
+                      )}
+                      {(!isAmdalJson || npwpUrl) && (
+                        <DocPreviewRow
+                          label="Scan NPWP Perusahaan"
+                          url={npwpUrl}
+                          required
+                          onPreview={() => npwpUrl && setPreviewDoc(npwpUrl)}
+                        />
+                      )}
+                      {(!isAmdalJson || siteplanUrl) && (
+                        <DocPreviewRow
+                          label="Siteplan / Layout Lokasi"
+                          url={siteplanUrl}
+                          required={false}
+                          onPreview={() => siteplanUrl && setPreviewDoc(siteplanUrl)}
+                        />
+                      )}
+                      {!isAmdalJson && (
+                        <DocPreviewRow
+                          label={`Matriks Isian Teknis (${docLabel})`}
+                          url={docUrl(data.docTemplateUrl)}
+                          required
+                          onPreview={() => data.docTemplateUrl && setPreviewDoc(docUrl(data.docTemplateUrl))}
+                        />
+                      )}
+
+                      {/* Jika AMDAL manual, render 11 berkas AMDAL dari JSON */}
+                      {isAmdalJson && parsedAmdalDocs && (
+                        <div className="pt-4 border-t border-slate-200 mt-4">
+                          <h4 className="text-[10px] font-black text-rose-600 uppercase tracking-wider mb-3">
+                            Daftar Berkas Wajib AMDAL & Pendukung (11 Dokumen)
+                          </h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {AMDAL_DOCS_CONFIG.map((doc) => {
+                              const docFile = parsedAmdalDocs ? parsedAmdalDocs[doc.key] : null;
+                              return (
+                                <DocPreviewRow
+                                  key={doc.key}
+                                  label={doc.label}
+                                  url={docFile ? docFile.base64Data : null}
+                                  required={doc.isRequired}
+                                  downloadName={docFile ? docFile.fileName : undefined}
+                                  onPreview={() => docFile && setPreviewDoc(docFile.base64Data)}
+                                />
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                   </div>
@@ -2335,7 +2223,7 @@ export function DetailDrawer({ isOpen, onClose, data }: any) {
                 {/* TAB: GIS */}
                 <TabsContent value="gis" className="flex-1 p-8 mt-0">
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div className="lg:col-span-2 aspect-video bg-slate-200 rounded-3xl border-4 border-white shadow-lg relative overflow-hidden z-10">
+                    <div className="lg:col-span-2 aspect-video bg-slate-200 rounded-none border-4 border-white shadow-lg relative overflow-hidden z-10">
                       {isOpen && data?.lat && data?.lng ? (
                         <MapContainer
                           center={[parseFloat(data.lat) || -6.9175, parseFloat(data.lng) || 107.6191]}
@@ -2367,12 +2255,12 @@ export function DetailDrawer({ isOpen, onClose, data }: any) {
                         href={`https://www.google.com/maps/search/?api=1&query=${data.lat},${data.lng}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="absolute bottom-4 right-4 z-[999] flex items-center gap-1.5 bg-white/90 backdrop-blur-sm text-slate-700 text-xs font-bold px-3 py-2 rounded-xl hover:bg-white shadow-md transition-all border border-slate-200"
+                        className="absolute bottom-4 right-4 z-[999] flex items-center gap-1.5 bg-white/90 backdrop-blur-sm text-slate-700 text-xs font-bold px-3 py-2 rounded-none hover:bg-white shadow-md transition-all border border-slate-200"
                       >
                         <ExternalLink size={12} /> Buka di Google Maps
                       </a>
                     </div>
-                    <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col gap-5">
+                    <div className="bg-white p-6 rounded-none border border-slate-200 shadow-sm flex flex-col gap-5">
                       <div>
                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Latitude</p>
                         <p className="text-lg font-black text-slate-800 font-mono">{data.lat || "-"}</p>
@@ -2397,7 +2285,7 @@ export function DetailDrawer({ isOpen, onClose, data }: any) {
             <div className="w-full md:w-[340px] bg-white border-l border-slate-200 p-8 flex flex-col gap-6 shrink-0 text-left overflow-y-auto custom-scrollbar">
 
               {/* Status saat ini */}
-              <div className="p-4 bg-slate-50 rounded-2xl space-y-1">
+              <div className="p-4 bg-slate-50 rounded-none space-y-1">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status Saat Ini</p>
                 <div className="flex items-center gap-2 mt-1">
                   <Badge className={`${currentStatusColor[data.status] || "bg-slate-100 text-slate-500"} border-none px-3 py-1.5 text-[11px] font-black`}>
@@ -2410,26 +2298,26 @@ export function DetailDrawer({ isOpen, onClose, data }: any) {
               <div className="space-y-3">
                 <h4 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Keputusan Petugas DLH</h4>
                 <div className="space-y-2">
-                  <DecisionCard 
+                  <DecisionCard
                     active={decision === "APPROVE"}
                     onClick={() => setDecision("APPROVE")}
-                    icon={<CheckCircle2 size={18} className="text-emerald-500"/>}
+                    icon={<CheckCircle2 size={18} className="text-emerald-500" />}
                     label="Setujui Pendaftaran"
                     sublabel="Perusahaan mendapat status APPROVED"
                     color="bg-emerald-50 border-emerald-400"
                   />
-                  <DecisionCard 
+                  <DecisionCard
                     active={decision === "REVISION"}
                     onClick={() => setDecision("REVISION")}
-                    icon={<AlertTriangle size={18} className="text-amber-500"/>}
+                    icon={<AlertTriangle size={18} className="text-amber-500" />}
                     label="Minta Revisi Berkas"
                     sublabel="Kembalikan untuk perbaikan dokumen"
                     color="bg-amber-50 border-amber-400"
                   />
-                  <DecisionCard 
+                  <DecisionCard
                     active={decision === "REJECT"}
                     onClick={() => setDecision("REJECT")}
-                    icon={<XCircle size={18} className="text-rose-500"/>}
+                    icon={<XCircle size={18} className="text-rose-500" />}
                     label="Tolak Pendaftaran"
                     sublabel="Berkas tidak memenuhi persyaratan"
                     color="bg-rose-50 border-rose-400"
@@ -2448,7 +2336,7 @@ export function DetailDrawer({ isOpen, onClose, data }: any) {
                     value={catatanRevisi}
                     onChange={(e) => setCatatanRevisi(e.target.value)}
                     rows={4}
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none transition-all"
+                    className="w-full rounded-none border border-slate-200 bg-slate-50 p-4 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none transition-all"
                     placeholder={
                       decision === "REVISION"
                         ? "Sebutkan dokumen mana yang perlu diperbaiki..."
@@ -2460,11 +2348,11 @@ export function DetailDrawer({ isOpen, onClose, data }: any) {
 
               {/* Tombol Simpan */}
               <div className="mt-auto pt-4 border-t border-slate-100 space-y-2">
-                <Button 
+                <Button
                   disabled={!decision || isSaving}
                   onClick={handleSave}
                   className={cn(
-                    "w-full h-14 rounded-2xl font-black text-base transition-all shadow-lg disabled:opacity-30 disabled:cursor-not-allowed",
+                    "w-full h-14 rounded-none font-black text-base transition-all shadow-lg disabled:opacity-30 disabled:cursor-not-allowed",
                     decision === "APPROVE" && "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200",
                     decision === "REVISION" && "bg-amber-500 hover:bg-amber-600 text-white shadow-amber-200",
                     decision === "REJECT" && "bg-rose-600 hover:bg-rose-700 text-white shadow-rose-200",
@@ -2477,9 +2365,9 @@ export function DetailDrawer({ isOpen, onClose, data }: any) {
                     </span>
                   ) : (
                     !decision ? "PILIH KEPUTUSAN" :
-                    decision === "APPROVE" ? "✅ SETUJUI SEKARANG" :
-                    decision === "REVISION" ? "📋 KIRIM PERMINTAAN REVISI" :
-                    "❌ TOLAK PENDAFTARAN"
+                      decision === "APPROVE" ? "✅ SETUJUI SEKARANG" :
+                        decision === "REVISION" ? "📋 KIRIM PERMINTAAN REVISI" :
+                          "❌ TOLAK PENDAFTARAN"
                   )}
                 </Button>
                 <p className="text-center text-[10px] text-slate-400 font-bold">
@@ -2494,11 +2382,11 @@ export function DetailDrawer({ isOpen, onClose, data }: any) {
       {/* Full-screen document preview overlay */}
       {previewDoc && (
         <Dialog open={!!previewDoc} onOpenChange={() => setPreviewDoc(null)}>
-          <DialogContent className="max-w-[95vw] lg:max-w-7xl w-full h-[90vh] p-0 overflow-hidden rounded-3xl border-none shadow-2xl flex flex-col bg-slate-950 z-50 text-left">
+          <DialogContent className="w-full max-w-[95vw] lg:max-w-7xl h-[95vh] p-0 overflow-hidden rounded-none border-none shadow-2xl flex flex-col bg-slate-950 z-50 text-left">
             {/* THIN ULTRA-COMPACT HEADER */}
             <div className="bg-slate-900 text-white px-5 h-12 flex justify-between items-center shrink-0 border-b border-slate-800">
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                <div className="w-7 h-7 rounded-none bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
                   <FileText size={14} />
                 </div>
                 <div className="truncate">
@@ -2506,30 +2394,30 @@ export function DetailDrawer({ isOpen, onClose, data }: any) {
                   <span className="text-[10px] font-bold text-slate-400 uppercase truncate">{data.companyName}</span>
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-2 shrink-0">
-                <a 
-                  href={previewDoc} 
-                  target="_blank" 
-                  rel="noreferrer" 
-                  className="flex items-center gap-1.5 bg-slate-800 hover:bg-emerald-600 text-slate-300 hover:text-white px-3 h-8 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border border-slate-700 hover:border-emerald-500 shadow-sm"
+                <a
+                  href={previewDoc}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1.5 bg-slate-800 hover:bg-emerald-600 text-slate-300 hover:text-white px-3 h-8 rounded-none text-[10px] font-black uppercase tracking-wider transition-all border border-slate-700 hover:border-emerald-500 shadow-sm"
                 >
                   <Download size={12} /> Unduh Berkas
                 </a>
                 <div className="w-px h-5 bg-slate-800 mx-0.5" />
-                <button 
-                  onClick={() => setPreviewDoc(null)} 
-                  className="p-1.5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 rounded-lg transition-all"
+                <button
+                  onClick={() => setPreviewDoc(null)}
+                  className="p-1.5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 rounded-none transition-all"
                   title="Tutup"
                 >
                   <X size={18} />
                 </button>
               </div>
             </div>
-            
+
             {/* FULL-SIZE CANVAS PREVIEW */}
             <div className="flex-1 flex flex-col overflow-hidden bg-slate-950">
-              <DocPreviewer fileUrl={previewDoc} />
+              <DocPreviewer fileUrl={previewDoc} companyId={data.id} />
             </div>
           </DialogContent>
         </Dialog>
@@ -2542,8 +2430,8 @@ export function DetailDrawer({ isOpen, onClose, data }: any) {
 
 function InfoCard({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-5 flex items-start gap-4">
-      <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
+    <div className="bg-white rounded-none border border-slate-200 p-5 flex items-start gap-4">
+      <div className="w-9 h-9 rounded-none bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
         {icon}
       </div>
       <div className="min-w-0">
@@ -2556,24 +2444,25 @@ function InfoCard({ label, value, icon }: { label: string; value: string; icon: 
 
 function MetricCard({ label, value, color }: { label: string; value: string; color: string }) {
   return (
-    <div className={`${color} rounded-2xl p-5 space-y-1`}>
+    <div className={`${color} rounded-none p-5 space-y-1`}>
       <p className="text-[10px] font-black uppercase tracking-widest opacity-70">{label}</p>
       <p className="text-base font-black leading-tight">{value}</p>
     </div>
   );
 }
 
-function DocPreviewRow({ label, url, required, onPreview }: {
+function DocPreviewRow({ label, url, required, onPreview, downloadName }: {
   label: string;
   url: string | null;
   required: boolean;
   onPreview: () => void;
+  downloadName?: string;
 }) {
   return (
-    <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:border-emerald-300 transition-all group">
+    <div className="flex items-center justify-between p-4 bg-white rounded-none border border-slate-200 shadow-sm hover:border-emerald-300 transition-all group">
       <div className="flex items-center gap-3 min-w-0">
         <div className={cn(
-          "w-9 h-9 rounded-xl flex items-center justify-center shrink-0",
+          "w-9 h-9 rounded-none flex items-center justify-center shrink-0",
           url ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-400"
         )}>
           <FileText size={16} />
@@ -2581,7 +2470,9 @@ function DocPreviewRow({ label, url, required, onPreview }: {
         <div className="min-w-0">
           <p className="text-[11px] font-black text-slate-700 truncate">{label}</p>
           {url ? (
-            <p className="text-[10px] text-emerald-600 font-bold">✓ File tersedia</p>
+            <p className="text-[10px] text-emerald-600 font-bold">
+              ✓ File tersedia {downloadName ? `(${downloadName})` : ""}
+            </p>
           ) : (
             <p className={cn("text-[10px] font-bold", required ? "text-red-500" : "text-slate-400 italic")}>
               {required ? "⚠ Belum diunggah (Wajib)" : "Tidak diunggah (Opsional)"}
@@ -2593,15 +2484,16 @@ function DocPreviewRow({ label, url, required, onPreview }: {
         <div className="flex items-center gap-1.5 ml-3 shrink-0">
           <button
             onClick={onPreview}
-            className="flex items-center gap-1 text-[10px] font-black text-slate-400 hover:text-emerald-600 bg-slate-100 hover:bg-emerald-50 px-2.5 py-1.5 rounded-lg transition-all"
+            className="flex items-center gap-1 text-[10px] font-black text-slate-400 hover:text-emerald-600 bg-slate-100 hover:bg-emerald-50 px-2.5 py-1.5 rounded-none transition-all"
           >
             <Eye size={11} /> Preview
           </button>
           <a
             href={url}
+            download={downloadName || "dokumen"}
             target="_blank"
             rel="noreferrer"
-            className="flex items-center gap-1 text-[10px] font-black text-slate-400 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg transition-all"
+            className="flex items-center gap-1 text-[10px] font-black text-slate-400 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 px-2.5 py-1.5 rounded-none transition-all"
           >
             <Download size={11} /> Unduh
           </a>
@@ -2613,10 +2505,10 @@ function DocPreviewRow({ label, url, required, onPreview }: {
 
 function DecisionCard({ active, onClick, icon, label, sublabel, color }: any) {
   return (
-    <div 
+    <div
       onClick={onClick}
       className={cn(
-        "p-4 rounded-2xl border-2 cursor-pointer transition-all",
+        "p-4 rounded-none border-2 cursor-pointer transition-all",
         active ? color : "bg-slate-50 border-slate-200 hover:border-slate-300 hover:bg-white"
       )}
     >
@@ -2626,10 +2518,10 @@ function DecisionCard({ active, onClick, icon, label, sublabel, color }: any) {
           <span className="text-sm font-black text-slate-800 tracking-tight">{label}</span>
         </div>
         <div className={cn(
-          "w-4.5 h-4.5 rounded-full border-2 flex items-center justify-center shrink-0",
+          "w-4.5 h-4.5 rounded-none border-2 flex items-center justify-center shrink-0",
           active ? "border-slate-900 bg-slate-900" : "border-slate-300"
         )}>
-          {active && <div className="w-2 h-2 bg-white rounded-full" />}
+          {active && <div className="w-2 h-2 bg-white rounded-none" />}
         </div>
       </div>
       <p className="text-[10px] text-slate-400 font-bold ml-7 leading-snug">{sublabel}</p>
@@ -2637,69 +2529,155 @@ function DecisionCard({ active, onClick, icon, label, sublabel, color }: any) {
   );
 }
 
+
 --- FILE: src\modules\admin\components\gis\AqiHorizontalLegend.tsx ---
 // src/modules/admin/components/gis/AqiHorizontalLegend.tsx
-import React from "react";
-import { Wind } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Wind, Plus, Minus, Maximize } from "lucide-react";
 import { useGisUIStore } from "@/store/useGisUIStore";
 import { cn } from "@/lib/utils";
 
 /**
  * ============================================================================
- * AQI HORIZONTAL LEGEND (IQAir / BMKG Style)
+ * AQI HORIZONTAL LEGEND & EMBEDDED ZOOM HUD (GFW PARADIGM)
  * ============================================================================
  * Menampilkan bilah spektrum warna kualitas udara secara mendatar di bawah 
- * layar. Menghindari Cognitive Overload akibat legenda vertikal yang memakan
- * terlalu banyak ruang kanvas peta.
+ * layar. Dilengkapi dengan logika dynamic centering offset, kontrol zoom 
+ * taktis, dan continuous gradient mapping untuk menyelaraskan estetika 
+ * dengan peta spasial di belakangnya [3].
  */
 export default function AqiHorizontalLegend() {
-    const { activeLayers } = useGisUIStore();
+    const { activeLayers, activePanels } = useGisUIStore();
+
+    // State lokal untuk melacak perubahan resolusi lebar layar (Responsive Sync)
+    const [windowWidth, setWindowWidth] = useState(
+        typeof window !== "undefined" ? window.innerWidth : 1200
+    );
+
+    useEffect(() => {
+        const handleResize = () => setWindowWidth(window.innerWidth);
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
 
     // Hanya tampilkan legenda ini jika Layer Kualitas Udara (AQI) sedang diaktifkan
     if (!activeLayers.includes("layer-aqi")) return null;
 
     // Spektrum Warna & Label Kategori berdasarkan Standar US EPA
+    // PRO-TIP: Kita menggunakan hex 'color' untuk memetakan CSS Gradient secara presisi
     const aqiSpectrum = [
-        { label: "Baik", range: "0 - 50", bg: "bg-[#10b981]", text: "text-white" },               // Emerald 500
-        { label: "Sedang", range: "51 - 100", bg: "bg-[#facc15]", text: "text-slate-900" },       // Yellow 400
-        { label: "Sensitif", range: "101 - 150", bg: "bg-[#f97316]", text: "text-white" },        // Orange 500
-        { label: "Tidak Sehat", range: "151 - 200", bg: "bg-[#ef4444]", text: "text-white" },     // Red 500
-        { label: "Sangat Tidak Sehat", range: "201 - 300", bg: "bg-[#9333ea]", text: "text-white" },// Purple 600
-        { label: "Berbahaya", range: "300+", bg: "bg-[#7e0023]", text: "text-white" }             // Maroon
+        { label: "Baik", range: "0 - 50", color: "#10b981", text: "text-white" },               // Emerald 500
+        { label: "Sedang", range: "51 - 100", color: "#facc15", text: "text-slate-900" },       // Yellow 400
+        { label: "Sensitif", range: "101 - 150", color: "#f97316", text: "text-white" },        // Orange 500
+        { label: "Tidak Sehat", range: "151 - 200", color: "#ef4444", text: "text-white" },     // Red 500
+        { label: "Sangat Tidak Sehat", range: "201 - 300", color: "#9333ea", text: "text-white" },// Purple 600
+        { label: "Berbahaya", range: "300+", color: "#7e0023", text: "text-white" }             // Maroon
     ];
 
+    // ==========================================================================
+    // MATHEMATICAL DYNAMIC CENTERING CALCULATION (LOD LAYOUT COHESION) [3]
+    // ==========================================================================
+    const leftSidebarWidth = 64; // Lebar tetap sidebar kiri (w-16)
+
+    // Hitung total akumulasi lebar laci yang sedang aktif di sebelah kiri [3]
+    const activePanelsWidth = activePanels.reduce((sum, panel) => {
+        if (panel.type === "ai-copilot" || panel.type === "detil-perusahaan") {
+            return sum + 360; // Laci lebar forensik
+        }
+        if (panel.type === "telemetri-lingkungan" || panel.type === "detail-tugas") {
+            return sum + 320; // Laci detail spasial
+        }
+        return sum + 280; // Laci menu biasa
+    }, 0);
+
+    const totalLeftBlockedWidth = leftSidebarWidth + activePanelsWidth;
+
+    // Hitung koordinat tengah dari sisa peta kosong yang tidak terblokir laci [3]
+    const remainingWidth = windowWidth - totalLeftBlockedWidth;
+    const calculatedLeftPosition = totalLeftBlockedWidth + (remainingWidth / 2);
+
+    // ==========================================================================
+    // CONTINUOUS GRADIENT GENERATOR
+    // Menghasilkan string linear-gradient() dengan akurasi persentase terpusat.
+    // Memastikan teks selalu berada di atas warna solid, dan perpaduan 
+    // warna hanya terjadi di batas antara dua segmen.
+    // ==========================================================================
+    const colorStops = aqiSpectrum.map((item, index) => {
+        // Formula matematika membagi 6 elemen untuk mencari titik tengah murni tiap elemen.
+        // Contoh: index 0 (0-16.6%) -> titik puncak warna solid berada di 8.3%
+        const centerPercent = ((index * 2 + 1) / (aqiSpectrum.length * 2)) * 100;
+        return `${item.color} ${centerPercent}%`;
+    }).join(", ");
+
+    const smoothGradientBackground = `linear-gradient(to right, ${colorStops})`;
+
     return (
-        // FIX Z-INDEX: Menggunakan z-[9999] agar lepas dari jebakan Leaflet Panes (z-400)
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[9999] pointer-events-auto flex flex-col items-center animate-in fade-in slide-in-from-bottom-4 duration-500 shadow-2xl">
+        <div
+            // Menggunakan transition-all agar posisi bergeser mulus (sliding) saat laci buka-tutup [3]
+            className="absolute bottom-8 z-[9999] pointer-events-auto flex flex-col items-center animate-in fade-in slide-in-from-bottom-4 duration-500 shadow-2xl transition-all ease-in-out"
+            style={{ left: `${calculatedLeftPosition}px`, transform: "translateX(-50%)" }}
+        >
 
             {/* Header Legenda Tipis */}
             <div className="bg-white/90 backdrop-blur border border-slate-200 border-b-0 px-3 py-1 flex items-center gap-1.5 shadow-sm">
-                <Wind size={12} className="text-emerald-700" />
+                <Wind size={12} className="text-emerald-700 animate-pulse" />
                 <span className="text-[9px] font-black uppercase tracking-widest text-slate-700">
                     US EPA Air Quality Index (AQI)
                 </span>
             </div>
 
-            {/* Bilah Warna Horizontal (Continuous Flush Bar) */}
-            <div className="flex bg-white/90 backdrop-blur border border-slate-200 shadow-lg shadow-slate-900/20">
-                {aqiSpectrum.map((item, idx) => (
-                    <div
-                        key={idx}
-                        className={cn(
-                            "flex flex-col items-center justify-center px-3 md:px-4 py-1.5 min-w-[60px] md:min-w-[90px] border-r border-white/20 last:border-r-0 transition-all hover:brightness-110",
-                            item.bg,
-                            item.text
-                        )}
-                        title={`AQI ${item.range}: ${item.label}`}
+            {/* Bilah Warna & Integrasi Kontrol Zoom Terpadu (Continuous Bar) [3] */}
+            <div className="flex bg-white border border-slate-200 shadow-lg shadow-slate-900/20 rounded-none overflow-hidden">
+
+                {/* 1. SEGMEN SPEKTRUM WARNA AQI (GRADASI KONTINU) */}
+                <div
+                    className="flex"
+                    style={{ background: smoothGradientBackground }}
+                >
+                    {aqiSpectrum.map((item, idx) => (
+                        <div
+                            key={idx}
+                            className={cn(
+                                "flex flex-col items-center justify-center px-2 md:px-4 py-1.5 min-w-[55px] md:min-w-[85px] border-r border-black/10 last:border-r-0 transition-all hover:backdrop-brightness-110 bg-transparent",
+                                item.text
+                            )}
+                            title={`AQI ${item.range}: ${item.label}`}
+                        >
+                            <span className="text-[9px] font-black tracking-tight whitespace-nowrap leading-none uppercase drop-shadow-sm">
+                                {item.label}
+                            </span>
+                            <span className="text-[8px] font-black opacity-90 mt-1 leading-none drop-shadow-sm">
+                                {item.range}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+
+                {/* 2. SEGMEN TOMBOL ZOOM EMBEDDED (HUD INTEGRATION) [3] */}
+                <div className="flex bg-slate-950 text-slate-300 select-none divide-x divide-white/10 shrink-0">
+                    <button
+                        onClick={() => window.dispatchEvent(new Event('map-zoom-in'))}
+                        className="w-10 h-full flex items-center justify-center hover:bg-emerald-600 hover:text-white transition-colors duration-150 outline-none cursor-pointer"
+                        title="Perbesar (Zoom In)"
                     >
-                        <span className="text-[10px] font-bold tracking-tight whitespace-nowrap leading-none">
-                            {item.label}
-                        </span>
-                        <span className="text-[8px] font-black opacity-80 mt-1 leading-none">
-                            {item.range}
-                        </span>
-                    </div>
-                ))}
+                        <Plus size={14} strokeWidth={3} />
+                    </button>
+                    <button
+                        onClick={() => window.dispatchEvent(new Event('map-reset-view'))}
+                        className="w-11 h-full flex items-center justify-center hover:bg-emerald-600 hover:text-white transition-colors duration-150 outline-none cursor-pointer"
+                        title="Reset Fokus Peta"
+                    >
+                        <Maximize size={12} strokeWidth={3} />
+                    </button>
+                    <button
+                        onClick={() => window.dispatchEvent(new Event('map-zoom-out'))}
+                        className="w-10 h-full flex items-center justify-center hover:bg-emerald-600 hover:text-white transition-colors duration-150 outline-none cursor-pointer"
+                        title="Perkecil (Zoom Out)"
+                    >
+                        <Minus size={14} strokeWidth={3} />
+                    </button>
+                </div>
+
             </div>
 
         </div>
@@ -2990,32 +2968,31 @@ export default function GisSidebar() {
 import React, { useEffect, useState, useMemo } from 'react';
 import { ImageOverlay } from 'react-leaflet';
 import { spatialMath, AqiNode } from '@/lib/spatialMath';
+import { useSijagaStore } from '@/store/useSijagaStore';
 
-// Impor GeoJSON untuk menciptakan path Clipping Canvas (Information Expert)
-import kecData from '@/assets/geojson/kotim-kecamatan.json';
+// Impor GeoJSON Wilayah Kabupaten Bogor untuk menciptakan path Clipping Canvas (Information Expert)
+import kecData from '@/assets/geojson/bogor-kecamatan.json';
 
 interface AqiSurfaceLayerProps {
     companies: any[];
     mapOpacity: number; // 0 - 100
 }
 
-// Bounding Box DIPERLUAS untuk mencakup seluruh ekstrem wilayah Kotawaringin Timur.
-// Mencegah kebocoran "Blank Spots" di pedalaman utara atau pesisir selatan.
-const KOTIM_BOUNDS = {
-    latMin: -3.40,  // Diperluas ke Selatan (Pesisir)
-    latMax: -1.30,  // Diperluas ke Utara (Pedalaman)
-    lngMin: 112.00, // Diperluas ke Barat
-    lngMax: 113.60  // Diperluas ke Timur
+// Bounding Box Kabupaten Bogor (Diselaraskan persis dari letak geografis aslinya)
+const BOGOR_BOUNDS = {
+    latMin: -6.80,  // Batas Selatan (Area Megamendung / Cisarua)
+    latMax: -6.25,  // Batas Utara (Area Gunung Putri / Cileungsi)
+    lngMin: 106.35, // Batas Barat (Area Jasinga)
+    lngMax: 107.25  // Batas Timur (Area Jonggol)
 };
 
 // Bounds format Leaflet: [[South, West], [North, East]]
 const LEAFLET_BOUNDS: [number, number][] = [
-    [KOTIM_BOUNDS.latMin, KOTIM_BOUNDS.lngMin],
-    [KOTIM_BOUNDS.latMax, KOTIM_BOUNDS.lngMax]
+    [BOGOR_BOUNDS.latMin, BOGOR_BOUNDS.lngMin],
+    [BOGOR_BOUNDS.latMax, BOGOR_BOUNDS.lngMax]
 ];
 
 // Resolusi Kanvas. Semakin tinggi semakin detail, namun lebih berat di CPU.
-// 80x80 = 6400 titik kalkulasi, optimal untuk rendering batas presisi Kotim.
 const CANVAS_RESOLUTION = 80;
 
 /**
@@ -3023,25 +3000,35 @@ const CANVAS_RESOLUTION = 80;
  * AQI SURFACE LAYER (CANVAS BLENDING ENGINE W/ CLIPPING)
  * ============================================================================
  * Menggunakan teknik Clipping Mask dari HTML5 Canvas agar bentuk gradasi
- * terpotong rapi mengikuti lekukan geografis Kabupaten Kotawaringin Timur.
+ * terpotong rapi mengikuti lekukan geografis Kabupaten Bogor.
  */
 export default function AqiSurfaceLayer({ companies, mapOpacity }: AqiSurfaceLayerProps) {
+    const { batchAqiData } = useSijagaStore(); // INJEKSI: Mengambil data batch kualitas udara real-time
     const [canvasDataUrl, setCanvasDataUrl] = useState<string | null>(null);
 
-    // 1. Ekstrak Data Sensor
+    // 1. Ekstrak Data Sensor (Dihubungkan ke Batch Cluster hasil API jika tersedia)
     const aqiSensors = useMemo(() => {
+        if (batchAqiData && batchAqiData.length > 0) {
+            // Mengubah format batch klaster ke bentuk AqiNode untuk interpolasi IDW
+            return batchAqiData.map(cluster => ({
+                lat: cluster.lat,
+                lng: cluster.lng,
+                aqi: cluster.telemetry?.aqi ?? 35
+            })) as AqiNode[];
+        }
+
+        // Fallback Simulasi Luring jika data backend belum termuat
         return companies.map(c => {
             const lat = parseFloat(c.lat);
             const lng = parseFloat(c.lng);
             if (isNaN(lat) || isNaN(lng)) return null;
 
-            // Pseudo-random AQI simulator berdasarkan koordinat
             const seed = Math.abs(Math.sin(lat) * Math.cos(lng));
             const aqi = Math.floor(25 + (seed * 60)); // Rentang 25 - 85
 
             return { lat, lng, aqi } as AqiNode;
         }).filter(Boolean) as AqiNode[];
-    }, [companies]);
+    }, [companies, batchAqiData]);
 
     // 2. Render Canvas di Background Memory (Pure Fabrication)
     useEffect(() => {
@@ -3054,16 +3041,15 @@ export default function AqiSurfaceLayer({ companies, mapOpacity }: AqiSurfaceLay
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
         if (!ctx) return;
 
-        const latStep = (KOTIM_BOUNDS.latMax - KOTIM_BOUNDS.latMin) / (CANVAS_RESOLUTION - 1);
-        const lngStep = (KOTIM_BOUNDS.lngMax - KOTIM_BOUNDS.lngMin) / (CANVAS_RESOLUTION - 1);
+        const latStep = (BOGOR_BOUNDS.latMax - BOGOR_BOUNDS.latMin) / (CANVAS_RESOLUTION - 1);
+        const lngStep = (BOGOR_BOUNDS.lngMax - BOGOR_BOUNDS.lngMin) / (CANVAS_RESOLUTION - 1);
 
-        // --- A. PEMBUATAN CLIPPING PATH KOTIM ---
-        // Mentranslasikan koordinat Lat/Lng dari GeoJSON ke koordinat X/Y pada Canvas
-        const kotimPath = new Path2D();
+        // --- A. PEMBUATAN CLIPPING PATH BOGOR ---
+        const bogorPath = new Path2D();
 
-        const getX = (lng: number) => ((lng - KOTIM_BOUNDS.lngMin) / (KOTIM_BOUNDS.lngMax - KOTIM_BOUNDS.lngMin)) * CANVAS_RESOLUTION;
+        const getX = (lng: number) => ((lng - BOGOR_BOUNDS.lngMin) / (BOGOR_BOUNDS.lngMax - BOGOR_BOUNDS.lngMin)) * CANVAS_RESOLUTION;
         // Y di-inverse karena 0,0 di Canvas ada di atas, sedangkan LatMax ada di Utara (atas)
-        const getY = (lat: number) => ((KOTIM_BOUNDS.latMax - lat) / (KOTIM_BOUNDS.latMax - KOTIM_BOUNDS.latMin)) * CANVAS_RESOLUTION;
+        const getY = (lat: number) => ((BOGOR_BOUNDS.latMax - lat) / (BOGOR_BOUNDS.latMax - BOGOR_BOUNDS.latMin)) * CANVAS_RESOLUTION;
 
         (kecData as any).features.forEach((feature: any) => {
             const geom = feature.geometry;
@@ -3074,10 +3060,10 @@ export default function AqiSurfaceLayer({ companies, mapOpacity }: AqiSurfaceLay
                     ring.forEach((coord, i) => {
                         const x = getX(coord[0]);
                         const y = getY(coord[1]);
-                        if (i === 0) kotimPath.moveTo(x, y);
-                        else kotimPath.lineTo(x, y);
+                        if (i === 0) bogorPath.moveTo(x, y);
+                        else bogorPath.lineTo(x, y);
                     });
-                    kotimPath.closePath();
+                    bogorPath.closePath();
                 });
             } else if (geom.type === "MultiPolygon") {
                 geom.coordinates.forEach((poly: any[][]) => {
@@ -3085,10 +3071,10 @@ export default function AqiSurfaceLayer({ companies, mapOpacity }: AqiSurfaceLay
                         ring.forEach((coord, i) => {
                             const x = getX(coord[0]);
                             const y = getY(coord[1]);
-                            if (i === 0) kotimPath.moveTo(x, y);
-                            else kotimPath.lineTo(x, y);
+                            if (i === 0) bogorPath.moveTo(x, y);
+                            else bogorPath.lineTo(x, y);
                         });
-                        kotimPath.closePath();
+                        bogorPath.closePath();
                     });
                 });
             }
@@ -3096,20 +3082,19 @@ export default function AqiSurfaceLayer({ companies, mapOpacity }: AqiSurfaceLay
 
         // Terapkan Path sebagai Masking Canvas
         ctx.save();
-        ctx.clip(kotimPath);
+        ctx.clip(bogorPath);
 
         // --- B. RENDERING PIKSEL & OPTIMASI CPU ---
         for (let y = 0; y < CANVAS_RESOLUTION; y++) {
             for (let x = 0; x < CANVAS_RESOLUTION; x++) {
 
-                // OPTIMASI KRITIS: Jika titik X/Y ini jatuh di laut atau kabupaten lain, 
-                // lewati kalkulasi IDW (hemat ribuan siklus CPU tiap frame).
-                if (!ctx.isPointInPath(kotimPath, x, y)) {
+                // OPTIMASI KRITIS: Jika titik X/Y ini jatuh di luar batas Kabupaten Bogor, skip kalkulasi
+                if (!ctx.isPointInPath(bogorPath, x, y)) {
                     continue;
                 }
 
-                const currentLat = KOTIM_BOUNDS.latMax - (y * latStep);
-                const currentLng = KOTIM_BOUNDS.lngMin + (x * lngStep);
+                const currentLat = BOGOR_BOUNDS.latMax - (y * latStep);
+                const currentLng = BOGOR_BOUNDS.lngMin + (x * lngStep);
 
                 // Tarik nilai tebakan dari Engine IDW kita
                 const interpolatedAqi = spatialMath.interpolateAqi(currentLat, currentLng, aqiSensors);
@@ -3181,7 +3166,7 @@ const createCompanyMarkerIcon = (score?: number | null, docType?: string, isSele
     // Timpa styling jika marker sedang diklik/di-select user
     if (isSelected) {
         ringClass = "border-slate-800 bg-slate-900/30";
-        pulseClass = ""; // Hentikan kedipan jika sudah di-klik (Acknowledged)
+        pulseClass = ""; // Hentikan kedipan jika sudah di-klik (Answering feedback)
     }
 
     return L.divIcon({
@@ -3256,11 +3241,15 @@ export default function CompanyMarkerLayer({ companies, currentZoom, mapOpacity,
     const handleEntityClick = (c: any, e: L.LeafletMouseEvent) => {
         e.originalEvent.stopPropagation();
 
-        // Posisikan kamera secara dinamis
-        if (currentZoom >= 16) {
+        // REVISI / PENYELARASAN POLIMORFISME: Menguji eksistensi getBounds sebelum melakukan fly
+        const hasGetBounds = typeof e.target.getBounds === 'function';
+        if (currentZoom >= 16 && hasGetBounds) {
             e.target._map.flyToBounds(e.target.getBounds(), { padding: [100, 100], duration: 1.5 });
         } else {
-            e.target._map.flyTo([c.lat, c.lng], 16, { animate: true, duration: 1.5 });
+            const coords = typeof e.target.getLatLng === 'function'
+                ? e.target.getLatLng()
+                : [c.lat, c.lng];
+            e.target._map.flyTo(coords, 16, { animate: true, duration: 1.5 });
         }
 
         setSelectedCompanyId(c.id);
@@ -3327,12 +3316,13 @@ interface WindFlowLayerProps {
     companies: any[];
 }
 
-// Bounding Box Kotim (Disamakan persis dengan AqiSurfaceLayer)
-const KOTIM_BOUNDS = {
-    latMin: -3.40,
-    latMax: -1.30,
-    lngMin: 112.00,
-    lngMax: 113.60
+// Bounding Box Kabupaten Bogor (Disamakan persis dengan AqiSurfaceLayer)
+// Dikalkulasi dari letak geografis 6°18'0" - 6°47'10" LS dan 106°23'45" - 107°13'30" BT
+const BOGOR_BOUNDS = {
+    latMin: -6.80,  // Batas Selatan (Area Megamendung / Cisarua)
+    latMax: -6.25,  // Batas Utara (Area Gunung Putri / Cileungsi)
+    lngMin: 106.35, // Batas Barat (Area Jasinga)
+    lngMax: 107.25  // Batas Timur (Area Jonggol)
 };
 
 // ============================================================================
@@ -3376,7 +3366,7 @@ export default function WindFlowLayer({ companies }: WindFlowLayerProps) {
     // 2. PRE-COMPUTE VECTOR FIELD (O(1) Lookup untuk Animasi)
     const vectorField = useMemo(() => {
         if (windSensors.length === 0) return [];
-        const grid = spatialMath.generateCanvasGrid(KOTIM_BOUNDS, RESOLUTION, RESOLUTION);
+        const grid = spatialMath.generateCanvasGrid(BOGOR_BOUNDS, RESOLUTION, RESOLUTION);
 
         return grid.map(pt => {
             const wind = spatialMath.interpolateWind(pt.lat, pt.lng, windSensors);
@@ -3476,8 +3466,6 @@ export default function WindFlowLayer({ companies }: WindFlowLayerProps) {
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
             ctx.lineCap = 'round';
 
-            const bounds = map.getBounds();
-
             ctx.beginPath();
 
             particles.forEach(p => {
@@ -3489,8 +3477,8 @@ export default function WindFlowLayer({ companies }: WindFlowLayerProps) {
 
                 const pLatLng = map.containerPointToLatLng([p.x, p.y]);
 
-                const gridX = Math.floor(((pLatLng.lng - KOTIM_BOUNDS.lngMin) / (KOTIM_BOUNDS.lngMax - KOTIM_BOUNDS.lngMin)) * RESOLUTION);
-                const gridY = Math.floor(((KOTIM_BOUNDS.latMax - pLatLng.lat) / (KOTIM_BOUNDS.latMax - KOTIM_BOUNDS.latMin)) * RESOLUTION);
+                const gridX = Math.floor(((pLatLng.lng - BOGOR_BOUNDS.lngMin) / (BOGOR_BOUNDS.lngMax - BOGOR_BOUNDS.lngMin)) * RESOLUTION);
+                const gridY = Math.floor(((BOGOR_BOUNDS.latMax - pLatLng.lat) / (BOGOR_BOUNDS.latMax - BOGOR_BOUNDS.latMin)) * RESOLUTION);
 
                 if (gridX < 0 || gridX >= RESOLUTION || gridY < 0 || gridY >= RESOLUTION) {
                     p.age = PARTICLE_LIFESPAN + 1;
@@ -3557,10 +3545,10 @@ import 'leaflet/dist/leaflet.css';
 import { useSijagaStore } from '@/store/useSijagaStore';
 import { useGisUIStore } from '@/store/useGisUIStore';
 
-// Modul Analitik & GeoJSON Wilayah
+// Modul Analitik & GeoJSON Wilayah (Penyelarasan ke Kabupaten Bogor)
 import { calculateCompaniesPerKecamatan } from '@/lib/spatialAnalytics';
-import kecData from '@/assets/geojson/kotim-kecamatan.json';
-import desaData from '@/assets/geojson/kotim-desa.json';
+import kecData from '@/assets/geojson/bogor-kecamatan.json';
+import desaData from '@/assets/geojson/bogor-desa.json';
 
 // Engine Matematika Spasial (Gradient Color)
 import { spatialMath } from '@/lib/spatialMath';
@@ -3584,17 +3572,48 @@ let DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// PUSAT PETA DIKUNCI DI KOTA SAMPIT (KOTAWARINGIN TIMUR)
-const DEFAULT_CENTER: [number, number] = [-2.5337, 112.9515];
+// PUSAT PETA DIKUNCI DI CIBINONG (KABUPATEN BOGOR)
+const DEFAULT_CENTER: [number, number] = [-6.4816, 106.8560];
 
 // ============================================================================
 // HELPERS & ICONS GENERATORS
 // ============================================================================
 
+/**
+ * FAIL-SAFE FALLBACK: Simulasi matematis luring jika backend terputus.
+ */
 const getSimulatedAqi = (lat: number, lng: number): number => {
     if (isNaN(lat) || isNaN(lng)) return 35;
     const seed = Math.abs(Math.sin(lat) * Math.cos(lng));
     return Math.floor(25 + (seed * 60)); // Skala 25 - 85 (Baik - Sedang)
+};
+
+/**
+ * SPATIAL INTERPOLATION RESOLVER (Information Expert)
+ * Menentukan nilai AQI industri berdasarkan stasiun klaster real-time terdekat dari database.
+ * Jika data dari backend belum termuat, sistem secara otomatis mundur ke mode simulasi aman.
+ */
+const getRealClusterAqi = (lat: number, lng: number, batchData: any[]): number => {
+    if (!batchData || batchData.length === 0) {
+        return getSimulatedAqi(lat, lng);
+    }
+
+    let closestCluster = batchData[0];
+    let minDistanceSq = Infinity;
+
+    // Perhitungan jarak Euclidean kuadrat (optimasi CPU untuk performa O(N) real-time)
+    for (const cluster of batchData) {
+        const dLat = lat - cluster.lat;
+        const dLng = lng - cluster.lng;
+        const distSq = dLat * dLat + dLng * dLng;
+
+        if (distSq < minDistanceSq) {
+            minDistanceSq = distSq;
+            closestCluster = cluster;
+        }
+    }
+
+    return closestCluster.telemetry?.aqi ?? 35;
 };
 
 const createAqiBadgeIcon = (aqi: number, bgColorRgb: string, isCluster: boolean = false) => {
@@ -3686,7 +3705,7 @@ function ExternalMapController() {
     useEffect(() => {
         const handleZoomIn = () => map.zoomIn();
         const handleZoomOut = () => map.zoomOut();
-        const handleResetView = () => map.setView(DEFAULT_CENTER, 9, { animate: true });
+        const handleResetView = () => map.setView(DEFAULT_CENTER, 11, { animate: true });
 
         const handleFlyToCoords = (e: Event) => {
             const customEvent = e as CustomEvent<{ lat: number; lng: number }>;
@@ -3755,14 +3774,28 @@ function MapEventsHandler() {
 // ============================================================================
 
 export default function LimbahMap() {
-    const { companies, adminReports, fetchAdminReports, currentUser, inspections } = useSijagaStore();
+    const {
+        companies,
+        adminReports,
+        fetchAdminReports,
+        currentUser,
+        inspections,
+        batchAqiData,        // INJEKSI BARU: State batch kualitas udara riil
+        fetchBatchAqiData    // INJEKSI BARU: Aksi sinkronisasi batch
+    } = useSijagaStore();
+
     const {
         activeLayers, activeBaseMap, mapOpacity, maskOpacity,
         setSelectedCompanyId, openPanel, closePanelsToTheRight,
         activeAdminBoundary, showImpactRadius, activePanels
     } = useGisUIStore();
 
-    const [currentZoom, setCurrentZoom] = useState(9);
+    const [currentZoom, setCurrentZoom] = useState(11); // Zoom default diubah menjadi 11
+
+    // 1. SINKRONISASI BATCH DATA AQI SAAT AWAL LOAD PETA (Information Expert)
+    useEffect(() => {
+        fetchBatchAqiData();
+    }, [fetchBatchAqiData]);
 
     useEffect(() => {
         if (currentUser && (currentUser.role === "ADMIN_DLH" || currentUser.role === "SUPER_ADMIN")) {
@@ -3785,7 +3818,7 @@ export default function LimbahMap() {
         }
     };
 
-    const invertedKotimMask = useMemo(() => {
+    const invertedBogorMask = useMemo(() => {
         const kecGeoJson = kecData as any;
         if (!kecGeoJson || !kecGeoJson.features) return null;
 
@@ -3901,7 +3934,7 @@ export default function LimbahMap() {
 
             <MapContainer
                 center={DEFAULT_CENTER}
-                zoom={9}
+                zoom={11}
                 zoomControl={false}
                 style={{ height: '100%', width: '100%' }}
                 maxZoom={18}
@@ -3912,9 +3945,9 @@ export default function LimbahMap() {
 
                 <TileLayer url={getTileUrl()} />
 
-                {invertedKotimMask && (
+                {invertedBogorMask && (
                     <Polygon
-                        positions={invertedKotimMask}
+                        positions={invertedBogorMask}
                         pathOptions={{
                             color: "#0f172a",
                             fillColor: "#0f172a",
@@ -3970,7 +4003,8 @@ export default function LimbahMap() {
                             const lng = parseFloat(c.lng);
                             if (isNaN(lat) || isNaN(lng)) return null;
 
-                            const aqi = getSimulatedAqi(lat, lng);
+                            // REFACTOR SINKRONISASI: Mencari stasiun klaster spasial riil dari backend
+                            const aqi = getRealClusterAqi(lat, lng, batchAqiData);
                             const [r, g, b] = spatialMath.interpolateColorRgb(aqi);
                             const bgColorRgb = `rgb(${r}, ${g}, ${b})`;
 
@@ -3984,10 +4018,15 @@ export default function LimbahMap() {
                                         click: (e) => {
                                             e.originalEvent.stopPropagation();
 
-                                            if (currentZoom >= 16) {
+                                            // REVISI / PENYELARASAN POLIMORFISME: Menghindari getBounds() crash pada titik L.Marker
+                                            const hasGetBounds = typeof e.target.getBounds === 'function';
+                                            if (currentZoom >= 16 && hasGetBounds) {
                                                 e.target._map.flyToBounds(e.target.getBounds(), { padding: [100, 100], duration: 1.5 });
                                             } else {
-                                                e.target._map.flyTo([lat, lng], 16, { animate: true, duration: 1.5 });
+                                                const coords = typeof e.target.getLatLng === 'function'
+                                                    ? e.target.getLatLng()
+                                                    : [lat, lng];
+                                                e.target._map.flyTo(coords, 16, { animate: true, duration: 1.5 });
                                             }
 
                                             setSelectedCompanyId(c.id);
@@ -4200,8 +4239,8 @@ import ExecutiveCopilotPanel from "@/modules/dashboard/components/auditor/Execut
 
 /**
  * PanelOrchestrator - The Stacking Drawer (GFW Paradigm)
- * Mengatur dua jenis perilaku panel dengan Sumbu X (Width) yang ramping:
- * 1. Panel Menu (Flush/Docked): 280px, menempel rapat di kiri (Zero Gap).
+ * Mengatur dua jenis perilaku panel dengan Sumbu X (Width) yang dinamis & reaktif:
+ * 1. Panel Menu (Flush/Docked): Lebar dinamis (280px - 360px), menempel rapat di kiri (Zero Gap).
  * 2. Panel Detail (Floating): Melayang secara dinamis berdampingan mengikuti jumlah tumpukan.
  * 
  * GRASP: Indirection & Pure Fabrication
@@ -4217,9 +4256,21 @@ export default function PanelOrchestrator() {
         return () => window.removeEventListener("resize", handleResize);
     }, []);
 
-    // Sumbu X: Base width 280px untuk panel menu statis kiri
-    const PANEL_WIDTH = isMobile ? (typeof window !== 'undefined' ? window.innerWidth - 64 : 280) : 280;
-    const PANEL_GAP = 0; // Zero Gap Policy (Flush)
+    // ==========================================================================
+    // DYNAMIC WIDTH ALGORITHM (LOD LAYOUT ENGINE)
+    // ==========================================================================
+    const getPanelWidth = (type: GisPanelType) => {
+        if (isMobile) return window.innerWidth - 64;
+
+        // Memperlebar laci AI Copilot dan Detail Industri ke 360px demi kenyamanan analisis [3]
+        if (type === "ai-copilot" || type === "detil-perusahaan") {
+            return 360;
+        }
+        if (type === "telemetri-lingkungan" || type === "detail-tugas") {
+            return 320;
+        }
+        return 280; // Lebar default untuk laci menu kiri biasa
+    };
 
     return (
         <div className="absolute top-16 bottom-0 left-16 z-30 pointer-events-none flex items-start">
@@ -4230,21 +4281,44 @@ export default function PanelOrchestrator() {
                     panel.type === "detail-tugas" ||
                     panel.type === "telemetri-lingkungan";
 
-                // 2. FORMULA KALKULASI SUMBU X BAGI FLOATING STACKING LAYOUT
-                const dockedPanelsCount = activePanels.filter(
-                    (p, i) => i < index && p.type !== "detil-perusahaan" && p.type !== "detail-tugas" && p.type !== "telemetri-lingkungan"
-                ).length;
+                const currentWidth = getPanelWidth(panel.type);
 
-                const floatingPanelsBefore = activePanels.filter(
-                    (p, i) => i < index && (p.type === "detil-perusahaan" || p.type === "detail-tugas" || p.type === "telemetri-lingkungan")
-                ).length;
+                // 2. DYNAMIC OFFSET CALCULATION (Menghitung sumbu X tanpa hardcoded multiplier) [3]
 
-                const floatingOffset = floatingPanelsBefore * 320;
+                // Kalkulasi offset X untuk panel docked sebelah kiri (Flush)
+                let dockedOffset = 0;
+                for (let i = 0; i < index; i++) {
+                    const p = activePanels[i];
+                    const pIsFloating = p.type === "detil-perusahaan" || p.type === "detail-tugas" || p.type === "telemetri-lingkungan";
+                    if (!pIsFloating) {
+                        dockedOffset += getPanelWidth(p.type);
+                    }
+                }
 
-                const xOffset = index * (PANEL_WIDTH + PANEL_GAP);
-                const floatingLeft = isMobile
-                    ? 16
-                    : (dockedPanelsCount * PANEL_WIDTH) + floatingOffset + 16;
+                // Kalkulasi posisi kiri (left) untuk panel melayang (Floating)
+                let floatingLeft = 16;
+                if (!isMobile) {
+                    // A. Jumlahkan total lebar laci docked di kiri layar [3]
+                    let totalDockedWidth = 0;
+                    activePanels.forEach(p => {
+                        const pIsFloating = p.type === "detil-perusahaan" || p.type === "detail-tugas" || p.type === "telemetri-lingkungan";
+                        if (!pIsFloating) {
+                            totalDockedWidth += getPanelWidth(p.type);
+                        }
+                    });
+
+                    // B. Jumlahkan total lebar laci floating sebelum index saat ini [3]
+                    let totalFloatingBefore = 0;
+                    for (let i = 0; i < index; i++) {
+                        const p = activePanels[i];
+                        const pIsFloating = p.type === "detil-perusahaan" || p.type === "detail-tugas" || p.type === "telemetri-lingkungan";
+                        if (pIsFloating) {
+                            totalFloatingBefore += getPanelWidth(p.type) + 16; // 16px gap antar laci
+                        }
+                    }
+
+                    floatingLeft = totalDockedWidth + totalFloatingBefore + 16;
+                }
 
                 return (
                     <div
@@ -4259,7 +4333,7 @@ export default function PanelOrchestrator() {
                                     left: `${floatingLeft}px`,
                                     top: '16px',
                                     bottom: '16px',
-                                    width: '320px',
+                                    width: `${currentWidth}px`, // Menggunakan lebar dinamis [3]
                                     maxWidth: 'calc(100vw - 80px)',
                                     zIndex: 50,
                                 }
@@ -4267,8 +4341,8 @@ export default function PanelOrchestrator() {
                                     left: 0,
                                     top: 0,
                                     bottom: 0,
-                                    width: `${PANEL_WIDTH}px`,
-                                    transform: `translateX(${xOffset}px)`,
+                                    width: `${currentWidth}px`, // Menggunakan lebar dinamis [3]
+                                    transform: `translateX(${dockedOffset}px)`, // Menggunakan offset dinamis [3]
                                     zIndex: 40 - index,
                                 }
                         }
@@ -4279,7 +4353,7 @@ export default function PanelOrchestrator() {
                                 <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest leading-none">
                                     {panel.type.replace("-", " ")}
                                 </span>
-                                <h3 className="text-[11px] font-bold text-slate-800 truncate max-w-[200px] tracking-tight mt-1 uppercase leading-none">
+                                <h3 className="text-[11px] font-bold text-slate-800 truncate max-w-[280px] tracking-tight mt-1 uppercase leading-none">
                                     {panel.title}
                                 </h3>
                             </div>
@@ -5682,9 +5756,9 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-// FASE 4 INJEKSI: Mengimpor fungsi otak analitik Turf.js dan data batas desa
+// FASE 4 INJEKSI: Mengimpor fungsi otak analitik Turf.js dan data batas desa Kabupaten Bogor
 import { getAffectedVillages } from "@/lib/spatialAnalytics";
-import desaData from "@/assets/geojson/kotim-desa.json";
+import desaData from "@/assets/geojson/bogor-desa.json";
 
 interface TaskDetailPanelProps {
     taskData: any; // Menerima payload Polimorfik (Bisa Inspection, bisa CitizenReport)
@@ -6025,6 +6099,588 @@ export default function GISMonitoring() {
       <MapHUD />
 
     </main>
+  );
+}
+
+--- FILE: src\modules\admin\pages\AddAmdalPage.tsx ---
+// src/modules/admin/pages/AddAmdalPage.tsx
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import {
+  Building2, MapPin, FileText, ArrowLeft, Save,
+  Map, Trash2, ShieldCheck, CheckCircle2, AlertCircle, Info, UploadCloud
+} from "lucide-react";
+import { useSijagaStore } from "@/store/useSijagaStore";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+
+// --- Leaflet & Map Imports ---
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+
+import icon from "leaflet/dist/images/marker-icon.png";
+import iconShadow from "leaflet/dist/images/marker-shadow.png";
+
+let DefaultIcon = L.icon({
+  iconUrl: icon,
+  shadowUrl: iconShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+});
+L.Marker.prototype.options.icon = DefaultIcon;
+
+// Map size invalidator helper
+function ResizeMap() {
+  const map = useMap();
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [map]);
+  return null;
+}
+
+function MapPicker({ lat, lng, onChange }: { lat: string; lng: string; onChange: (lat: string, lng: string) => void }) {
+  useMapEvents({
+    click(e) {
+      onChange(String(e.latlng.lat.toFixed(6)), String(e.latlng.lng.toFixed(6)));
+    },
+  });
+
+  // Fallback diubah ke titik pusat Cibinong, Kabupaten Bogor
+  const parsedLat = parseFloat(lat) || -6.4816;
+  const parsedLng = parseFloat(lng) || 106.8560;
+
+  return <Marker position={[parsedLat, parsedLng]} />;
+}
+
+interface AmdalFileState {
+  fileName: string;
+  fileSize: string;
+  base64Data: string;
+}
+
+const AMDAL_DOCS_CONFIG = [
+  { key: "skPersetujuan", label: "SK Persetujuan Lingkungan", isRequired: true },
+  { key: "skKelayakan", label: "SK Kelayakan Lingkungan", isRequired: true },
+  { key: "ringkasanAmdal", label: "Ringkasan AMDAL", isRequired: false },
+  { key: "dokumenAndal", label: "Dokumen ANDAL", isRequired: true },
+  { key: "dokumenRkl", label: "Dokumen RKL", isRequired: true },
+  { key: "dokumenRpl", label: "Dokumen RPL", isRequired: true },
+  { key: "petaLokasi", label: "Peta Lokasi Spasial", isRequired: true },
+  { key: "layoutIpal", label: "Layout IPAL Teknis", isRequired: false },
+  { key: "layoutTpsB3", label: "Layout TPS B3", isRequired: false },
+  { key: "hasilUjiLab", label: "Hasil Uji Laboratorium", isRequired: false },
+  { key: "dokumentasiLokasi", label: "Dokumentasi Foto Lokasi", isRequired: false },
+] as const;
+
+export default function AddAmdalPage() {
+  const navigate = useNavigate();
+  const { fetchCompanies } = useSijagaStore();
+  const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState(1);
+
+  // Form State Default dialihkan ke pusat wilayah Kabupaten Bogor (Cibinong)
+  const [form, setForm] = useState({
+    companyName: "",
+    nib: "",
+    npwp: "",
+    address: "",
+    lat: "-6.4816",
+    lng: "106.8560",
+  });
+
+  // Document Uploads State
+  const [uploadedFiles, setUploadedFiles] = useState<Record<string, AmdalFileState>>({});
+
+  const handleTextChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleMapChange = (lat: string, lng: string) => {
+    setForm(prev => ({ ...prev, lat, lng }));
+  };
+
+  const handleFileUpload = (key: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const fileSizeStr = file.size > 1024 * 1024
+      ? `${(file.size / (1024 * 1024)).toFixed(2)} MB`
+      : `${(file.size / 1024).toFixed(1)} KB`;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setUploadedFiles(prev => ({
+        ...prev,
+        [key]: {
+          fileName: file.name,
+          fileSize: fileSizeStr,
+          base64Data: reader.result as string
+        }
+      }));
+      toast.success(`Berkas ${file.name} berhasil dimuat.`);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeFile = (key: string) => {
+    setUploadedFiles(prev => {
+      const copy = { ...prev };
+      delete copy[key];
+      return copy;
+    });
+    toast.info("Berkas dihapus.");
+  };
+
+  // Step Validation Helpers
+  const validateStep1 = () => {
+    if (!form.companyName.trim()) {
+      toast.error("Nama Perusahaan wajib diisi!");
+      return false;
+    }
+    if (!form.nib.trim()) {
+      toast.error("Nomor NIB wajib diisi!");
+      return false;
+    }
+    if (form.nib.trim().length < 5) {
+      toast.error("Nomor Induk Berusaha (NIB) minimal 5 karakter!");
+      return false;
+    }
+    return true;
+  };
+
+  const validateStep2 = () => {
+    if (!form.address.trim()) {
+      toast.error("Alamat detail wajib diisi!");
+      return false;
+    }
+    if (!form.lat.trim() || !form.lng.trim()) {
+      toast.error("Koordinat GPS Latitude dan Longitude wajib ditentukan!");
+      return false;
+    }
+    return true;
+  };
+
+  const handleNextStep = () => {
+    if (step === 1) {
+      if (validateStep1()) setStep(2);
+    } else if (step === 2) {
+      if (validateStep2()) setStep(3);
+    }
+  };
+
+  const handlePrevStep = () => {
+    if (step > 1) setStep(step - 1);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // 1. Validasi seluruh step
+    if (!validateStep1()) {
+      setStep(1);
+      return;
+    }
+    if (!validateStep2()) {
+      setStep(2);
+      return;
+    }
+
+    // 2. Validasi Dokumen Wajib (6 Dokumen)
+    const missingDocs: string[] = [];
+    AMDAL_DOCS_CONFIG.forEach(doc => {
+      if (doc.isRequired && !uploadedFiles[doc.key]) {
+        missingDocs.push(doc.label);
+      }
+    });
+
+    if (missingDocs.length > 0) {
+      toast.error(`Dokumen wajib berikut belum diunggah: ${missingDocs.join(", ")}`);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // 3. Serialisasi Berkas ke JSON di docTemplateUrl
+      const amdalDocsJson = JSON.stringify(uploadedFiles);
+
+      const payload = {
+        companyName: form.companyName,
+        nib: form.nib,
+        npwp: form.npwp || "-",
+        address: form.address,
+        lat: form.lat,
+        lng: form.lng,
+        docTemplateUrl: amdalDocsJson // Menyimpan seluruh dokumen AMDAL di sini
+      };
+
+      const { addManualAmdalCompany } = useSijagaStore.getState();
+      await addManualAmdalCompany(payload);
+      await fetchCompanies();
+
+      toast.success("Perusahaan Wajib AMDAL Baru berhasil didaftarkan secara manual!");
+      navigate("/admin/companies");
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Terjadi kesalahan saat memproses pendaftaran AMDAL.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 p-6 md:p-10 font-sans text-slate-800 text-left">
+      <div className="max-w-5xl mx-auto space-y-6">
+
+        {/* --- HEADER BAR (No Rounded Sides) --- */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 border border-slate-200 rounded-none shadow-sm">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate("/admin/companies")}
+                className="h-8 w-8 p-0 rounded-none border-slate-200 hover:bg-slate-100 shrink-0"
+              >
+                <ArrowLeft size={16} />
+              </Button>
+              <span className="bg-rose-50 text-rose-700 border border-rose-250 px-2 py-0.5 rounded-none text-[8px] font-black uppercase tracking-widest leading-none">
+                MANUAL ENTRY
+              </span>
+            </div>
+            <h1 className="text-xl font-black tracking-tight text-slate-900 uppercase leading-none">
+              Registrasi Wajib <span className="text-rose-600">AMDAL</span> Baru
+            </h1>
+            <p className="text-slate-500 text-[11px] font-semibold mt-1.5">Pendaftaran manual spasial & pemberkasan AMDAL terpadu DLH Kabupaten Bogor.</p>
+          </div>
+        </div>
+
+        {/* --- STEP PROGRESS BAR (Sharp / Square, No Rounded Sides) --- */}
+        <div className="grid grid-cols-3 border border-slate-200 bg-white rounded-none shadow-sm text-center font-bold text-xs select-none">
+          <div
+            onClick={() => step > 1 && setStep(1)}
+            className={cn(
+              "py-4 transition-all border-r border-slate-200 cursor-pointer flex flex-col sm:flex-row items-center justify-center gap-1.5",
+              step === 1 ? "bg-rose-600 text-white" : "bg-slate-50 hover:bg-slate-100 text-slate-500"
+            )}
+          >
+            <span className="text-[10px] opacity-70 font-mono">STEP 1</span>
+            <span className="tracking-wide uppercase text-[10px] sm:text-xs">LEGALITAS</span>
+            {step > 1 && <span className="text-[10px] text-emerald-500 font-bold">✓</span>}
+          </div>
+          <div
+            onClick={() => step > 2 && setStep(2)}
+            className={cn(
+              "py-4 transition-all border-r border-slate-200 cursor-pointer flex flex-col sm:flex-row items-center justify-center gap-1.5",
+              step === 2 ? "bg-rose-600 text-white" : "bg-slate-50 hover:bg-slate-100 text-slate-500",
+              step < 2 && "cursor-not-allowed pointer-events-none"
+            )}
+          >
+            <span className="text-[10px] opacity-70 font-mono">STEP 2</span>
+            <span className="tracking-wide uppercase text-[10px] sm:text-xs">GIS & SPASIAL</span>
+            {step > 2 && <span className="text-[10px] text-emerald-500 font-bold">✓</span>}
+          </div>
+          <div
+            className={cn(
+              "py-4 transition-all flex flex-col sm:flex-row items-center justify-center gap-1.5",
+              step === 3 ? "bg-rose-600 text-white" : "bg-slate-50 text-slate-400",
+              step < 3 && "cursor-not-allowed pointer-events-none"
+            )}
+          >
+            <span className="text-[10px] opacity-70 font-mono">STEP 3</span>
+            <span className="tracking-wide uppercase text-[10px] sm:text-xs">DOKUMEN AMDAL</span>
+          </div>
+        </div>
+
+        {/* --- FORM BODY CONTROLLER --- */}
+        <div className="bg-white border border-slate-200 rounded-none shadow-sm p-6">
+
+          {/* STEP 1: INFORMASI LEGALITAS */}
+          {step === 1 && (
+            <div className="space-y-5">
+              <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                <Building2 size={18} className="text-rose-600" />
+                <h3 className="text-xs font-black uppercase tracking-wider text-slate-900">
+                  Langkah 1: Informasi Legalitas Perusahaan
+                </h3>
+              </div>
+
+              <div className="space-y-4 max-w-2xl">
+                <div className="space-y-1.5">
+                  <Label htmlFor="companyName" className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                    Nama Perusahaan <span className="text-rose-600">*</span>
+                  </Label>
+                  <Input
+                    id="companyName"
+                    name="companyName"
+                    value={form.companyName}
+                    onChange={handleTextChange}
+                    placeholder="PT. Eco Semen Indonesia"
+                    className="h-10 rounded-none border-slate-200 font-bold text-xs focus:ring-0 focus:border-rose-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="nib" className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                      Nomor NIB <span className="text-rose-600">*</span>
+                    </Label>
+                    <Input
+                      id="nib"
+                      name="nib"
+                      maxLength={13}
+                      value={form.nib}
+                      onChange={handleTextChange}
+                      placeholder="13 Digit NIB"
+                      className="h-10 rounded-none border-slate-200 font-bold text-xs focus:ring-0 focus:border-rose-500"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="npwp" className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                      NPWP (Opsional)
+                    </Label>
+                    <Input
+                      id="npwp"
+                      name="npwp"
+                      value={form.npwp}
+                      onChange={handleTextChange}
+                      placeholder="NPWP Perusahaan"
+                      className="h-10 rounded-none border-slate-200 font-bold text-xs focus:ring-0 focus:border-rose-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4 flex justify-end">
+                <Button
+                  onClick={handleNextStep}
+                  className="bg-slate-900 hover:bg-slate-800 text-white font-black text-xs px-6 h-10 rounded-none tracking-wider uppercase"
+                >
+                  Lanjut ke Langkah 2
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 2: KOORDINAT & SPASIAL */}
+          {step === 2 && (
+            <div className="space-y-5">
+              <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                <MapPin size={18} className="text-rose-600" />
+                <h3 className="text-xs font-black uppercase tracking-wider text-slate-900">
+                  Langkah 2: Penentuan Koordinat Spasial & Alamat GIS
+                </h3>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* Form Input Alamat */}
+                <div className="lg:col-span-5 space-y-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="address" className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                      Alamat Operasional Detail <span className="text-rose-600">*</span>
+                    </Label>
+                    <textarea
+                      id="address"
+                      name="address"
+                      value={form.address}
+                      onChange={handleTextChange}
+                      placeholder="Jl. Mayor Oking No. 1, Citeureup, Kabupaten Bogor"
+                      className="w-full min-h-[120px] rounded-none border border-slate-200 bg-white p-3 text-xs font-bold text-slate-700 focus:outline-none focus:border-rose-500 transition-all shadow-inner resize-none"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="lat" className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Latitude</Label>
+                      <Input
+                        id="lat"
+                        name="lat"
+                        value={form.lat}
+                        onChange={handleTextChange}
+                        placeholder="-6.4816"
+                        className="h-10 rounded-none border-slate-200 font-bold text-xs"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="lng" className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Longitude</Label>
+                      <Input
+                        id="lng"
+                        name="lng"
+                        value={form.lng}
+                        onChange={handleTextChange}
+                        placeholder="106.8560"
+                        className="h-10 rounded-none border-slate-200 font-bold text-xs"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Leaflet Picker Map */}
+                <div className="lg:col-span-7 space-y-3">
+                  <div className="p-2.5 bg-slate-50 border border-slate-200 flex items-center gap-2 rounded-none">
+                    <Info size={14} className="text-rose-600 shrink-0" />
+                    <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wide leading-normal">
+                      Klik langsung pada kanvas peta di bawah untuk memetakan koordinat latitude/longitude secara otomatis.
+                    </p>
+                  </div>
+
+                  <div className="h-[280px] w-full bg-slate-100 border border-slate-200 rounded-none relative z-10 overflow-hidden shadow-inner">
+                    <MapContainer
+                      center={[-6.4816, 106.8560]} // Pusat peta Cibinong
+                      zoom={11}
+                      zoomControl={true}
+                      style={{ height: "100%", width: "100%" }}
+                    >
+                      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                      <MapPicker
+                        lat={form.lat}
+                        lng={form.lng}
+                        onChange={handleMapChange}
+                      />
+                      <ResizeMap />
+                    </MapContainer>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4 flex justify-between border-t border-slate-100">
+                <Button
+                  variant="outline"
+                  onClick={handlePrevStep}
+                  className="border-slate-200 hover:bg-slate-100 text-slate-700 font-black text-xs px-5 h-10 rounded-none uppercase tracking-wider"
+                >
+                  Kembali
+                </Button>
+                <Button
+                  onClick={handleNextStep}
+                  className="bg-slate-900 hover:bg-slate-800 text-white font-black text-xs px-6 h-10 rounded-none tracking-wider uppercase"
+                >
+                  Lanjut ke Langkah 3
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 3: UNGGAHAN BERKAS AMDAL */}
+          {step === 3 && (
+            <div className="space-y-5">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <FileText size={18} className="text-rose-600" />
+                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-900">
+                    Langkah 3: Unggahan 11 Dokumen AMDAL Pendukung
+                  </h3>
+                </div>
+                <div className="flex items-center gap-1.5 text-[8.5px] font-black uppercase tracking-wide">
+                  <span className="bg-rose-500 text-white px-2 py-0.5 rounded-none">6 Wajib</span>
+                  <span className="bg-slate-700 text-white px-2 py-0.5 rounded-none">5 Opsional</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {AMDAL_DOCS_CONFIG.map((doc, idx) => {
+                  const uploaded = uploadedFiles[doc.key];
+                  return (
+                    <div key={doc.key} className={cn(
+                      "p-3.5 rounded-none border flex flex-col justify-between gap-3 shadow-sm hover:border-slate-350 transition-all bg-white relative",
+                      doc.isRequired ? "border-slate-200" : "border-slate-100 bg-slate-50/20"
+                    )}>
+
+                      {/* Meta Title & Badge */}
+                      <div className="flex justify-between items-start gap-2 text-left">
+                        <div className="space-y-0.5">
+                          <span className="text-[7.5px] font-black text-slate-400 uppercase tracking-widest block">DOKUMEN KE-{idx + 1}</span>
+                          <h4 className="text-xs font-black text-slate-800 leading-snug">{doc.label}</h4>
+                        </div>
+
+                        <span className={cn(
+                          "px-1.5 py-0.5 rounded-none text-[7.5px] font-black uppercase tracking-widest shrink-0 border leading-none",
+                          doc.isRequired
+                            ? "bg-rose-50 text-rose-600 border-rose-200"
+                            : "bg-slate-100 text-slate-500 border-slate-200"
+                        )}>
+                          {doc.isRequired ? "WAJIB" : "OPSIONAL"}
+                        </span>
+                      </div>
+
+                      {/* File display or upload dropzone */}
+                      {uploaded ? (
+                        <div className="bg-emerald-50/50 border border-emerald-250 rounded-none p-2.5 flex items-center justify-between gap-2 text-xs font-bold text-emerald-950 animate-in zoom-in-95">
+                          <div className="min-w-0 flex items-center gap-2">
+                            <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                            <div className="min-w-0">
+                              <p className="truncate text-[10.5px] font-bold text-emerald-950">{uploaded.fileName}</p>
+                              <p className="text-[8px] font-bold text-emerald-650 uppercase tracking-wider">{uploaded.fileSize}</p>
+                            </div>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeFile(doc.key)}
+                            className="h-7 w-7 p-0 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-none"
+                          >
+                            <Trash2 size={14} />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="relative">
+                          <input
+                            type="file"
+                            accept="application/pdf,image/*,.docx,.xlsx"
+                            id={`file-upload-${doc.key}`}
+                            className="hidden"
+                            onChange={(e) => handleFileUpload(doc.key, e)}
+                          />
+                          <label
+                            htmlFor={`file-upload-${doc.key}`}
+                            className={cn(
+                              "border border-dashed border-slate-250 bg-slate-50 hover:bg-slate-100 hover:border-slate-350 rounded-none p-3 flex flex-col items-center justify-center text-center cursor-pointer transition-colors h-[54px] shadow-inner",
+                              doc.isRequired ? "border-rose-200/60" : ""
+                            )}
+                          >
+                            <UploadCloud size={16} className="text-slate-400 shrink-0 mb-1" />
+                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-450 block leading-none">PILIH BERKAS SCAN</span>
+                          </label>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="pt-4 flex justify-between border-t border-slate-100">
+                <Button
+                  variant="outline"
+                  onClick={handlePrevStep}
+                  className="border-slate-200 hover:bg-slate-100 text-slate-700 font-black text-xs px-5 h-10 rounded-none uppercase tracking-wider"
+                >
+                  Kembali
+                </Button>
+                <Button
+                  onSubmit={handleSubmit}
+                  disabled={loading}
+                  className="bg-rose-600 hover:bg-rose-700 text-white font-black text-xs px-6 h-10 rounded-none shadow-sm tracking-wider flex items-center gap-1.5 uppercase"
+                >
+                  {loading ? "Menyimpan..." : "Simpan Wajib AMDAL"}
+                  <Save size={14} />
+                </Button>
+              </div>
+            </div>
+          )}
+
+        </div>
+
+      </div>
+    </div>
   );
 }
 
@@ -7543,16 +8199,25 @@ export default function RegistrationPage() {
                         <h3 className="text-xs font-black text-slate-850 uppercase tracking-widest">2. Unggah Matriks yang Telah Dilengkapi</h3>
                       </div>
                       <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider leading-relaxed">
-                        Pastikan seluruh data matriks telah terisi dengan benar. Unggah kembali file Anda dalam format spreadsheet (.xlsx, .xls) atau dokumen (.docx, .doc, .pdf).
+                        Pastikan seluruh data matriks telah terisi dengan benar. Unggah kembali file Anda dalam format yang sesuai.
                       </p>
+
+                      {docType === "UKL-UPL" && (
+                        <div className="flex items-start gap-2.5 p-3 bg-amber-50 border border-amber-200 rounded-none mb-1">
+                          <AlertCircle size={14} className="text-amber-500 shrink-0 mt-0.5" />
+                          <p className="text-[10px] font-bold text-amber-700 leading-snug">
+                            Khusus Dokumen UKL-UPL, <span className="underline">wajib</span> diunggah dalam format Excel (.xlsx, .xls). Format lain (PDF/Word) tidak akan diterima oleh sistem.
+                          </p>
+                        </div>
+                      )}
 
                       <FileUploadBox
                         label={`Berkas Matriks ${docType} *`}
                         required={!isEdit}
-                        accept=".xlsx,.xls,.docx,.doc,.pdf"
+                        accept={docType === "UKL-UPL" ? ".xlsx,.xls" : ".xlsx,.xls,.docx,.doc,.pdf"}
                         file={docTemplateFile}
                         onFileChange={setDocTemplateFile}
-                        hint="Format Excel, Word, atau PDF, maks 5 MB"
+                        hint={docType === "UKL-UPL" ? "Format Excel (.xlsx, .xls), maks 5 MB" : "Format Excel, Word, atau PDF, maks 5 MB"}
                         existingUrl={isEdit ? existingCompany?.docTemplateUrl || undefined : undefined}
                       />
                     </div>
@@ -7696,9 +8361,24 @@ function FileUploadBox({ label, required, accept, file, onFileChange, hint, exis
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0] || null;
-    if (selected && selected.size > 5 * 1024 * 1024) {
-      toast.error(`File ${label} melebihi batas ukuran 5 MB.`);
-      return;
+    if (selected) {
+      if (selected.size > 5 * 1024 * 1024) {
+        toast.error(`File ${label} melebihi batas ukuran 5 MB.`);
+        if (inputRef.current) inputRef.current.value = "";
+        return;
+      }
+      
+      if (accept) {
+        const allowedExtensions = accept.split(",").map(ext => ext.trim().toLowerCase());
+        const fileName = selected.name.toLowerCase();
+        const isValidExtension = allowedExtensions.some(ext => fileName.endsWith(ext));
+        
+        if (!isValidExtension && allowedExtensions.length > 0) {
+          toast.error(`Format file tidak didukung. Harap unggah file dengan format: ${accept}`);
+          if (inputRef.current) inputRef.current.value = "";
+          return;
+        }
+      }
     }
     onFileChange(selected);
   };
@@ -8024,112 +8704,111 @@ export default function ExecutiveCopilotPanel() {
 
     // Fungsi Render Warna Indikator Keyakinan (Confidence Score)
     const getConfidenceColor = (score: number) => {
-        if (score >= 80) return "text-rose-600 bg-rose-50 border-rose-200";
-        if (score >= 50) return "text-amber-600 bg-amber-50 border-amber-200";
+        if (score >= 80) return "text-rose-600 bg-rose-50/50 border-rose-100";
+        if (score >= 50) return "text-amber-600 bg-amber-50/50 border-amber-100";
         return "text-slate-600 bg-slate-50 border-slate-200";
     };
 
     return (
-        <div className="flex flex-col h-full bg-slate-50 font-sans text-left">
+        <div className="flex flex-col h-full bg-white font-sans text-left border-r">
 
-            {/* Header Konteks */}
-            <div className="px-4 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
+            {/* Header Konteks (Frameless Header) */}
+            <div className="px-5 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0 select-none">
                 <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 rounded-none">
+                    <div className="w-8 h-8 bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 rounded-none shadow-inner">
                         <Sparkles size={16} className={isAiLoading ? "animate-spin" : "animate-pulse"} />
                     </div>
                     <div>
-                        <h3 className="text-[11px] font-black uppercase tracking-widest leading-none">Spatial AI Copilot</h3>
-                        <p className="text-[9px] text-slate-400 mt-1 font-bold">Forensic Data & Correlation Engine</p>
+                        <h3 className="text-[11px] font-black uppercase tracking-[0.15em] leading-none">Spatial AI Copilot</h3>
+                        <p className="text-[8px] text-slate-400 mt-1.5 font-bold uppercase tracking-widest leading-none">Forensic Data & Correlation Engine</p>
                     </div>
                 </div>
             </div>
 
-            {/* Area Hasil Investigasi (Widget Actionable) */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 flex flex-col gap-4">
+            {/* Area Hasil Investigasi (Flat-HUD Layout) */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-5 flex flex-col gap-4 bg-white">
 
                 {!hasSearched && !isAiLoading && !aiForensicResult && (
-                    <div className="flex-1 flex flex-col items-center justify-center text-center space-y-3 opacity-60">
+                    <div className="flex-1 flex flex-col items-center justify-center text-center space-y-3 opacity-40 select-none">
                         <Crosshair size={32} className="text-slate-400" />
                         <div>
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Standby Mode</p>
-                            <p className="text-[10px] font-bold text-slate-400 mt-1">Posisikan peta pada area terdampak, lalu beri instruksi.</p>
+                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Standby Mode</p>
+                            <p className="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-wider">Arahkan peta ke area target, lalu beri instruksi.</p>
                         </div>
                     </div>
                 )}
 
                 {isAiLoading && (
-                    <div className="flex-1 flex flex-col items-center justify-center text-center space-y-4">
-                        <div className="w-12 h-12 border-4 border-slate-200 border-t-emerald-600 rounded-full animate-spin" />
+                    <div className="flex-1 flex flex-col items-center justify-center text-center space-y-4 select-none">
+                        <div className="w-10 h-10 border-4 border-slate-200 border-t-emerald-600 rounded-none animate-spin" />
                         <div className="space-y-1">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Menganalisa Vektor Geospasial...</p>
-                            <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Menyaring data arah angin & logbook industri terdekat</p>
+                            <p className="text-[9px] font-black uppercase tracking-widest text-emerald-700">Menganalisa Vektor Geospasial...</p>
+                            <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 pt-1">Menyaring data arah angin & logbook terdekat</p>
                         </div>
                     </div>
                 )}
 
                 {!isAiLoading && aiForensicResult && (
-                    <div className="space-y-4 animate-in fade-in zoom-in-95 duration-300">
-                        {/* WIDGET 1: KESIMPULAN TERSANGKA (High Density) */}
-                        <div className="bg-white border border-slate-200 rounded-none shadow-sm flex flex-col">
-                            <div className="p-3 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
-                                    <Target size={12} className="text-rose-500" /> Hasil Identifikasi
+                    <div className="space-y-5 animate-in fade-in zoom-in-95 duration-300">
+
+                        {/* WIDGET 1: IDENTIFIKASI TERSANGKA (FLAT STYLE) [3] */}
+                        <div className="border-b border-slate-200/60 pb-4 text-left">
+                            <div className="flex justify-between items-center mb-3">
+                                <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-1.5">
+                                    <Target size={12} className="text-emerald-600 animate-pulse" /> HASIL IDENTIFIKASI FORENSIK
                                 </span>
-                                <Badge className={cn("rounded-none border text-[9px] font-black tracking-widest uppercase px-2 shadow-none", getConfidenceColor(aiForensicResult.confidenceScore))}>
-                                    Akurasi: {aiForensicResult.confidenceScore}%
+                                <Badge className={cn("rounded-none border text-[8px] font-black tracking-widest uppercase px-2 py-0.5 shadow-none", getConfidenceColor(aiForensicResult.confidenceScore))}>
+                                    AKURASI: {aiForensicResult.confidenceScore}%
                                 </Badge>
                             </div>
-                            <div className="p-4 space-y-1.5">
+                            <div className="space-y-1.5">
                                 <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Tersangka Utama</span>
-                                <h3 className="text-base font-black text-slate-900 leading-none uppercase">
+                                <h3 className="text-base font-black text-slate-900 leading-tight uppercase tracking-tight">
                                     {aiForensicResult.culpritName}
                                 </h3>
-                                <p className="text-[10px] font-mono font-bold text-slate-500 pt-1">
+                                <p className="text-[9px] font-mono font-bold text-slate-400 leading-none">
                                     ID: {aiForensicResult.culpritId}
                                 </p>
                             </div>
                         </div>
 
-                        {/* WIDGET 2: BUKTI & ANALISIS */}
-                        <div className="bg-white border border-slate-200 rounded-none shadow-sm">
-                            <div className="p-3 border-b border-slate-100 bg-slate-50">
-                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Dasar Kesimpulan Agent</span>
-                            </div>
-                            <div className="p-4 space-y-4">
-                                <p className="text-xs font-semibold text-slate-700 leading-relaxed text-justify">
-                                    {aiForensicResult.analysis}
-                                </p>
+                        {/* WIDGET 2: BUKTI & OPINI ANALISIS (FLAT STYLE) [3] */}
+                        <div className="border-b border-slate-200/60 pb-4 text-left space-y-2.5">
+                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Opini & Analisa Spasial</span>
+                            <p className="text-xs font-semibold text-slate-600 leading-relaxed text-justify bg-slate-50 p-3 border border-slate-100">
+                                {aiForensicResult.analysis}
+                            </p>
+                        </div>
 
-                                <div className="space-y-2 pt-2 border-t border-slate-100">
-                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Jejak Digital Ditemukan:</span>
-                                    <ul className="space-y-2">
-                                        {aiForensicResult.evidencePoints.map((point, idx) => (
-                                            <li key={idx} className="flex items-start gap-2 text-xs font-bold text-slate-600 bg-slate-50 p-2 border border-slate-100">
-                                                <CheckCircle2 size={14} className="text-emerald-500 shrink-0 mt-0.5" />
-                                                <span className="leading-snug">{point}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
+                        {/* WIDGET 3: JEJAK DIGITAL BUKTI (FLAT STYLE) [3] */}
+                        <div className="border-b border-slate-200/60 pb-4 text-left space-y-2.5">
+                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Jejak Digital Ditemukan</span>
+                            <div className="flex flex-col gap-1.5">
+                                {aiForensicResult.evidencePoints.map((point, idx) => (
+                                    <div key={idx} className="flex items-start gap-2 text-[10px] font-bold text-slate-600 bg-white p-2.5 border border-slate-150">
+                                        <CheckCircle2 size={13} className="text-emerald-500 shrink-0 mt-0.5" />
+                                        <span className="leading-snug">{point}</span>
+                                    </div>
+                                ))}
                             </div>
                         </div>
 
-                        {/* WIDGET 3: REKOMENDASI TINDAKAN (Call to Action) */}
-                        <div className="pt-2">
+                        {/* WIDGET 4: REKOMENDASI TINDAKAN (ACTIONABLE BUTTON) [3] */}
+                        <div className="pt-1 text-left">
+                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2">Rekomendasi Tindakan</span>
                             {aiForensicResult.recommendedAction === "INSPECTION" && (
-                                <Button className="w-full h-12 bg-rose-600 hover:bg-rose-700 text-white rounded-none font-black text-[10px] uppercase tracking-widest shadow-none gap-2">
-                                    <AlertTriangle size={14} /> Terbitkan Surat Tugas Sidak Sekarang
+                                <Button className="w-full h-11 bg-rose-600 hover:bg-rose-700 text-white rounded-none font-black text-[9px] uppercase tracking-widest shadow-none gap-1.5">
+                                    <AlertTriangle size={12} /> Terbitkan Surat Tugas Sidak
                                 </Button>
                             )}
                             {aiForensicResult.recommendedAction === "WARNING_LETTER" && (
-                                <Button className="w-full h-12 bg-amber-500 hover:bg-amber-600 text-white rounded-none font-black text-[10px] uppercase tracking-widest shadow-none gap-2">
-                                    <Factory size={14} /> Kirim Teguran Elektronik
+                                <Button className="w-full h-11 bg-amber-500 hover:bg-amber-600 text-white rounded-none font-black text-[9px] uppercase tracking-widest shadow-none gap-1.5">
+                                    <Factory size={12} /> Kirim Teguran Elektronik
                                 </Button>
                             )}
                             {(aiForensicResult.recommendedAction === "MONITORING" || aiForensicResult.recommendedAction === "MANUAL_INVESTIGATION") && (
-                                <Button className="w-full h-12 bg-slate-900 hover:bg-slate-800 text-white rounded-none font-black text-[10px] uppercase tracking-widest shadow-none gap-2">
-                                    <Crosshair size={14} /> Pantau Ketat Radius 5 KM
+                                <Button className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white rounded-none font-black text-[9px] uppercase tracking-widest shadow-none gap-1.5">
+                                    <Crosshair size={12} /> Pantau Ketat Area Spasial
                                 </Button>
                             )}
                         </div>
@@ -8137,11 +8816,11 @@ export default function ExecutiveCopilotPanel() {
                 )}
             </div>
 
-            {/* Input Form Bawah (Dengan Pengaman Zoom-Guard) */}
+            {/* Input Form Bawah (Dengan Pengaman Zoom-Guard & Desain Flat) [3] */}
             <div className="p-4 bg-white border-t border-slate-200 shrink-0">
                 {isZoomTooFar ? (
                     /* BANNER PERINGATAN REAKTIF (Mencegah Kebocoran Token) [3] */
-                    <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-none text-left space-y-2.5 animate-in slide-in-from-bottom-2 duration-300">
+                    <div className="p-3.5 bg-amber-50/50 border border-amber-200 rounded-none text-left space-y-2.5 animate-in slide-in-from-bottom-2 duration-300">
                         <div className="flex items-center gap-2">
                             <AlertTriangle className="text-amber-600 animate-pulse" size={14} />
                             <h4 className="text-[9px] font-black uppercase tracking-widest leading-none text-amber-900">Skala Peta Terlalu Makro</h4>
@@ -8432,8 +9111,8 @@ export const LocationPicker = ({ onLocationSelected, lat, lng }: LocationPickerP
   }
 
   return (
-    // FASE 2: Sinkronisasi Default Center diarahkan ke Sampit, Kotawaringin Timur secara global [3]
-    <MapContainer center={[-2.5337, 112.9515]} zoom={11} className="h-64 w-full rounded-md">
+    // FASE 2: Sinkronisasi Default Center diarahkan ke Cibinong, Kabupaten Bogor secara global [3]
+    <MapContainer center={[-6.4816, 106.8560]} zoom={11} className="h-64 w-full rounded-md">
       <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
       <LocationMarker />
       <ResizeMap />
@@ -9005,8 +9684,8 @@ const DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// FASE 2: PETA DEFAULT DIUBAH SECARA GLOBAL KE KOTA SAMPIT (KOTAWARINGIN TIMUR) [3]
-const DEFAULT_CENTER: [number, number] = [-2.5337, 112.9515];
+// FASE 2: PETA DEFAULT DIUBAH SECARA GLOBAL KE CIBINONG (KABUPATEN BOGOR) [3]
+const DEFAULT_CENTER: [number, number] = [-6.4816, 106.8560];
 
 // SOLUSI ARSITEKTURAL: Kunci referensi array di luar komponen agar terhindar dari re-render loop
 const EXCLUDED_FORM_FIELDS = ["evidencePhotos"];
@@ -9232,7 +9911,7 @@ export default function ReportPage() {
                     </div>
 
                     <div className="text-[10px] text-emerald-700 font-bold uppercase tracking-widest leading-none relative z-10">
-                        DINAS LINGKUNGAN HIDUP DAERAH © 2026
+                        DINAS LINGKUNGAN HIDUP KABUPATEN BOGOR © 2026
                     </div>
                 </div>
 
@@ -9358,7 +10037,7 @@ export default function ReportPage() {
                                             <Label className="text-[11px] font-bold uppercase text-slate-600 tracking-wider">Cari berdasarkan alamat atau landmark wilayah</Label>
                                             <div className="flex gap-2">
                                                 <Input
-                                                    placeholder="Contoh: Rancaekek, Coblong, atau Jl. Merdeka Bandung..."
+                                                    placeholder="Contoh: Cibinong, Citeureup, Cileungsi, atau Sentul Bogor..."
                                                     value={addressQuery}
                                                     onChange={(e) => setAddressQuery(e.target.value)}
                                                     onKeyDown={(e) => e.key === "Enter" && handleAddressSearch()}
@@ -9422,7 +10101,7 @@ export default function ReportPage() {
                                                         ? [parseFloat(watch("lat")), parseFloat(watch("lng"))]
                                                         : DEFAULT_CENTER
                                                 }
-                                                zoom={13}
+                                                zoom={11} // Disesuaikan zoom 11 untuk Kabupaten Bogor
                                                 style={{ height: "100%", width: "100%" }}
                                             >
                                                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
@@ -9586,7 +10265,7 @@ export default function ReportPage() {
 
                     <div className="py-4 text-xs space-y-3 leading-relaxed font-sans">
                         <p className="font-bold text-slate-800 text-justify">
-                            Terima kasih atas partisipasi aktif Anda dalam menjaga kelestarian lingkungan hidup daerah Kotawaringin Timur.
+                            Terima kasih atas partisipasi aktif Anda dalam menjaga kelestarian lingkungan hidup daerah Kabupaten Bogor.
                         </p>
                         <p className="text-slate-500 text-justify">
                             Laporan Anda telah tercatat dengan ID Pelacakan resmi: <strong className="font-mono text-slate-800 bg-slate-50 px-1.5 py-0.5 border border-slate-200">{submittedTrackingId}</strong>.
@@ -10485,7 +11164,7 @@ interface GisUIState {
     // ==========================================
     activeLayers: string[];     // Menyimpan ID layer yang nyala
     mapOpacity: number;         // 0 - 100 (Transparansi Poligon & Heatmap AQI)
-    maskOpacity: number;        // 0 - 100 (Transparansi Inverted Polygon Masking area luar Kotim)
+    maskOpacity: number;        // 0 - 100 (Transparansi Inverted Polygon Masking area luar Bogor)
     activeBaseMap: string;      // 'dark', 'satellite', 'street', 'esri', 'osm'
     selectedCompanyId: string | null; // ID perusahaan yang sedang di-klik/difokuskan
 
@@ -10493,7 +11172,7 @@ interface GisUIState {
     mapCenter: [number, number]; // Koordinat pusat peta saat ini
     mapZoom: number;             // Skala zoom peta saat ini (Sumber data untuk Scale-Guard AI) [3]
 
-    // FASE 3 INJEKSI: State untuk Advanced Spatial Analytics (Kotawaringin Timur)
+    // FASE 3 INJEKSI: State untuk Advanced Spatial Analytics (Kabupaten Bogor)
     activeAdminBoundary: 'none' | 'kecamatan' | 'desa';
     showImpactRadius: boolean;
 
@@ -10538,13 +11217,13 @@ export const useGisUIStore = create<GisUIState>((set) => ({
     // Default state: AQI dimatikan. Layer industri menyala sebagai basis operasional
     activeLayers: ['layer-amdal', 'layer-uklupl', 'layer-sppl'],
     mapOpacity: 80,
-    maskOpacity: 60, // Default 60% redup untuk area di luar Kotawaringin Timur
+    maskOpacity: 60, // Default 60% redup untuk area di luar Kabupaten Bogor
     activeBaseMap: 'dark', // Default ke 'dark'
     selectedCompanyId: null,
 
-    // Fokus otomatis dikunci ke wilayah Sampit, Kotawaringin Timur
-    mapCenter: [-2.5337, 112.9515],
-    mapZoom: 9, // Zoom awal default
+    // Fokus otomatis dikunci ke wilayah Cibinong, Kabupaten Bogor
+    mapCenter: [-6.4816, 106.8560],
+    mapZoom: 11, // Zoom awal default disesuaikan untuk wilayah Bogor
 
     // Inisialisasi State Spasial Lanjutan
     activeAdminBoundary: 'none',
@@ -10558,17 +11237,40 @@ export const useGisUIStore = create<GisUIState>((set) => ({
     // ======================================================================
     openPanel: (type, title, data = null) =>
         set((state) => {
-            // Aturan Singleton: Apakah yang mau dibuka adalah Panel Floating Detail?
+            const isAiPanel = type === "ai-copilot";
+            const isDetailCompany = type === "detil-perusahaan";
+            const isDetailTask = type === "detail-tugas";
             const isDetailPanel = type === "detil-perusahaan" || type === "detail-tugas" || type === "telemetri-lingkungan";
 
             let nextPanels = [...state.activePanels];
 
-            if (isDetailPanel) {
-                // Hapus panel detail/telemetri lama jika ada, agar tidak numpuk melayang di layar
-                nextPanels = nextPanels.filter((p) => p.type !== "detil-perusahaan" && p.type !== "detail-tugas" && p.type !== "telemetri-lingkungan");
+            // 1. EVALUASI ATURAN MUTUALLY EXCLUSIVE (SALING EKSKLUSIF) UNTUK EFISIENSI AREA PETAS [3]
+            if (isAiPanel) {
+                // AI COPILOT EXCLUSIVITY: AI Agent membutuhkan fokus penuh. Tutup semua laci di layar.
+                nextPanels = [];
+            } else if (isDetailCompany) {
+                // DETAIL INDUSTRI EXCLUSIVITY: Tutup menu kiri biasa, sisakan telemetri udara pasangan
+                nextPanels = nextPanels.filter((p) => p.type === "telemetri-lingkungan");
+            } else if (isDetailTask) {
+                // DETAIL TUGAS EXCLUSIVITY: Tugas sidak menutup semua panel lain agar mata fokus ke target
+                nextPanels = [];
             } else {
-                // Untuk panel menu (Kiri), hapus panel tipe sama agar tidak duplikat
-                nextPanels = nextPanels.filter((p) => p.type !== type);
+                // JIKA USER MEMBUKA MENU KIRI BIASA (Layers, Basemap, Katalog):
+                // A. Matikan paksa AI Copilot agar tidak tumpang tindih di kiri layar
+                nextPanels = nextPanels.filter((p) => p.type !== "ai-copilot");
+
+                // B. Bersihkan tumpukan floating details lama jika berpindah kembali ke menu utama
+                const isLeftMenu = type === "katalog-perusahaan" || type === "layer-kewajiban" || type === "basemap-gallery" || type === "tugas-patroli" || type === "armada-tracking" || type === "tentang";
+                if (isLeftMenu) {
+                    nextPanels = nextPanels.filter((p) => p.type !== "detil-perusahaan" && p.type !== "telemetri-lingkungan" && p.type !== "detail-tugas");
+                }
+
+                // C. Terapkan Singleton Standar untuk detail panel biasa
+                if (isDetailPanel) {
+                    nextPanels = nextPanels.filter((p) => p.type !== "detil-perusahaan" && p.type !== "detail-tugas" && p.type !== "telemetri-lingkungan");
+                } else {
+                    nextPanels = nextPanels.filter((p) => p.type !== type);
+                }
             }
 
             // Buat panel baru dengan ID unik berbasis waktu
@@ -10699,8 +11401,8 @@ export const useGisUIStore = create<GisUIState>((set) => ({
             mapOpacity: 80,
             maskOpacity: 60,
             activeBaseMap: 'dark',
-            mapCenter: [-2.5337, 112.9515],
-            mapZoom: 9, // Reset kembali ke skala default
+            mapCenter: [-6.4816, 106.8560], // Reset kembali ke pusat Bogor
+            mapZoom: 11, // Reset kembali ke skala default Bogor
             aqiCache: {},
         }),
 }));
