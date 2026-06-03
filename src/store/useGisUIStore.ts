@@ -13,7 +13,7 @@ interface GisUIState {
     // ==========================================
     activeLayers: string[];     // Menyimpan ID layer yang nyala
     mapOpacity: number;         // 0 - 100 (Transparansi Poligon & Heatmap AQI)
-    maskOpacity: number;        // 0 - 100 (Transparansi Inverted Polygon Masking area luar Kotim)
+    maskOpacity: number;        // 0 - 100 (Transparansi Inverted Polygon Masking area luar Bogor)
     activeBaseMap: string;      // 'dark', 'satellite', 'street', 'esri', 'osm'
     selectedCompanyId: string | null; // ID perusahaan yang sedang di-klik/difokuskan
 
@@ -21,7 +21,7 @@ interface GisUIState {
     mapCenter: [number, number]; // Koordinat pusat peta saat ini
     mapZoom: number;             // Skala zoom peta saat ini (Sumber data untuk Scale-Guard AI) [3]
 
-    // FASE 3 INJEKSI: State untuk Advanced Spatial Analytics (Kotawaringin Timur)
+    // FASE 3 INJEKSI: State untuk Advanced Spatial Analytics (Kabupaten Bogor)
     activeAdminBoundary: 'none' | 'kecamatan' | 'desa';
     showImpactRadius: boolean;
 
@@ -66,13 +66,13 @@ export const useGisUIStore = create<GisUIState>((set) => ({
     // Default state: AQI dimatikan. Layer industri menyala sebagai basis operasional
     activeLayers: ['layer-amdal', 'layer-uklupl', 'layer-sppl'],
     mapOpacity: 80,
-    maskOpacity: 60, // Default 60% redup untuk area di luar Kotawaringin Timur
+    maskOpacity: 60, // Default 60% redup untuk area di luar Kabupaten Bogor
     activeBaseMap: 'dark', // Default ke 'dark'
     selectedCompanyId: null,
 
-    // Fokus otomatis dikunci ke wilayah Sampit, Kotawaringin Timur
-    mapCenter: [-2.5337, 112.9515],
-    mapZoom: 9, // Zoom awal default
+    // Fokus otomatis dikunci ke wilayah Cibinong, Kabupaten Bogor
+    mapCenter: [-6.4816, 106.8560],
+    mapZoom: 11, // Zoom awal default disesuaikan untuk wilayah Bogor
 
     // Inisialisasi State Spasial Lanjutan
     activeAdminBoundary: 'none',
@@ -250,8 +250,8 @@ export const useGisUIStore = create<GisUIState>((set) => ({
             mapOpacity: 80,
             maskOpacity: 60,
             activeBaseMap: 'dark',
-            mapCenter: [-2.5337, 112.9515],
-            mapZoom: 9, // Reset kembali ke skala default
+            mapCenter: [-6.4816, 106.8560], // Reset kembali ke pusat Bogor
+            mapZoom: 11, // Reset kembali ke skala default Bogor
             aqiCache: {},
         }),
 }));

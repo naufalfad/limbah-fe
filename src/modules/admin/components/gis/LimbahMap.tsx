@@ -18,10 +18,10 @@ import 'leaflet/dist/leaflet.css';
 import { useSijagaStore } from '@/store/useSijagaStore';
 import { useGisUIStore } from '@/store/useGisUIStore';
 
-// Modul Analitik & GeoJSON Wilayah
+// Modul Analitik & GeoJSON Wilayah (Penyelarasan ke Kabupaten Bogor)
 import { calculateCompaniesPerKecamatan } from '@/lib/spatialAnalytics';
-import kecData from '@/assets/geojson/kotim-kecamatan.json';
-import desaData from '@/assets/geojson/kotim-desa.json';
+import kecData from '@/assets/geojson/bogor-kecamatan.json';
+import desaData from '@/assets/geojson/bogor-desa.json';
 
 // Engine Matematika Spasial (Gradient Color)
 import { spatialMath } from '@/lib/spatialMath';
@@ -45,8 +45,8 @@ let DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// PUSAT PETA DIKUNCI DI KOTA SAMPIT (KOTAWARINGIN TIMUR)
-const DEFAULT_CENTER: [number, number] = [-2.5337, 112.9515];
+// PUSAT PETA DIKUNCI DI CIBINONG (KABUPATEN BOGOR)
+const DEFAULT_CENTER: [number, number] = [-6.4816, 106.8560];
 
 // ============================================================================
 // HELPERS & ICONS GENERATORS
@@ -147,7 +147,7 @@ function ExternalMapController() {
     useEffect(() => {
         const handleZoomIn = () => map.zoomIn();
         const handleZoomOut = () => map.zoomOut();
-        const handleResetView = () => map.setView(DEFAULT_CENTER, 9, { animate: true });
+        const handleResetView = () => map.setView(DEFAULT_CENTER, 11, { animate: true });
 
         const handleFlyToCoords = (e: Event) => {
             const customEvent = e as CustomEvent<{ lat: number; lng: number }>;
@@ -223,7 +223,7 @@ export default function LimbahMap() {
         activeAdminBoundary, showImpactRadius, activePanels
     } = useGisUIStore();
 
-    const [currentZoom, setCurrentZoom] = useState(9);
+    const [currentZoom, setCurrentZoom] = useState(11); // Zoom default diubah menjadi 11
 
     useEffect(() => {
         if (currentUser && (currentUser.role === "ADMIN_DLH" || currentUser.role === "SUPER_ADMIN")) {
@@ -246,7 +246,7 @@ export default function LimbahMap() {
         }
     };
 
-    const invertedKotimMask = useMemo(() => {
+    const invertedBogorMask = useMemo(() => {
         const kecGeoJson = kecData as any;
         if (!kecGeoJson || !kecGeoJson.features) return null;
 
@@ -362,7 +362,7 @@ export default function LimbahMap() {
 
             <MapContainer
                 center={DEFAULT_CENTER}
-                zoom={9}
+                zoom={11}
                 zoomControl={false}
                 style={{ height: '100%', width: '100%' }}
                 maxZoom={18}
@@ -373,9 +373,9 @@ export default function LimbahMap() {
 
                 <TileLayer url={getTileUrl()} />
 
-                {invertedKotimMask && (
+                {invertedBogorMask && (
                     <Polygon
-                        positions={invertedKotimMask}
+                        positions={invertedBogorMask}
                         pathOptions={{
                             color: "#0f172a",
                             fillColor: "#0f172a",

@@ -32,8 +32,8 @@ export const LocationPicker = ({ onLocationSelected, lat, lng }: LocationPickerP
   }
 
   return (
-    // FASE 2: Sinkronisasi Default Center diarahkan ke Sampit, Kotawaringin Timur secara global [3]
-    <MapContainer center={[-2.5337, 112.9515]} zoom={11} className="h-64 w-full rounded-md">
+    // FASE 2: Sinkronisasi Default Center diarahkan ke Cibinong, Kabupaten Bogor secara global [3]
+    <MapContainer center={[-6.4816, 106.8560]} zoom={11} className="h-64 w-full rounded-md">
       <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
       <LocationMarker />
       <ResizeMap />
