@@ -30,6 +30,7 @@ import AqiSurfaceLayer from './layers/AqiSurfaceLayer';
 import WindFlowLayer from './layers/WindFlowLayer';
 import CompanyMarkerLayer from './layers/CompanyMarkerLayer';
 import AqiHorizontalLegend from './AqiHorizontalLegend';
+import RiverHorizontalLegend from './RiverHorizontalLegend'; 
 import { Sparkles } from 'lucide-react';
 
 // --- [INJEKSI MODUL BARU] LAYER ALIRAN SUNGAI & TITIK SAMPEL AIR (PHASE 2) ---
@@ -524,6 +525,7 @@ export default function LimbahMap() {
             </MapContainer>
 
             {!isOfficer && <AqiHorizontalLegend />}
+            {!isOfficer && <RiverHorizontalLegend />} 
         </div>
     );
 }
