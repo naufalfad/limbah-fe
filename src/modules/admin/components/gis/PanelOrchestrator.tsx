@@ -13,8 +13,11 @@ import TaskDetailPanel from "./panels/TaskDetailPanel";
 import EnvironmentalTelemetryPanel from "./panels/EnvironmentalTelemetryPanel";
 import BasemapPanel from "./panels/BasemapPanel";
 
+// [NEW IMPOR] Menyuntikkan Panel Analisis Telemetri Air Sungai (BOD/COD)
+import WaterTelemetryPanel from "./panels/WaterTelemetryPanel";
+
 // MODULAR: Mengimpor laci taktis telemetri live dari modul transport
-import ActiveFleetPanel from "@/modules/transport/components/gis/panels/ActiveFleetPanel";
+import ActiveFleetPanel  from "@/modules/transport/components/gis/panels/ActiveFleetPanel";
 
 // [NEW MODULE] Mengimpor laci asisten AI Forensik untuk Pimpinan/Admin
 import ExecutiveCopilotPanel from "@/modules/dashboard/components/auditor/ExecutiveCopilotPanel";
@@ -176,8 +179,16 @@ function renderPanelContent(type: GisPanelType, data: any) {
             return <ActiveFleetPanel />;
         case "detil-perusahaan":
             return <DetailPanel companyData={data} />;
+
+        // =====================================================================
+        // [RESOLUSI POLIMORFISME] PENYALURAN DELEGASI PANEL DETAIL KUALITAS AIR
+        // =====================================================================
         case "telemetri-lingkungan":
+            if (data && data.isWaterStation) {
+                return <WaterTelemetryPanel stationData={data} />;
+            }
             return <EnvironmentalTelemetryPanel companyData={data} />;
+
         case "detail-tugas":
             return <TaskDetailPanel taskData={data} />;
         case "basemap-gallery":

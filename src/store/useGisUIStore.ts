@@ -11,11 +11,14 @@ interface GisUIState {
     // ==========================================
     // 2. STATE: Konteks Eksplorasi Spasial (Peta)
     // ==========================================
-    activeLayers: string[];     // Menyimpan ID layer yang nyala
-    mapOpacity: number;         // 0 - 100 (Transparansi Poligon & Heatmap AQI)
-    maskOpacity: number;        // 0 - 100 (Transparansi Inverted Polygon Masking area luar Bogor)
-    activeBaseMap: string;      // 'dark', 'satellite', 'street', 'esri', 'osm'
+    activeLayers: string[];           // Menyimpan ID layer yang aktif merender
+    mapOpacity: number;               // 0 - 100 (Transparansi Poligon & Heatmap AQI)
+    maskOpacity: number;              // 0 - 100 (Transparansi Inverted Polygon Masking area luar Bogor)
+    activeBaseMap: string;            // 'dark', 'satellite', 'street', 'esri', 'osm'
     selectedCompanyId: string | null; // ID perusahaan yang sedang di-klik/difokuskan
+
+    // [NEW STATE] Melacak ID stasiun pemantauan air sungai yang sedang aktif dipilih
+    selectedWaterStationId: string | null;
 
     // FASE 4 INJEKSI: Koordinat & Zoom Global Berbasis Sumber Kebenaran Tunggal
     mapCenter: [number, number]; // Koordinat pusat peta saat ini
@@ -45,6 +48,9 @@ interface GisUIState {
     setActiveBaseMap: (baseMapId: string) => void;
     setSelectedCompanyId: (id: string | null) => void;
 
+    // [NEW ACTION] Mengubah stasiun air terpilih
+    setSelectedWaterStationId: (id: string | null) => void;
+
     // Aksi Pengubah Koordinat & Zoom Peta secara Global
     setMapCenter: (center: [number, number]) => void;
     setMapZoom: (zoom: number) => void; // Aksi sinkronisasi zoom Leaflet ke Zustand Store [3]
@@ -63,12 +69,15 @@ export const useGisUIStore = create<GisUIState>((set) => ({
     // Inisialisasi State Default
     activePanels: [],
 
-    // Default state: AQI dimatikan. Layer industri menyala sebagai basis operasional
-    activeLayers: ['layer-amdal', 'layer-uklupl', 'layer-sppl'],
+    // FASE 1 DECOPULING: Memulai aplikasi dengan mode 'AMDAL' sebagai state tunggal aktif [3]
+    activeLayers: ['layer-amdal'],
     mapOpacity: 80,
     maskOpacity: 60, // Default 60% redup untuk area di luar Kabupaten Bogor
     activeBaseMap: 'dark', // Default ke 'dark'
     selectedCompanyId: null,
+
+    // Inisialisasi awal ID stasiun air kosong
+    selectedWaterStationId: null,
 
     // Fokus otomatis dikunci ke wilayah Cibinong, Kabupaten Bogor
     mapCenter: [-6.4816, 106.8560],
@@ -93,7 +102,7 @@ export const useGisUIStore = create<GisUIState>((set) => ({
 
             let nextPanels = [...state.activePanels];
 
-            // 1. EVALUASI ATURAN MUTUALLY EXCLUSIVE (SALING EKSKLUSIF) UNTUK EFISIENSI AREA PETAS [3]
+            // EVALUASI ATURAN MUTUALLY EXCLUSIVE (SALING EKSKLUSIF) UNTUK EFISIENSI AREA PETA [3]
             if (isAiPanel) {
                 // AI COPILOT EXCLUSIVITY: AI Agent membutuhkan fokus penuh. Tutup semua laci di layar.
                 nextPanels = [];
@@ -159,6 +168,7 @@ export const useGisUIStore = create<GisUIState>((set) => ({
                 activePanels: filteredPanels,
                 ...(shouldClearSelection && {
                     selectedCompanyId: null,
+                    selectedWaterStationId: null, // Bersihkan juga tracking stasiun air
                     showImpactRadius: false
                 })
             };
@@ -176,6 +186,7 @@ export const useGisUIStore = create<GisUIState>((set) => ({
                 activePanels: slicedPanels,
                 ...(!isDetailOrTelemetryStillOpen && {
                     selectedCompanyId: null,
+                    selectedWaterStationId: null, // Bersihkan tracking stasiun air jika panel ditutup
                     showImpactRadius: false
                 })
             };
@@ -184,12 +195,14 @@ export const useGisUIStore = create<GisUIState>((set) => ({
     clearPanels: () => set({
         activePanels: [],
         selectedCompanyId: null,
+        selectedWaterStationId: null, // Reset stasiun air
         showImpactRadius: false,
         aqiCache: {}
     }),
 
     // ======================================================================
-    // LOGIKA KONTROL PETA (MUTUALLY EXCLUSIVE LAYER)
+    // LOGIKA KONTROL PETA (MUTUALLY EXCLUSIVE HYBRID LAYER)
+    // GRASP: Protected Variations (Melindungi Peta dari Konflik Layer)
     // ======================================================================
     toggleLayer: (layerId) =>
         set((state) => {
@@ -197,22 +210,24 @@ export const useGisUIStore = create<GisUIState>((set) => ({
             let nextLayers = [...state.activeLayers];
 
             if (isExists) {
-                // Mode Matikan Layer
+                // Mode Matikan Layer: Hapus instan dari array
                 nextLayers = nextLayers.filter((id) => id !== layerId);
             } else {
-                // Mode Hidupkan Layer dengan Logika Saling Eksklusif (Mutually Exclusive)
-                const groupIndustriPengaduan = ['layer-amdal', 'layer-uklupl', 'layer-sppl', 'layer-complaints'];
+                // Definisi Kelompok-Kelompok Mode Eksklusi
+                const singleExclusiveLayers = ['layer-amdal', 'layer-uklupl', 'layer-sppl', 'layer-aqi'];
+                const waterGroup = ['layer-river', 'layer-water-stations']; // Kelompok Air/Sungai [3]
 
-                if (layerId === 'layer-aqi') {
-                    // Jika menghidupkan AQI -> Matikan paksa kelompok Industri & Pengaduan
-                    nextLayers = nextLayers.filter(id => !groupIndustriPengaduan.includes(id));
-                    nextLayers.push(layerId);
-                } else if (groupIndustriPengaduan.includes(layerId)) {
-                    // Jika menghidupkan Industri/Pengaduan -> Matikan paksa AQI
-                    nextLayers = nextLayers.filter(id => id !== 'layer-aqi');
+                if (singleExclusiveLayers.includes(layerId)) {
+                    // Jika menyalakan kelompok Single Mode (AMDAL, UKL-UPL, SPPL, atau AQI):
+                    // Sifat: Mutually Exclusive Mutlak. Reset array dan jadikan ia satu-satunya yang aktif.
+                    nextLayers = [layerId];
+                } else if (waterGroup.includes(layerId)) {
+                    // Jika menyalakan bagian dari Kelompok Air/Sungai:
+                    // Sifat: Matikan semua kelompok Single Mode, namun izinkan sesama elemen kelompok air bersanding
+                    nextLayers = nextLayers.filter(id => !singleExclusiveLayers.includes(id));
                     nextLayers.push(layerId);
                 } else {
-                    // Layer lain (misal jika ada) berjalan normal
+                    // Penanganan fallback layer umum pendukung masa mendatang
                     nextLayers.push(layerId);
                 }
             }
@@ -226,8 +241,10 @@ export const useGisUIStore = create<GisUIState>((set) => ({
 
     setSelectedCompanyId: (id) => set({ selectedCompanyId: id }),
 
+    setSelectedWaterStationId: (id) => set({ selectedWaterStationId: id }),
+
     setMapCenter: (center) => set({ mapCenter: center }),
-    setMapZoom: (zoom) => set({ mapZoom: zoom }), // Menyimpan nilai zoom level secara global
+    setMapZoom: (zoom) => set({ mapZoom: zoom }), // Menyimpan nilai zoom level secara global [3]
 
     setActiveAdminBoundary: (boundary) => set({ activeAdminBoundary: boundary }),
     setShowImpactRadius: (show) => set({ showImpactRadius: show }),
@@ -242,16 +259,18 @@ export const useGisUIStore = create<GisUIState>((set) => ({
 
     resetMapContext: () =>
         set({
-            activeLayers: ['layer-amdal', 'layer-uklupl', 'layer-sppl'],
+            // SINKRONISASI RESET: Kembalikan ke mode awal AMDAL yang terisolasi [3]
+            activeLayers: ['layer-amdal'],
             selectedCompanyId: null,
+            selectedWaterStationId: null, // Reset seleksi stasiun air
             activePanels: [],
             activeAdminBoundary: 'none',
             showImpactRadius: false,
             mapOpacity: 80,
             maskOpacity: 60,
             activeBaseMap: 'dark',
-            mapCenter: [-6.4816, 106.8560], // Reset kembali ke pusat Bogor
-            mapZoom: 11, // Reset kembali ke skala default Bogor
+            mapCenter: [-6.4816, 106.8560], // Reset kembali ke pusat Bogor (Cibinong)
+            mapZoom: 11, // Reset kembali ke skala default Bogor [3]
             aqiCache: {},
         }),
 }));

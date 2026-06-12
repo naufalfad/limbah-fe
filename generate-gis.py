@@ -16,6 +16,10 @@ FORBIDDEN_DIRS = {
 FORBIDDEN_FILES = {
     "kotim-desa.json", 
     "kotim-kecamatan.json",
+    "bogor-sungai-poly.json",
+    "bogor-sungai-line.json",
+    'bogor-desa.json',
+    'bogor-kecamatan.json',
     "package-lock.json",
     "yarn.lock"
 }

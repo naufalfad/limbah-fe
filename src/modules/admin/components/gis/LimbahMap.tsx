@@ -11,7 +11,6 @@ import {
     useMap,
     useMapEvents
 } from 'react-leaflet';
-// IMPORT BARU: Modul Clustering
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -31,7 +30,11 @@ import AqiSurfaceLayer from './layers/AqiSurfaceLayer';
 import WindFlowLayer from './layers/WindFlowLayer';
 import CompanyMarkerLayer from './layers/CompanyMarkerLayer';
 import AqiHorizontalLegend from './AqiHorizontalLegend';
-import { Sparkles } from 'lucide-react'; // INJEKSI ICON AI
+import { Sparkles } from 'lucide-react';
+
+// --- [INJEKSI MODUL BARU] LAYER ALIRAN SUNGAI & TITIK SAMPEL AIR (PHASE 2) ---
+import RiverLayer from './layers/RiverLayer';
+import WaterSampleMarkerLayer from './layers/WaterSampleMarkerLayer';
 
 // --- Fix Leaflet Default Icon ---
 import icon from "leaflet/dist/images/marker-icon.png";
@@ -122,37 +125,11 @@ const createClusterCustomIcon = function (cluster: any) {
     });
 
     const avgAqi = validCount > 0 ? sumAqi / validCount : 0;
-    const [r, g, b] = spatialMath.interpolateColorRgb(avgAqi);
+    const safeAvgAqi = isNaN(avgAqi) ? 35 : avgAqi; // Proteksi nilai NaN dari kegagalan matematika [3]
+    const [r, g, b] = spatialMath.interpolateColorRgb(safeAvgAqi);
     const bgColorRgb = `rgb(${r}, ${g}, ${b})`;
 
-    return createAqiBadgeIcon(avgAqi, bgColorRgb, true);
-};
-
-const createPulsingIcon = (status: string) => {
-    let colorClass = "bg-rose-600";
-    let ringClass = "bg-rose-500 animate-ping";
-
-    if (status === "RESOLVED") {
-        colorClass = "bg-teal-600";
-        ringClass = "bg-teal-400";
-    } else if (status === "INVESTIGATING") {
-        colorClass = "bg-indigo-600";
-        ringClass = "bg-indigo-400 animate-pulse";
-    }
-
-    return L.divIcon({
-        html: `
-            <div style="position: relative; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
-                <span class="absolute inline-flex h-6 w-6 rounded-full ${ringClass} opacity-75"></span>
-                <span class="relative inline-flex rounded-full h-4.5 w-4.5 ${colorClass} border-2 border-white shadow-md flex items-center justify-center">
-                    <span class="w-1.5 h-1.5 rounded-full bg-white"></span>
-                </span>
-            </div>
-        `,
-        className: "custom-pulsing-marker-wrapper bg-transparent border-none",
-        iconSize: [32, 32],
-        iconAnchor: [16, 16],
-    });
+    return createAqiBadgeIcon(safeAvgAqi, bgColorRgb, true);
 };
 
 const createStaticTaskIcon = (isUnknown: boolean) => {
@@ -249,12 +226,11 @@ function MapEventsHandler() {
 export default function LimbahMap() {
     const {
         companies,
-        adminReports,
-        fetchAdminReports,
         currentUser,
         inspections,
-        batchAqiData,        // INJEKSI BARU: State batch kualitas udara riil
-        fetchBatchAqiData    // INJEKSI BARU: Aksi sinkronisasi batch
+        batchAqiData,        // State batch kualitas udara riil
+        fetchBatchAqiData,    // Aksi sinkronisasi batch
+        fetchWaterStations    // Aksi inisialisasi data stasiun air
     } = useSijagaStore();
 
     const {
@@ -265,16 +241,11 @@ export default function LimbahMap() {
 
     const [currentZoom, setCurrentZoom] = useState(11); // Zoom default diubah menjadi 11
 
-    // 1. SINKRONISASI BATCH DATA AQI SAAT AWAL LOAD PETA (Information Expert)
+    // SINKRONISASI BATCH DATA AQI & DATA STASIUN AIR SAAT AWAL LOAD PETA (Information Expert)
     useEffect(() => {
         fetchBatchAqiData();
-    }, [fetchBatchAqiData]);
-
-    useEffect(() => {
-        if (currentUser && (currentUser.role === "ADMIN_DLH" || currentUser.role === "SUPER_ADMIN")) {
-            if (adminReports.length === 0) fetchAdminReports();
-        }
-    }, [adminReports.length, fetchAdminReports, currentUser]);
+        fetchWaterStations(); // Ambil data stasiun kualitas air sungai
+    }, [fetchBatchAqiData, fetchWaterStations]);
 
     const isOfficer = currentUser?.role === "PETUGAS_LAPANGAN";
     const isExecutive = currentUser?.role === "AUDITOR" || currentUser?.role === "ADMIN_DLH" || currentUser?.role === "SUPER_ADMIN";
@@ -295,7 +266,15 @@ export default function LimbahMap() {
         const kecGeoJson = kecData as any;
         if (!kecGeoJson || !kecGeoJson.features) return null;
 
-        const worldOuterBounds: [number, number][] = [[90, -180], [90, 180], [-90, 180], [-90, -180], [90, -180]];
+        // FASE 4: Pembetulan Geometris Winding Order Masking [3]
+        // Poligon luar dunia disusun searah jarum jam (Clockwise) untuk memicu Leaflet Subtract
+        const worldOuterBounds: [number, number][] = [
+            [-90, -180],
+            [90, -180],
+            [90, 180],
+            [-90, 180],
+            [-90, -180]
+        ];
         const innerHoles: [number, number][][] = [];
 
         kecGeoJson.features.forEach((feature: any) => {
@@ -368,14 +347,6 @@ export default function LimbahMap() {
             }).filter(t => !isNaN(t.lat) && !isNaN(t.lng));
     }, [inspections, currentUser, companies, isOfficer]);
 
-    const handleReportClick = (report: any, e: L.LeafletMouseEvent) => {
-        e.originalEvent.stopPropagation();
-        e.target._map.flyTo([parseFloat(report.lat), parseFloat(report.lng)], 16, { animate: true, duration: 1.5 });
-        setSelectedCompanyId(null);
-        closePanelsToTheRight(-1);
-        openPanel("detail-tugas", `Investigasi: ${report.trackingId}`, report);
-    };
-
     const handleTaskMarkerClick = (task: any, e: L.LeafletMouseEvent) => {
         e.originalEvent.stopPropagation();
         e.target._map.flyTo([task.lat, task.lng], 16, { animate: true, duration: 1.5 });
@@ -386,61 +357,38 @@ export default function LimbahMap() {
 
     return (
         <div className="absolute inset-0 z-0 bg-slate-100">
-            {/* FLOATING ACTION BUTTON AI COPILOT (Hanya untuk Eksekutif) */}
-            {/* FLOATING ACTION BUTTON AI COPILOT (Hanya untuk Eksekutif) */}
+            {/* FLOATING ACTION BUTTON AI COPILOT */}
             {isExecutive && (
                 <div className="absolute top-[88px] right-6 z-[1000]">
                     <div className="relative group">
-                        {/* Button */}
                         <button
                             onClick={() => openPanel('ai-copilot', 'AI Spatial Assistant')}
                             aria-label="Open AI Spatial Assistant"
                             title="AI Spatial Assistant"
                             className="
-                    relative
-                    flex
-                    items-center
-                    justify-center
-                    w-12
-                    h-12
-
-                    bg-slate-900
-                    border
-                    border-emerald-500
-
-                    text-emerald-400
-
-                    hover:bg-emerald-600
-                    hover:text-white
-                    hover:scale-105
-
-                    active:scale-95
-
-                    transition-all
-                    duration-200
-
-                    shadow-[0_0_15px_rgba(16,185,129,0.5)]
-
-                    outline-none
-                "
+                                relative
+                                flex
+                                items-center
+                                justify-center
+                                w-12
+                                h-12
+                                bg-slate-900
+                                border
+                                border-emerald-500
+                                text-emerald-400
+                                hover:bg-emerald-600
+                                hover:text-white
+                                hover:scale-105
+                                active:scale-95
+                                transition-all
+                                duration-200
+                                shadow-[0_0_15px_rgba(16,185,129,0.5)]
+                                outline-none
+                            "
                         >
-                            {/* Radar Pulse */}
-                            <div
-                                className="
-                        absolute
-                        inset-0
-                        bg-emerald-400/20
-                        animate-ping
-                        opacity-30
-                    "
-                            />
-
-                            <Sparkles
-                                size={20}
-                                className="relative z-10"
-                            />
+                            <div className="absolute inset-0 bg-emerald-400/20 animate-ping opacity-30" />
+                            <Sparkles size={20} className="relative z-10" />
                         </button>
-
                     </div>
                 </div>
             )}
@@ -464,7 +412,7 @@ export default function LimbahMap() {
                         pathOptions={{
                             color: "#0f172a",
                             fillColor: "#0f172a",
-                            fillOpacity: maskOpacity / 100,
+                            fillOpacity: maskOpacity / 100, // Kontrol opacity meredupkan luar perbatasan secara dinamis [3]
                             weight: 1,
                             opacity: 0.2,
                             interactive: false
@@ -489,6 +437,9 @@ export default function LimbahMap() {
                     </Circle>
                 )}
 
+                <RiverLayer />
+                <WaterSampleMarkerLayer />
+
                 {!isOfficer && activeLayers.includes("layer-aqi") && (
                     <AqiSurfaceLayer companies={companies} mapOpacity={mapOpacity} />
                 )}
@@ -511,65 +462,55 @@ export default function LimbahMap() {
                         maxClusterRadius={60}
                         spiderfyOnMaxZoom={true}
                     >
-                        {companies.map(c => {
-                            const lat = parseFloat(c.lat);
-                            const lng = parseFloat(c.lng);
-                            if (isNaN(lat) || isNaN(lng)) return null;
+                        {companies
+                            .filter(c => {
+                                // PENGAMAN GEOMETRIS (GRASP): Saring ketat koordinat kosong/NaN [3]
+                                // Menghilangkan bug loop anak bernilai null penyebab crash layar putih
+                                const lat = parseFloat(c.lat);
+                                const lng = parseFloat(c.lng);
+                                return !isNaN(lat) && !isNaN(lng);
+                            })
+                            .map(c => {
+                                const lat = parseFloat(c.lat);
+                                const lng = parseFloat(c.lng);
 
-                            // REFACTOR SINKRONISASI: Mencari stasiun klaster spasial riil dari backend
-                            const aqi = getRealClusterAqi(lat, lng, batchAqiData);
-                            const [r, g, b] = spatialMath.interpolateColorRgb(aqi);
-                            const bgColorRgb = `rgb(${r}, ${g}, ${b})`;
+                                const aqi = getRealClusterAqi(lat, lng, batchAqiData);
+                                const safeAqi = isNaN(aqi) ? 35 : aqi; // Safeguard dari kegagalan matematika [3]
+                                const [r, g, b] = spatialMath.interpolateColorRgb(safeAqi);
+                                const bgColorRgb = `rgb(${r}, ${g}, ${b})`;
 
-                            return (
-                                <Marker
-                                    key={`aqi-num-badge-${c.id}`}
-                                    position={[lat, lng]}
-                                    {...{ aqiData: aqi }}
-                                    icon={createAqiBadgeIcon(aqi, bgColorRgb, false)}
-                                    eventHandlers={{
-                                        click: (e) => {
-                                            e.originalEvent.stopPropagation();
+                                return (
+                                    <Marker
+                                        key={`aqi-num-badge-${c.id}`}
+                                        position={[lat, lng]}
+                                        {...{ aqiData: safeAqi }}
+                                        icon={createAqiBadgeIcon(safeAqi, bgColorRgb, false)}
+                                        eventHandlers={{
+                                            click: (e) => {
+                                                e.originalEvent.stopPropagation();
 
-                                            // REVISI / PENYELARASAN POLIMORFISME: Menghindari getBounds() crash pada titik L.Marker
-                                            const hasGetBounds = typeof e.target.getBounds === 'function';
-                                            if (currentZoom >= 16 && hasGetBounds) {
-                                                e.target._map.flyToBounds(e.target.getBounds(), { padding: [100, 100], duration: 1.5 });
-                                            } else {
-                                                const coords = typeof e.target.getLatLng === 'function'
-                                                    ? e.target.getLatLng()
-                                                    : [lat, lng];
-                                                e.target._map.flyTo(coords, 16, { animate: true, duration: 1.5 });
+                                                const hasGetBounds = typeof e.target.getBounds === 'function';
+                                                if (currentZoom >= 16 && hasGetBounds) {
+                                                    e.target._map.flyToBounds(e.target.getBounds(), { padding: [100, 100], duration: 1.5 });
+                                                } else {
+                                                    const coords = typeof e.target.getLatLng === 'function'
+                                                        ? e.target.getLatLng()
+                                                        : [lat, lng];
+                                                    e.target._map.flyTo(coords, 16, { animate: true, duration: 1.5 });
+                                                }
+
+                                                setSelectedCompanyId(c.id);
+                                                closePanelsToTheRight(-1);
+                                                openPanel("detil-perusahaan", `Detail Industri`, c);
+                                                openPanel("telemetri-lingkungan", `Telemetri Spasial`, c);
                                             }
-
-                                            setSelectedCompanyId(c.id);
-                                            closePanelsToTheRight(-1);
-                                            openPanel("detil-perusahaan", `Detail Industri`, c);
-                                            openPanel("telemetri-lingkungan", `Telemetri Spasial`, c);
-                                        }
-                                    }}
-                                />
-                            );
-                        })}
+                                        }}
+                                    />
+                                );
+                            })
+                        }
                     </MarkerClusterGroup>
                 )}
-
-                {!isOfficer && activeLayers.includes("layer-complaints") &&
-                    adminReports.map((report) => {
-                        const latNum = parseFloat(report.lat);
-                        const lngNum = parseFloat(report.lng);
-                        if (isNaN(latNum) || isNaN(lngNum)) return null;
-
-                        return (
-                            <Marker
-                                key={report.id}
-                                position={[latNum, lngNum]}
-                                icon={createPulsingIcon(report.status)}
-                                eventHandlers={{ click: (e) => handleReportClick(report, e) }}
-                            />
-                        );
-                    })
-                }
 
                 {isOfficer && officerTasks.map((task) => (
                     <Marker

@@ -2,7 +2,7 @@
 import React from "react";
 import {
     Layers, Settings2, ShieldCheck,
-    AlertTriangle, MapPin, Wind
+    MapPin, Wind, Droplets
 } from "lucide-react";
 import { useGisUIStore } from "@/store/useGisUIStore";
 import { useSijagaStore } from "@/store/useSijagaStore";
@@ -16,30 +16,23 @@ export default function LayerPanel() {
     const {
         activeLayers, toggleLayer,
         mapOpacity, setMapOpacity,
-        maskOpacity, setMaskOpacity, // INJEKSI FASE 4: Kontrol Opacity Masking Luar Wilayah
+        maskOpacity, setMaskOpacity, // Kontrol Opacity Masking Luar Wilayah (Clipped)
         activeAdminBoundary, setActiveAdminBoundary
     } = useGisUIStore();
 
     const { currentUser } = useSijagaStore();
     const isOfficer = currentUser?.role === "PETUGAS_LAPANGAN";
 
-    let complaintLabel = "Aduan Masyarakat";
-    let complaintDesc = "Krisis Spasial Warga";
-
-    if (isOfficer) {
-        complaintLabel = "Aduan Ditugaskan";
-        complaintDesc = "Target Investigasi Anda";
-    } else if (currentUser?.role === "AUDITOR") {
-        complaintLabel = "Krisis Aduan Daerah";
-        complaintDesc = "Pantauan Eksekutif";
-    }
-
+    // --- DAFTAR LAYER TERINTEGRASI (AMDAL, UKL-UPL, SPPL, AQI, Sungai & Stasiun Air) ---
     const layerKewajiban = [
         { id: "layer-amdal", label: "AMDAL", desc: "Risiko Tinggi", color: "bg-red-500", icon: ShieldCheck },
         { id: "layer-uklupl", label: "UKL-UPL", desc: "Risiko Menengah", color: "bg-amber-500", icon: ShieldCheck },
         { id: "layer-sppl", label: "SPPL", desc: "Risiko Rendah", color: "bg-emerald-500", icon: ShieldCheck },
         { id: "layer-aqi", label: "Kualitas Udara (AQI)", desc: "Telemetri Udara Real-time", color: "bg-teal-500", icon: Wind },
-        { id: "layer-complaints", label: complaintLabel, desc: complaintDesc, color: "bg-rose-500", icon: AlertTriangle },
+
+        // Layer Spasial Sungai & Kualitas Air (BOD/COD/DO) [3]
+        { id: "layer-river", label: "Aliran Sungai (Bogor)", desc: "Jejak Geografis Sungai", color: "bg-cyan-400", icon: Droplets },
+        { id: "layer-water-stations", label: "Stasiun Sampel Air", desc: "Baku Mutu BOD/COD/DO", color: "bg-blue-600", icon: Droplets },
     ];
 
     return (
@@ -107,7 +100,7 @@ export default function LayerPanel() {
                                     <span className={`text-[12px] transition-colors ${activeAdminBoundary === 'kecamatan' ? 'text-indigo-800 font-bold' : 'text-slate-700 font-medium group-hover:text-slate-900'}`}>
                                         Peta Kepadatan Kecamatan
                                     </span>
-                                    <span className="text-[10px] font-medium text-slate-500 leading-none">Agregasi pabrik per wilayah (Kotim)</span>
+                                    <span className="text-[10px] font-medium text-slate-500 leading-none">Agregasi pabrik per wilayah (Bogor)</span>
                                 </div>
                             </div>
                         </div>

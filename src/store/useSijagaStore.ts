@@ -21,6 +21,9 @@ import {
   BogorClusterTelemetry // INJEKSI: Mengimpor tipe data Klaster
 } from "./types";
 
+// Mengimpor kontrak tipe data kualitas air baru
+import { WaterStationNode } from "../types/gis";
+
 // Re-export seluruh kontrak data agar tidak merusak impor di file komponen lain (Backward Compatibility)
 export type {
   UserRole,
@@ -85,6 +88,11 @@ export interface SijagaState extends BaseSijagaState, ReportSlice {
   executiveAnalytics: ExecutiveAnalyticsData | null;
   performanceAnalytics: PerformanceAnalyticsData | null;
 
+  // [NEW STATE] Penampung data stasiun pengamatan kualitas air (BOD/COD)
+  waterStations: WaterStationNode[];
+  isWaterLoading: boolean;
+  fetchWaterStations: () => Promise<void>;
+
   // State & Action khusus AI Agent (Forensic Spasial)
   aiForensicResult: AiForensicResult | null;
   isAiLoading: boolean;
@@ -119,6 +127,66 @@ const defaultPerformanceAnalytics: PerformanceAnalyticsData = {
   documentComposition: { sppl: 0, uklUpl: 0 }
 };
 
+// --- MOCK DATA STASIUN AIR REALISTIS (PP No. 22 Tahun 2021) ---
+const mockWaterStations: WaterStationNode[] = [
+  {
+    id: "WS-01",
+    name: "Stasiun Hulu Ciliwung (Cisarua)",
+    lat: -6.6986,
+    lng: 106.9430,
+    currentData: { month: "Mei", bod: 1.8, cod: 12.5, do: 6.8, ph: 7.2 },
+    monthlyHistory: [
+      { month: "Jan", bod: 1.5, cod: 10.0, do: 7.2, ph: 7.1 },
+      { month: "Feb", bod: 1.6, cod: 11.2, do: 7.0, ph: 7.0 },
+      { month: "Mar", bod: 1.7, cod: 11.8, do: 6.9, ph: 7.2 },
+      { month: "Apr", bod: 1.8, cod: 12.2, do: 6.8, ph: 7.2 },
+      { month: "Mei", bod: 1.8, cod: 12.5, do: 6.8, ph: 7.2 }
+    ]
+  },
+  {
+    id: "WS-02",
+    name: "Stasiun Tengah Ciliwung (Katulampa)",
+    lat: -6.6163,
+    lng: 106.8325,
+    currentData: { month: "Mei", bod: 2.7, cod: 21.0, do: 5.4, ph: 6.8 },
+    monthlyHistory: [
+      { month: "Jan", bod: 2.1, cod: 17.5, do: 6.1, ph: 6.9 },
+      { month: "Feb", bod: 2.2, cod: 18.2, do: 6.0, ph: 6.8 },
+      { month: "Mar", bod: 2.4, cod: 19.5, do: 5.8, ph: 6.7 },
+      { month: "Apr", bod: 2.6, cod: 20.3, do: 5.6, ph: 6.8 },
+      { month: "Mei", bod: 2.7, cod: 21.0, do: 5.4, ph: 6.8 }
+    ]
+  },
+  {
+    id: "WS-03",
+    name: "Stasiun Hilir Cileungsi (Klapanunggal)",
+    lat: -6.3986,
+    lng: 106.9680,
+    currentData: { month: "Mei", bod: 5.4, cod: 38.0, do: 2.8, ph: 5.5 }, // MELEBIHI LIMIT (BAHAYA)
+    monthlyHistory: [
+      { month: "Jan", bod: 3.2, cod: 26.5, do: 4.1, ph: 6.1 },
+      { month: "Feb", bod: 3.5, cod: 28.0, do: 3.9, ph: 6.0 },
+      { month: "Mar", bod: 4.1, cod: 31.2, do: 3.5, ph: 5.8 },
+      { month: "Apr", bod: 4.9, cod: 35.0, do: 3.0, ph: 5.7 },
+      { month: "Mei", bod: 5.4, cod: 38.0, do: 2.8, ph: 5.5 }
+    ]
+  },
+  {
+    id: "WS-04",
+    name: "Stasiun Aliran Citeureup (Mayor Oking)",
+    lat: -6.4786,
+    lng: 106.8530,
+    currentData: { month: "Mei", bod: 3.8, cod: 29.5, do: 3.7, ph: 6.4 }, // MELEBIHI LIMIT (BAHAYA)
+    monthlyHistory: [
+      { month: "Jan", bod: 2.8, cod: 22.0, do: 4.5, ph: 6.6 },
+      { month: "Feb", bod: 2.9, cod: 23.5, do: 4.3, ph: 6.5 },
+      { month: "Mar", bod: 3.2, cod: 25.8, do: 4.0, ph: 6.4 },
+      { month: "Apr", bod: 3.5, cod: 27.2, do: 3.8, ph: 6.3 },
+      { month: "Mei", bod: 3.8, cod: 29.5, do: 3.7, ph: 6.4 }
+    ]
+  }
+];
+
 // 4. Inisialisasi Store Zustand Terpadu (Slices + Inline Executive Actions)
 export const useSijagaStore = create<SijagaState>((set, get, store) => ({
   // Mengurai (spread) seluruh laci state modular
@@ -136,6 +204,30 @@ export const useSijagaStore = create<SijagaState>((set, get, store) => ({
   users: [],
   executiveAnalytics: null,
   performanceAnalytics: null,
+
+  // [NEW STATE INITIALIZATION]
+  waterStations: mockWaterStations, // Inisialisasi awal dengan mock data Bogor
+  isWaterLoading: false,
+
+  // [NEW ACTION] Pemanggilan/Sinkronisasi Stasiun Air Hibrida (Protected Variations)
+  fetchWaterStations: async () => {
+    set({ isWaterLoading: true });
+    try {
+      // Hubungkan langsung ke endpoint REST API backend baru kita [3]
+      const response = await api.get("/api/analytics/water-stations");
+      if (response && response.data && response.data.success) {
+        set({ waterStations: response.data.data });
+      } else {
+        set({ waterStations: mockWaterStations });
+      }
+    } catch (e) {
+      console.warn("[SYSTEM_WARN] Gagal terhubung ke endpoint API kualitas air. Mengaktifkan backup mock data lokal.", e);
+      // Fail-Safe: Jika backend offline, amankan jalannya peta dengan data mock lokal
+      set({ waterStations: mockWaterStations });
+    } finally {
+      set({ isWaterLoading: false });
+    }
+  },
 
   // ==========================================================================
   // MANAJEMEN KUALITAS UDARA SPASIAL (AQI SLICE IMPLEMENTATION)
