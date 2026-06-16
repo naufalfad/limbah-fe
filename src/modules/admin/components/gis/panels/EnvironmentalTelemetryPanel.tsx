@@ -75,37 +75,37 @@ export default function EnvironmentalTelemetryPanel({ companyData }: Environment
     // 3. COLOR & STATUS RESOLVERS (EPA Standard)
     const getAqiConfig = (aqiValue: number) => {
         if (aqiValue <= 50) return {
-            color: "text-emerald-700 bg-emerald-50 border-emerald-200",
+            color: "text-emerald-700 bg-emerald-50/40 border-emerald-100",
             barColor: "bg-emerald-500",
             label: "Baik (Sehat)",
             icon: <CheckCircle2 className="text-emerald-600 shrink-0" size={16} />,
             advisory: "Sangat ideal untuk beraktivitas luar ruangan. Kualitas udara tidak mendatangkan risiko kesehatan."
         };
         if (aqiValue <= 100) return {
-            color: "text-amber-700 bg-amber-50 border-amber-200",
+            color: "text-amber-700 bg-amber-50/40 border-amber-100",
             barColor: "bg-yellow-400",
             label: "Sedang (Waspada)",
             icon: <Info className="text-amber-500 shrink-0" size={16} />,
             advisory: "Udara dapat diterima. Namun, kelompok sensitif disarankan membatasi aktivitas fisik berat di luar ruangan."
         };
         if (aqiValue <= 150) return {
-            color: "text-orange-700 bg-orange-50 border-orange-200",
+            color: "text-orange-700 bg-orange-50/40 border-orange-100",
             barColor: "bg-orange-500",
-            label: "Tidak Sehat (Sensitif)",
+            label: "Tidak sehat (Sensitif)",
             icon: <AlertTriangle className="text-orange-500 shrink-0" size={16} />,
             advisory: "Kelompok rentan (anak-anak, lansia, penderita asma) dapat mengalami gangguan pernapasan. Gunakan masker medis."
         };
         if (aqiValue <= 200) return {
-            color: "text-red-700 bg-red-50 border-red-200",
+            color: "text-red-700 bg-red-50/40 border-red-100",
             barColor: "bg-red-500",
-            label: "Tidak Sehat",
+            label: "Tidak sehat",
             icon: <ShieldAlert className="text-red-600 shrink-0" size={16} />,
             advisory: "Masyarakat umum berpotensi mengalami gejala iritasi tenggorokan/mata. Hindari aktivitas di luar ruangan yang terlalu lama."
         };
         return {
-            color: "text-purple-700 bg-purple-50 border-purple-200",
+            color: "text-purple-700 bg-purple-50/40 border-purple-100",
             barColor: "bg-purple-600",
-            label: "Sangat Berbahaya",
+            label: "Sangat berbahaya",
             icon: <ShieldAlert className="text-purple-600 shrink-0" size={16} />,
             advisory: "Kondisi darurat polusi! Seluruh populasi berisiko tinggi terkena dampak kesehatan serius. Tutup jendela rapat-rapat."
         };
@@ -139,8 +139,8 @@ export default function EnvironmentalTelemetryPanel({ companyData }: Environment
                 {aqiLoading && (
                     <div className="py-24 flex flex-col items-center justify-center gap-2.5 text-slate-400">
                         <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
-                        <span className="text-[10px] font-black uppercase tracking-widest leading-none mt-1">Mengakses Pemantau Udara...</span>
-                        <span className="text-[9px] text-slate-400 font-bold uppercase leading-none">Sinkronisasi Jaringan Stasiun Sampit</span>
+                        <span className="text-[10px] font-normal leading-none mt-1">Mengakses pemantau udara...</span>
+                        <span className="text-[9px] text-slate-400 font-normal leading-none">Sinkronisasi jaringan stasiun Sampit</span>
                     </div>
                 )}
 
@@ -149,70 +149,70 @@ export default function EnvironmentalTelemetryPanel({ companyData }: Environment
                     <div className="py-16 p-4 text-center space-y-3">
                         <AlertTriangle className="mx-auto text-amber-500 animate-bounce" size={24} />
                         <div>
-                            <p className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Sinyal Udara Terputus</p>
-                            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1">{aqiError}</p>
+                            <p className="text-[10px] font-normal text-slate-700 uppercase tracking-widest">Sinyal udara terputus</p>
+                            <p className="text-[9px] text-slate-400 font-normal tracking-wider mt-1">{aqiError}</p>
                         </div>
                     </div>
                 )}
 
                 {/* MAIN CONTENT TELEMETRY VIEW */}
                 {!aqiLoading && aqiData && (
-                    <div className="space-y-4 animate-in fade-in duration-300">
+                    <div className="space-y-1 animate-in fade-in duration-300">
 
-                        {/* WIDGET HERO: AQI VALUE HEADER */}
-                        <div className={cn("p-4 border text-left flex items-start justify-between rounded-none shadow-sm", aqiStyle.color)}>
+                        {/* WIDGET HERO: AQI VALUE HEADER (Penyelarasan Proporsi Apple Layout & Tanpa Italic) */}
+                        <div className={cn("p-4 -mx-4 -mt-4 border-b border-slate-100 text-left flex items-start justify-between select-none", aqiStyle.color)}>
                             <div className="space-y-1">
-                                <span className="text-[8px] font-black uppercase tracking-[0.2em] block opacity-75">US EPA Air Quality Index</span>
-                                <h3 className="text-sm font-black uppercase tracking-tight leading-none">{aqiStyle.label}</h3>
-                                <p className="text-[9px] font-medium leading-normal opacity-90 text-justify pt-1.5">{aqiStyle.advisory}</p>
+                                <span className="text-sm font-normal text-slate-850 block">Indeks kualitas udara (AQI)</span>
+                                <h3 className="text-xs font-normal text-slate-600 leading-none">{aqiStyle.label}</h3>
+                                <p className="text-xs font-normal text-slate-600 leading-normal text-left pt-1.5">{aqiStyle.advisory}</p>
                             </div>
-                            <div className="text-right shrink-0">
-                                <span className="text-4xl font-black italic tracking-tighter leading-none font-mono block">{aqi}</span>
-                                <span className="text-[8px] font-black opacity-70 tracking-widest block mt-1 uppercase">US-AQI</span>
+                            <div className="text-right shrink-0 border-l border-slate-200/40 pl-3.5 ml-3.5 flex flex-col justify-center h-full">
+                                <span className="text-3xl font-normal tracking-tight leading-none font-mono block">{aqi}</span>
+                                <span className="text-[10px] font-normal text-slate-500 block mt-1">US-AQI</span>
                             </div>
                         </div>
 
                         {/* WIDGET 2: HIGH-DENSITY WEATHER GRID */}
-                        <div className="space-y-1.5">
-                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block text-left">Telemetri Stasiun Terdekat</span>
-                            <div className="grid grid-cols-2 gap-2 font-mono text-[10px] font-bold text-slate-500">
-                                <div className="bg-slate-50 border p-2.5 text-left rounded-none">
-                                    <div className="flex justify-between items-center text-slate-400 font-sans">
-                                        <span className="text-[8px] font-black uppercase tracking-widest">Suhu Udara</span>
+                        <div className="py-4 border-b border-slate-100 space-y-3 text-left">
+                            <span className="text-xs font-normal text-slate-700 block">Telemetri stasiun terdekat</span>
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-3 font-sans text-slate-500">
+                                <div className="border-b border-slate-100 pb-1.5 text-left">
+                                    <div className="flex justify-between items-center text-slate-700">
+                                        <span className="text-xs font-normal">Suhu udara</span>
                                         <Thermometer size={12} className="text-rose-500" />
                                     </div>
-                                    <span className="text-base font-black text-slate-800 leading-none block mt-1.5">{aqiData.weather.temperature}°C</span>
+                                    <span className="text-[10px] font-normal text-slate-500 leading-none block mt-1">{aqiData.weather.temperature} °C</span>
                                 </div>
 
-                                <div className="bg-slate-50 border p-2.5 text-left rounded-none">
-                                    <div className="flex justify-between items-center text-slate-400 font-sans">
-                                        <span className="text-[8px] font-black uppercase tracking-widest">Kelembapan</span>
+                                <div className="border-b border-slate-100 pb-1.5 text-left">
+                                    <div className="flex justify-between items-center text-slate-700">
+                                        <span className="text-xs font-normal">Kelembapan</span>
                                         <Droplets size={12} className="text-blue-500" />
                                     </div>
-                                    <span className="text-base font-black text-slate-800 leading-none block mt-1.5">{aqiData.weather.humidity}%</span>
+                                    <span className="text-[10px] font-normal text-slate-500 leading-none block mt-1">{aqiData.weather.humidity} %</span>
                                 </div>
 
-                                <div className="bg-slate-50 border p-2.5 text-left rounded-none">
-                                    <div className="flex justify-between items-center text-slate-400 font-sans">
-                                        <span className="text-[8px] font-black uppercase tracking-widest">Kec. Angin</span>
+                                <div className="border-b border-slate-100 pb-1.5 text-left">
+                                    <div className="flex justify-between items-center text-slate-700">
+                                        <span className="text-xs font-normal">Kec. angin</span>
                                         <Wind size={12} className="text-emerald-500" />
                                     </div>
-                                    <span className="text-base font-black text-slate-800 leading-none block mt-1.5">{aqiData.weather.windSpeed} m/s</span>
+                                    <span className="text-[10px] font-normal text-slate-500 leading-none block mt-1">{aqiData.weather.windSpeed} m/s</span>
                                 </div>
 
-                                <div className="bg-slate-50 border p-2.5 text-left rounded-none overflow-hidden">
-                                    <div className="flex justify-between items-center text-slate-400 font-sans">
-                                        <span className="text-[8px] font-black uppercase tracking-widest">Polutan Utama</span>
+                                <div className="border-b border-slate-100 pb-1.5 text-left overflow-hidden">
+                                    <div className="flex justify-between items-center text-slate-700">
+                                        <span className="text-xs font-normal">Polutan utama</span>
                                         <Gauge size={12} className="text-indigo-500" />
                                     </div>
-                                    <span className="text-xs font-black text-slate-800 leading-none truncate block mt-2">{aqiData.mainPollutant}</span>
+                                    <span className="text-[10px] font-normal text-slate-500 leading-none truncate block mt-1">{aqiData.mainPollutant}</span>
                                 </div>
                             </div>
                         </div>
 
-                        {/* WIDGET 3: 24-HOUR FORECAST CHART (SPARKLINE DESIGN) */}
-                        <div className="bg-white border border-slate-200 p-3 text-left space-y-2.5">
-                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block border-b pb-1">Prediksi Polusi Udara 24 Jam</span>
+                        {/* WIDGET 3: 24-HOUR FORECAST CHART (Seamless Flat Section) */}
+                        <div className="py-4 border-b border-slate-100 text-left space-y-3">
+                            <span className="text-xs font-normal text-slate-700 block">Prediksi polusi udara 24 jam</span>
                             <div className="flex justify-between items-end h-16 pt-2">
                                 {forecastBars.map((bar, i) => {
                                     const heightPercent = Math.min(100, (bar.val / 150) * 100);
@@ -221,33 +221,33 @@ export default function EnvironmentalTelemetryPanel({ companyData }: Environment
                                     return (
                                         <div key={i} className="flex flex-col items-center flex-1 group relative">
                                             {/* Tooltip Hover Sparkline */}
-                                            <div className="absolute bottom-full mb-1 bg-slate-800 text-white text-[8px] font-black px-1 py-0.5 rounded-none opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                                            <div className="absolute bottom-full mb-1 bg-slate-800 text-white text-[8px] font-normal px-1 py-0.5 rounded-none opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
                                                 {bar.val} AQI
                                             </div>
                                             {/* Kolom Bar */}
-                                            <div className="w-4 bg-slate-100 h-10 flex items-end">
+                                            <div className="w-4 bg-slate-50 h-10 flex items-end">
                                                 <div
                                                     className={cn("w-full transition-all duration-500", barConfig.barColor)}
                                                     style={{ height: `${heightPercent}%` }}
                                                 />
                                             </div>
                                             {/* Waktu */}
-                                            <span className="text-[7px] font-black text-slate-400 mt-1 font-mono leading-none">{bar.time}</span>
+                                            <span className="text-[7px] font-normal text-slate-400 mt-1 font-mono leading-none">{bar.time}</span>
                                         </div>
                                     );
                                 })}
                             </div>
                         </div>
 
-                        {/* WIDGET 4: WIND ROSE COMPASS WIDGET */}
-                        <div className="bg-slate-50 border border-slate-200 p-3 grid grid-cols-12 gap-3 items-center rounded-none text-left select-none">
+                        {/* WIDGET 4: WIND ROSE COMPASS WIDGET (Seamless Flat Section) */}
+                        <div className="py-4 border-b border-slate-100 grid grid-cols-12 gap-4 items-center text-left select-none">
                             <div className="col-span-4 flex items-center justify-center">
                                 {/* SVG Compass Dial */}
-                                <div className="relative w-14 h-14 bg-white rounded-full border border-slate-200 flex items-center justify-center shrink-0">
-                                    <span className="absolute top-0.5 text-[7px] font-black text-slate-400 leading-none">N</span>
-                                    <span className="absolute right-1 text-[7px] font-black text-slate-400 leading-none">E</span>
-                                    <span className="absolute bottom-0.5 text-[7px] font-black text-slate-400 leading-none">S</span>
-                                    <span className="absolute left-1 text-[7px] font-black text-slate-400 leading-none">W</span>
+                                <div className="relative w-14 h-14 bg-slate-50 rounded-full border border-slate-200 flex items-center justify-center shrink-0">
+                                    <span className="absolute top-0.5 text-[7px] font-normal text-slate-400 leading-none">N</span>
+                                    <span className="absolute right-1 text-[7px] font-normal text-slate-400 leading-none">E</span>
+                                    <span className="absolute bottom-0.5 text-[7px] font-normal text-slate-400 leading-none">S</span>
+                                    <span className="absolute left-1 text-[7px] font-normal text-slate-400 leading-none">W</span>
                                     {/* Arrow Rotated based on wd degree */}
                                     <div style={compassArrowStyle} className="w-6 h-6 flex items-center justify-center">
                                         <svg className="w-4.5 h-4.5 text-emerald-600" fill="currentColor" viewBox="0 0 24 24">
@@ -258,14 +258,14 @@ export default function EnvironmentalTelemetryPanel({ companyData }: Environment
                             </div>
 
                             <div className="col-span-8 space-y-1">
-                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none block">Vektor Embusan Angin</span>
-                                <h5 className="text-[11px] font-black text-slate-800 leading-none">Arah: {aqiData.weather.windDirection}° ({getWindDirectionName(aqiData.weather.windDirection)})</h5>
-                                <p className="text-[9px] text-slate-500 font-semibold leading-normal">Kecepatan angin {aqiData.weather.windSpeed} m/s memengaruhi arah persebaran partikel asap/polutan pabrik [3].</p>
+                                <span className="text-[12px] font-normal text-slate-800 block">Vektor embusan angin</span>
+                                <h5 className="text-[11px] font-normal text-slate-500 leading-none mt-1">Arah: {aqiData.weather.windDirection}° ({getWindDirectionName(aqiData.weather.windDirection)})</h5>
+                                <p className="text-[11px] font-normal text-slate-500 leading-normal mt-1">Kecepatan angin {aqiData.weather.windSpeed} m/s memengaruhi arah persebaran partikel asap/polutan pabrik [3].</p>
                             </div>
                         </div>
 
                         {/* DATA SOURCE FOOTER */}
-                        <div className="flex justify-between items-center text-[8px] text-slate-400 font-bold uppercase tracking-wider pt-2 border-t">
+                        <div className="flex justify-between items-center text-[9px] text-slate-500 font-normal pt-3">
                             <span>Sektor: {companyData.companyName}</span>
                             <span>Cache: {aqiData.source === 'simulation' ? 'Simulated' : aqiData.source === 'cache' ? 'Settle Cached' : 'Live Synchronized'}</span>
                         </div>
@@ -275,12 +275,12 @@ export default function EnvironmentalTelemetryPanel({ companyData }: Environment
             </div>
 
             {/* ACTION FOOTER */}
-            <div className="p-4 border-t border-slate-200 bg-white shrink-0">
+            <div className="p-4 border-t border-slate-150 bg-white shrink-0">
                 <button
                     onClick={() => toast.success(`Analisis spasial udara dicatat ke audit log.`)}
-                    className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white rounded-none font-black text-[10px] uppercase tracking-widest shadow-none transition-colors flex items-center justify-center gap-1.5"
+                    className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white rounded-none font-normal text-xs transition-colors flex items-center justify-center gap-1.5 border-none outline-none cursor-pointer"
                 >
-                    Amankan Log Telemetri <ArrowUpRight size={12} />
+                    Amankan log telemetri <ArrowUpRight size={12} />
                 </button>
             </div>
         </div>
@@ -290,8 +290,8 @@ export default function EnvironmentalTelemetryPanel({ companyData }: Environment
 // Resolver Arah Angin Derajat Kompas ke Nama Arah Kardinal
 function getWindDirectionName(degree: number): string {
     const directions = [
-        "Utara", "Timur Laut", "Timur", "Tenggara",
-        "Selatan", "Barat Daya", "Barat", "Barat Laut"
+        "Utara", "Timur laut", "Timur", "Tenggara",
+        "Selatan", "Barat daya", "Barat", "Barat laut"
     ];
     // Membagi lingkaran 360 derajat menjadi 8 bagian
     const idx = Math.round(((degree % 360) / 45)) % 8;

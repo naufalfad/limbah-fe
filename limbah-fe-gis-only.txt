@@ -1,4 +1,4 @@
-=== KUMPULAN KODE SPASIAL (GIS-ONLY MODE) ===
+=== KUMPULAN KODE SPASIAL (GIS-ONLY MODE - COMPRESSED) ===
 
 
 --- FILE: package.json ---
@@ -66,7 +66,6 @@
   }
 }
 
-
 --- FILE: src\lib\spatialAnalytics.ts ---
 // src/lib/spatialAnalytics.ts
 
@@ -76,7 +75,7 @@ import * as turf from '@turf/turf';
 /**
  * 1. MENGHITUNG KEPADATAN INDUSTRI PER KECAMATAN (Choropleth Aggregation)
  * Menggunakan algoritma Point-in-Polygon (PIP) untuk agregasi spasial industri.
- * 
+ *
  * @param companies - Array data perusahaan dari store (memiliki lat & lng)
  * @param geojsonKecamatan - FeatureCollection GeoJSON dari Kecamatan Kabupaten Bogor
  * @returns Object Record berisi { "Nama Kecamatan": JumlahPabrik }
@@ -120,7 +119,7 @@ export const calculateCompaniesPerKecamatan = (
 /**
  * 2. MENGHITUNG RADIUS DAMPAK BENCANA PENCEMARAN (Buffer Intersection)
  * Membuat lingkaran (Buffer) lalu mendeteksi poligon Kelurahan/Desa mana saja yang tertabrak.
- * 
+ *
  * @param lat - Latitude pusat kejadian / pabrik
  * @param lng - Longitude pusat kejadian / pabrik
  * @param radiusKm - Jarak radius dampak dalam Kilometer (misal: 5)
@@ -225,8 +224,8 @@ const IDW_POWER = 3;
 
 /**
  * 1. KALKULASI JARAK (Optimasi CPU: Euclidean Squared)
- * 
- * Menggunakan kuadrat jarak Euclidean alih-alih Haversine murni. 
+ *
+ * Menggunakan kuadrat jarak Euclidean alih-alih Haversine murni.
  * Ini menghemat penggunaan Math.sqrt() pada iterasi canvas (2.500+ titik per frame).
  * Akurasi geografis sedikit berkurang, namun sangat bisa ditoleransi untuk skala regional (Bogor).
  */
@@ -248,12 +247,11 @@ const AQI_COLOR_STOPS = [
     { val: 400, rgb: [126, 0, 35] }      // Maroon (Berbahaya)
 ];
 
-
 export const spatialMath = {
 
     /**
      * 2. INTERPOLASI KUALITAS UDARA (AQI) MENGGUNAKAN IDW
-     * 
+     *
      * Menghitung tebakan nilai AQI pada titik koordinat kosong berdasarkan
      * sensor-sensor di sekitarnya dan diakhiri tarikan dari Virtual Nodes.
      */
@@ -289,9 +287,9 @@ export const spatialMath = {
 
     /**
      * 3. INTERPOLASI VEKTOR ANGIN (TRIGONOMETRIC IDW)
-     * 
+     *
      * Rata-rata arah angin tidak bisa menggunakan matematika linear (350° dan 10° rata-ratanya bukan 180°, melainkan 0°).
-     * Solusinya: Pecah derajat menjadi vektor Sinus (U) dan Cosinus (V), bobotkan dengan IDW, 
+     * Solusinya: Pecah derajat menjadi vektor Sinus (U) dan Cosinus (V), bobotkan dengan IDW,
      * lalu kembalikan menjadi derajat menggunakan Arc Tangent (Atan2).
      */
     interpolateWind: (targetLat: number, targetLng: number, sensors: WindNode[]): { wd: number, ws: number } => {
@@ -342,7 +340,7 @@ export const spatialMath = {
 
     /**
      * 4. GENERATOR MATRIKS GRID KANVAS
-     * 
+     *
      * Menghasilkan peta titik-titik (resolusi) untuk digambar oleh HTML5 Canvas.
      * Outputnya akan di-mapping oleh komponen UI Render.
      */
@@ -369,7 +367,7 @@ export const spatialMath = {
 
     /**
      * 5. GRADASI WARNA KONTINU (LINEAR COLOR INTERPOLATION)
-     * 
+     *
      * Menggantikan Switch-Case warna kaku. Jika nilai AQI jatuh di antara
      * dua titik batas (misal: 75, antara 50 dan 100), algoritma ini akan
      * mencampurkan RGB secara merata untuk menghasilkan gradasi mulus.
@@ -408,8 +406,8 @@ export const spatialMath = {
 
     /**
      * 6. KODE WARNA STATIS (Kompabilitas / Fallback UI Tegas)
-     * 
-     * Digunakan jika komponen UI membutuhkan batas tegas murni sesuai EPA 
+     *
+     * Digunakan jika komponen UI membutuhkan batas tegas murni sesuai EPA
      * tanpa efek perpaduan gradasi.
      */
     getStaticAqiColorRgb: (aqi: number): [number, number, number] => {
@@ -2580,7 +2578,6 @@ function DecisionCard({ active, onClick, icon, label, sublabel, color }: any) {
   );
 }
 
-
 --- FILE: src\modules\admin\components\gis\AqiHorizontalLegend.tsx ---
 // src/modules/admin/components/gis/AqiHorizontalLegend.tsx
 import React, { useState, useEffect } from "react";
@@ -2592,9 +2589,9 @@ import { cn } from "@/lib/utils";
  * ============================================================================
  * AQI HORIZONTAL LEGEND & EMBEDDED ZOOM HUD (GFW PARADIGM)
  * ============================================================================
- * Menampilkan bilah spektrum warna kualitas udara secara mendatar di bawah 
- * layar. Dilengkapi dengan logika dynamic centering offset, kontrol zoom 
- * taktis, dan continuous gradient mapping untuk menyelaraskan estetika 
+ * Menampilkan bilah spektrum warna kualitas udara secara mendatar di bawah
+ * layar. Dilengkapi dengan logika dynamic centering offset, kontrol zoom
+ * taktis, dan continuous gradient mapping untuk menyelaraskan estetika
  * dengan peta spasial di belakangnya [3].
  */
 export default function AqiHorizontalLegend() {
@@ -2650,7 +2647,7 @@ export default function AqiHorizontalLegend() {
     // ==========================================================================
     // CONTINUOUS GRADIENT GENERATOR
     // Menghasilkan string linear-gradient() dengan akurasi persentase terpusat.
-    // Memastikan teks selalu berada di atas warna solid, dan perpaduan 
+    // Memastikan teks selalu berada di atas warna solid, dan perpaduan
     // warna hanya terjadi di batas antara dua segmen.
     // ==========================================================================
     const colorStops = aqiSpectrum.map((item, index) => {
@@ -3237,7 +3234,7 @@ const createCompanyMarkerIcon = (score?: number | null, docType?: string, isSele
  * ============================================================================
  * COMPANY MARKER LAYER (LOD & POLYMORPHIC RENDERER)
  * ============================================================================
- * Komponen ini hanya bertanggung jawab mem-parsing data perusahaan dan 
+ * Komponen ini hanya bertanggung jawab mem-parsing data perusahaan dan
  * merendernya di peta. Mematuhi prinsip LOD (Level of Detail).
  */
 export default function CompanyMarkerLayer({ companies, currentZoom, mapOpacity, isOfficer }: CompanyMarkerLayerProps) {
@@ -3323,7 +3320,7 @@ export default function CompanyMarkerLayer({ companies, currentZoom, mapOpacity,
 
                 const isSelected = selectedCompanyId === c.id;
 
-                // [LOD RENDERER] 
+                // [LOD RENDERER]
                 // Jika zoom 16 atau lebih dekat, render bentuk asli Poligon pabrik.
                 if (currentZoom >= 16 && c.polygon.length > 0) {
                     return (
@@ -3364,41 +3361,57 @@ import L, { PathOptions } from 'leaflet';
 import { useGisUIStore } from '@/store/useGisUIStore';
 import { useSijagaStore } from '@/store/useSijagaStore';
 
-// @ts-ignore - Bypass export mapping issue Turf.js v6.5 di bundler Vite
+// @ts-ignore
 import * as turf from '@turf/turf';
 
-// @ts-ignore - Bypass import module JSON di lingkungan Vite + TypeScript
+// @ts-ignore
 import bogorSungaiLine from '@/assets/geojson/bogor-sungai-line.json';
-// @ts-ignore - Bypass import module JSON di lingkungan Vite + TypeScript
+// @ts-ignore
 import bogorSungaiPoly from '@/assets/geojson/bogor-sungai-poly.json';
 
-interface CachedRiverPath {
-    coordsList: L.Point[][];
+// --- KONTRAK DATA INTERNAL ENGINE ---
+interface RiverSegment {
+    points: L.Point[];
     color: string;
     speed: number;
-    shouldAnimate: boolean; // Flag LOD spasial dinamis [3]
 }
+
+interface WaterParticle {
+    segmentIdx: number; // Berada di segmen sungai mana
+    ptIdx: number;      // Sedang menuju vertex ke-berapa
+    x: number;          // Posisi X saat ini
+    y: number;          // Posisi Y saat ini
+    speed: number;      // Kecepatan aliran (tergantung status polusi)
+    color: string;      // Warna komet
+}
+
+// Konfigurasi Engine Fluid Dynamics (Tuned)
+const PARTICLE_COUNT = 1000; // Partikel lebih padat agar aliran terlihat kontinu
+const FADE_RATE = 0.04;      // Lebih kecil = Jejak komet lebih panjang (Ilusi air menyambung)
+const ZOOM_LOD_THRESHOLD = 11; // Batas zoom-out diturunkan agar efek terlihat lebih luas
 
 /**
  * ============================================================================
- * HIGH PERFORMANCE CANVAS RIVER FLOW OVERLAY (OPTIMIZED)
+ * RIVER LAYER (DUAL-CANVAS PARTICLE ENGINE)
  * ============================================================================
- * Menggunakan teknik caching proyeksi, filter viewport, serta throttling loop 
- * animasi untuk performa mulus (60 FPS) dan hemat daya ekstrem [3].
+ * Menggunakan prinsip Pemisahan Tanggung Jawab (Separation of Concerns).
+ * - Canvas 1 (Statis): Menggambar dasar sungai sesuai warna Zona Polusi (Pemetaan Area).
+ * - Canvas 2 (Dinamis): Menjalankan partikel air 60FPS dengan Fading Trails (Ilusi Arus).
  */
 export default function RiverLayer() {
     const map = useMap();
     const { activeLayers, mapOpacity } = useGisUIStore();
     const { waterStations } = useSijagaStore();
 
-    const canvasRef = useRef<HTMLCanvasElement | null>(null);
+    // Ref untuk DOM Canvas ganda
+    const staticCanvasRef = useRef<HTMLCanvasElement | null>(null);
+    const dynamicCanvasRef = useRef<HTMLCanvasElement | null>(null);
     const animationRef = useRef<number | null>(null);
 
-    // Verifikasi visibilitas layer sungai
     const isRiverActive = activeLayers.includes('layer-river');
 
     // ==========================================================================
-    // INITIALIZATION-TIME PROGRAMMATIC SPATIAL JOIN (Turf.js Optimasi O(1)) [3]
+    // 1. SPATIAL JOIN (Turf.js Optimasi O(1)) - Pembagian Zona Kualitas Air
     // ==========================================================================
     const processedGeoJson = useMemo(() => {
         if (!bogorSungaiLine || !waterStations || waterStations.length === 0) {
@@ -3428,226 +3441,243 @@ export default function RiverLayer() {
                 }
             });
 
-            feature.properties = {
-                ...feature.properties,
-                nearestStationId: closestStationId
-            };
+            feature.properties = { ...feature.properties, nearestStationId: closestStationId };
         });
 
         return geojson;
     }, [waterStations]);
 
     // ==========================================================================
-    // LIFECYCLE ENGINE ANIMASI CANVAS (HIGH PERFORMANCE)
+    // 2. LIFECYCLE DUAL-CANVAS ENGINE
     // ==========================================================================
     useEffect(() => {
         if (!isRiverActive || !processedGeoJson) {
-            if (canvasRef.current && canvasRef.current.parentNode) {
-                canvasRef.current.parentNode.removeChild(canvasRef.current);
-                canvasRef.current = null;
-            }
+            if (staticCanvasRef.current?.parentNode) staticCanvasRef.current.parentNode.removeChild(staticCanvasRef.current);
+            if (dynamicCanvasRef.current?.parentNode) dynamicCanvasRef.current.parentNode.removeChild(dynamicCanvasRef.current);
+            if (animationRef.current) cancelAnimationFrame(animationRef.current);
             return;
         }
 
-        // 1. Inisialisasi Kanvas Overlay di Overlay Pane Leaflet
-        const canvas = document.createElement('canvas');
-        canvas.className = 'leaflet-zoom-animated pointer-events-none mix-blend-screen';
-        canvas.style.position = 'absolute';
-        canvas.style.left = '0';
-        canvas.style.top = '0';
-        canvas.style.opacity = String(mapOpacity / 100);
-        canvas.style.transition = 'opacity 0.2s ease-in-out';
+        const overlayPane = map.getPanes().overlayPane;
 
-        map.getPanes().overlayPane.appendChild(canvas);
-        canvasRef.current = canvas;
+        const sCanvas = document.createElement('canvas');
+        sCanvas.className = 'leaflet-zoom-animated pointer-events-none mix-blend-screen';
+        sCanvas.style.position = 'absolute';
+        sCanvas.style.left = '0';
+        sCanvas.style.top = '0';
+        sCanvas.style.opacity = String(mapOpacity / 100);
+        sCanvas.style.transition = 'opacity 0.2s ease-in-out';
+        sCanvas.style.zIndex = '1';
 
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
+        const dCanvas = document.createElement('canvas');
+        dCanvas.className = 'leaflet-zoom-animated pointer-events-none mix-blend-screen';
+        dCanvas.style.position = 'absolute';
+        dCanvas.style.left = '0';
+        dCanvas.style.top = '0';
+        dCanvas.style.opacity = String(mapOpacity / 100);
+        dCanvas.style.transition = 'opacity 0.2s ease-in-out';
+        dCanvas.style.zIndex = '2';
 
-        let cachedPaths: CachedRiverPath[] = [];
+        overlayPane.appendChild(sCanvas);
+        overlayPane.appendChild(dCanvas);
+        staticCanvasRef.current = sCanvas;
+        dynamicCanvasRef.current = dCanvas;
+
+        const sCtx = sCanvas.getContext('2d');
+        const dCtx = dCanvas.getContext('2d');
+        if (!sCtx || !dCtx) return;
+
+        let activeSegments: RiverSegment[] = [];
+        let particles: WaterParticle[] = [];
         let isAnimating = true;
-        let tick = 0;
 
-        // 2. Pre-Computing & Caching Viewport (Clipped Geometry)
+        // --- B. PRE-COMPUTING: Render Statis 1x & Seeding Partikel ---
         const syncCanvasGeometry = () => {
             const size = map.getSize();
-            canvas.width = size.x;
-            canvas.height = size.y;
+            sCanvas.width = size.x; sCanvas.height = size.y;
+            dCanvas.width = size.x; dCanvas.height = size.y;
 
             const topLeft = map.containerPointToLayerPoint([0, 0]);
-            L.DomUtil.setPosition(canvas, topLeft);
+            L.DomUtil.setPosition(sCanvas, topLeft);
+            L.DomUtil.setPosition(dCanvas, topLeft);
 
-            // Pengaman Viewport: Tambahkan batas toleransi margin (~15%) agar komet masuk layar dengan mulus [3]
-            const mapBounds = map.getBounds();
-            const paddedBounds = mapBounds.pad(0.15);
-            const currentZoomLevel = map.getZoom();
+            const mapBounds = map.getBounds().pad(0.15);
+            activeSegments = [];
 
-            // LOD Rule: Batasi animasi komet hanya pada zoom-in menengah ke dekat (Zoom >= 13) [3]
-            const enableFlowAnimation = currentZoomLevel >= 13;
+            processedGeoJson.features.forEach((feature: any) => {
+                const geom = feature.geometry;
+                if (!geom) return;
 
-            // Saring dan proyeksi koordinat segmen sungai yang murni on-screen saja (GRASP)
-            cachedPaths = processedGeoJson.features
-                .filter((feature: any) => {
-                    const geom = feature.geometry;
-                    if (!geom) return false;
+                let isVisible = false;
+                if (geom.type === 'LineString') {
+                    isVisible = geom.coordinates.some((c: number[]) => mapBounds.contains([c[1], c[0]]));
+                } else if (geom.type === 'MultiLineString') {
+                    isVisible = geom.coordinates.some((line: number[][]) => line.some(c => mapBounds.contains([c[1], c[0]])));
+                }
 
-                    // VIEWPORT CLIPPING: Jika segmen sungai di luar viewport, abaikan [3]
-                    if (geom.type === 'LineString') {
-                        return geom.coordinates.some((coord: number[]) =>
-                            paddedBounds.contains([coord[1], coord[0]])
-                        );
-                    } else if (geom.type === 'MultiLineString') {
-                        return geom.coordinates.some((line: number[][]) =>
-                            line.some((coord: number[]) => paddedBounds.contains([coord[1], coord[0]]))
-                        );
+                if (!isVisible) return;
+
+                const nearestId = feature.properties?.nearestStationId;
+                const station = waterStations.find(s => s.id === nearestId);
+
+                // Tuned Speed & Color Mapping
+                let color = '#22d3ee'; // Cyan (Sehat)
+                let speed = 0.5;       // Aliran natural air bersih
+
+                if (station) {
+                    const isCritical = station.currentData.bod > 3.0 || station.currentData.cod > 25.0 || station.currentData.do < 4.0;
+                    if (isCritical) {
+                        color = '#f43f5e'; // Merah (Kritis)
+                        speed = 0.15;      // Sangat mampet/kental
+                    } else if (station.currentData.bod > 2.0) {
+                        color = '#fbbf24'; // Kuning (Waspada)
+                        speed = 0.3;       // Agak lambat
                     }
-                    return false;
-                })
-                .map((feature: any) => {
-                    const geom = feature.geometry;
-                    const nearestId = feature.properties?.nearestStationId;
-                    const station = waterStations.find(s => s.id === nearestId);
+                }
 
-                    let color = '#22d3ee'; // Cyan 400 (Aliran Sehat)
-                    let speed = 0.4;       // Flow normal lambat & halus
+                const processLine = (coords: number[][]) => {
+                    const points = coords.map(c => map.latLngToContainerPoint([c[1], c[0]]));
+                    activeSegments.push({ points, color, speed });
+                };
 
-                    if (station) {
-                        const isCritical =
-                            station.currentData.bod > 3.0 ||
-                            station.currentData.cod > 25.0 ||
-                            station.currentData.do < 4.0;
-
-                        if (isCritical) {
-                            color = '#f43f5e'; // Rose 500 (Sungai Tercemar Berat)
-                            speed = 0.12;      // Mengalir tersendat / sangat lambat
-                        } else if (station.currentData.bod > 2.0) {
-                            color = '#fbbf24'; // Amber 400 (Tercemar Sedang)
-                            speed = 0.25;      // Mengalir sedang
-                        }
-                    }
-
-                    const coordsList: L.Point[][] = [];
-                    if (geom.type === 'LineString') {
-                        const pts = geom.coordinates.map((coord: number[]) =>
-                            map.latLngToContainerPoint([coord[1], coord[0]])
-                        );
-                        coordsList.push(pts);
-                    } else if (geom.type === 'MultiLineString') {
-                        geom.coordinates.forEach((line: number[][]) => {
-                            const pts = line.map((coord: number[]) =>
-                                map.latLngToContainerPoint([coord[1], coord[0]])
-                            );
-                            coordsList.push(pts);
-                        });
-                    }
-
-                    return { coordsList, color, speed, shouldAnimate: enableFlowAnimation };
-                });
-        };
-
-        // Fungsi bantu lukis canvas
-        const drawAllPaths = (cCtx: CanvasRenderingContext2D, currentTick: number) => {
-            cachedPaths.forEach((path) => {
-                path.coordsList.forEach((pts) => {
-                    if (pts.length < 2) return;
-
-                    // --- LAPIS 1: Sungai Lapis Dasar (Static Teal Base) ---
-                    cCtx.beginPath();
-                    cCtx.moveTo(pts[0].x, pts[0].y);
-                    for (let i = 1; i < pts.length; i++) {
-                        cCtx.lineTo(pts[i].x, pts[i].y);
-                    }
-                    cCtx.strokeStyle = '#115e59';
-                    cCtx.lineWidth = 3.5;
-                    cCtx.lineCap = 'round';
-                    cCtx.lineJoin = 'round';
-                    cCtx.setLineDash([]); // Garis dasar solid tanpa putus-putus
-                    cCtx.globalAlpha = 0.45;
-                    cCtx.stroke();
-
-                    // --- LAPIS 2: Aliran Dashed (Pre-rendered Marching Flow) ---
-                    // Animasi komet putus-putus hanya di-render jika mode LOD aktif [3]
-                    if (path.shouldAnimate) {
-                        cCtx.beginPath();
-                        cCtx.moveTo(pts[0].x, pts[0].y);
-                        for (let i = 1; i < pts.length; i++) {
-                            cCtx.lineTo(pts[i].x, pts[i].y);
-                        }
-                        cCtx.strokeStyle = path.color;
-                        cCtx.lineWidth = 1.8;
-                        cCtx.lineCap = 'round';
-                        cCtx.lineJoin = 'round';
-
-                        // Native marching dashes: 6px komet, 14px jeda kosong
-                        cCtx.setLineDash([6, 14]);
-                        cCtx.lineDashOffset = -currentTick * path.speed; // Gerakkan offset berlawanan arus
-                        cCtx.globalAlpha = 0.85;
-                        cCtx.stroke();
-                    }
-                });
+                if (geom.type === 'LineString') processLine(geom.coordinates);
+                else if (geom.type === 'MultiLineString') geom.coordinates.forEach(processLine);
             });
+
+            // 2. Gambar Rangka Dasar Sungai Berdasarkan Zona Warnanya (Menghindari tumpang tindih visual)
+            sCtx.clearRect(0, 0, sCanvas.width, sCanvas.height);
+            sCtx.lineCap = 'round';
+            sCtx.lineJoin = 'round';
+            sCtx.lineWidth = 4; // Lebih tebal agar area jelas
+
+            activeSegments.forEach(seg => {
+                if (seg.points.length < 2) return;
+                sCtx.beginPath();
+                sCtx.moveTo(seg.points[0].x, seg.points[0].y);
+                for (let i = 1; i < seg.points.length; i++) {
+                    sCtx.lineTo(seg.points[i].x, seg.points[i].y);
+                }
+                sCtx.strokeStyle = seg.color; // Mewarnai garis statis dengan warna stasiunnya
+                sCtx.globalAlpha = 0.35;      // Transparan sebagai dasar aliran
+                sCtx.stroke();
+            });
+
+            // 3. Taburkan Tetesan Partikel
+            particles = [];
+            if (activeSegments.length === 0) return;
+
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                const segIdx = Math.floor(Math.random() * activeSegments.length);
+                const segment = activeSegments[segIdx];
+                const ptIdx = Math.floor(Math.random() * (segment.points.length - 1));
+
+                particles.push({
+                    segmentIdx: segIdx,
+                    ptIdx: ptIdx,
+                    x: segment.points[ptIdx].x,
+                    y: segment.points[ptIdx].y,
+                    speed: segment.speed * (0.8 + Math.random() * 0.4),
+                    color: segment.color
+                });
+            }
         };
 
-        // 3. Pause & Play saat interaksi peta untuk menghemat RAM & CPU
+        // --- C. ENGINE ANIMASI (60 FPS PARTICLE ROUTING) ---
+        const renderLoop = () => {
+            if (!isAnimating || !dynamicCanvasRef.current) return;
+
+            const w = dCanvas.width;
+            const h = dCanvas.height;
+
+            // Fading Trail (Air Mengalir)
+            dCtx.globalCompositeOperation = 'destination-out';
+            dCtx.fillStyle = `rgba(0, 0, 0, ${FADE_RATE})`;
+            dCtx.fillRect(0, 0, w, h);
+
+            dCtx.globalCompositeOperation = 'source-over';
+            dCtx.lineWidth = 3.5; // Komet lebih tebal dan jelas
+            dCtx.lineCap = 'round';
+
+            particles.forEach(p => {
+                const segment = activeSegments[p.segmentIdx];
+                if (!segment) return;
+
+                const p1 = { x: p.x, y: p.y };
+                const p2 = segment.points[p.ptIdx + 1];
+
+                if (!p2) {
+                    p.segmentIdx = Math.floor(Math.random() * activeSegments.length);
+                    p.ptIdx = 0;
+                    p.x = activeSegments[p.segmentIdx].points[0].x;
+                    p.y = activeSegments[p.segmentIdx].points[0].y;
+                    return;
+                }
+
+                const dx = p2.x - p1.x;
+                const dy = p2.y - p1.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist < p.speed) {
+                    p.ptIdx++;
+                    p.x = p2.x;
+                    p.y = p2.y;
+                } else {
+                    p.x += (dx / dist) * p.speed;
+                    p.y += (dy / dist) * p.speed;
+                }
+
+                // Gambar goresan komet (membentuk ekor bercahaya)
+                dCtx.beginPath();
+                dCtx.moveTo(p1.x, p1.y);
+                dCtx.lineTo(p.x, p.y);
+                dCtx.strokeStyle = p.color;
+                dCtx.globalAlpha = 0.9;
+                dCtx.stroke();
+            });
+
+            animationRef.current = requestAnimationFrame(renderLoop);
+        };
+
+        // --- D. EVENT LISTENERS ---
         const handleInteractionStart = () => {
             isAnimating = false;
-            if (animationRef.current) {
-                cancelAnimationFrame(animationRef.current);
-                animationRef.current = null;
-            }
-            canvas.style.opacity = '0'; // Sembunyikan halus saat transisi rendering Leaflet
+            if (animationRef.current) cancelAnimationFrame(animationRef.current);
+            sCanvas.style.opacity = '0';
+            dCanvas.style.opacity = '0';
         };
 
         const handleInteractionEnd = () => {
             syncCanvasGeometry();
             isAnimating = true;
-            canvas.style.opacity = String(mapOpacity / 100);
-            renderLoop();
+            sCanvas.style.opacity = String(mapOpacity / 100);
+
+            // LOD Threshold Diperluas
+            if (map.getZoom() >= ZOOM_LOD_THRESHOLD) {
+                dCanvas.style.opacity = String(mapOpacity / 100);
+                renderLoop();
+            } else {
+                dCanvas.style.opacity = '0';
+            }
         };
 
         map.on('movestart zoomstart', handleInteractionStart);
         map.on('moveend zoomend', handleInteractionEnd);
 
-        // Inisialisasi awal kalkulasi koordinat
+        // Eksekusi Pertama
         syncCanvasGeometry();
+        if (map.getZoom() >= ZOOM_LOD_THRESHOLD) renderLoop();
 
-        // 4. Smart Loop Throttler (0% CPU Idle pada Zoom Out jauh) [3]
-        const renderLoop = () => {
-            if (!isAnimating || !canvasRef.current) return;
-
-            const currentZoomLevel = map.getZoom();
-            const hasAnimation = currentZoomLevel >= 13;
-
-            if (hasAnimation) {
-                // Skenario A: Zoom dekat -> jalankan loop komet beranimasi secara kontinu
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                tick += 0.35;
-                drawAllPaths(ctx, tick);
-                animationRef.current = requestAnimationFrame(renderLoop);
-            } else {
-                // Skenario B: Zoom regional -> gambar sungai statis sekali saja dan STOP animasi (0% CPU beban diam) [3]
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                drawAllPaths(ctx, 0); // Lukis statis dengan tick = 0
-                animationRef.current = null; // Putuskan siklus frame loop
-            }
-        };
-
-        // Jalankan mesin animasi
-        renderLoop();
-
-        // Destruksi & Pembersihan Listener saat unmount
         return () => {
             isAnimating = false;
             if (animationRef.current) cancelAnimationFrame(animationRef.current);
             map.off('movestart zoomstart', handleInteractionStart);
             map.off('moveend zoomend', handleInteractionEnd);
-            if (canvasRef.current && canvasRef.current.parentNode) {
-                canvasRef.current.parentNode.removeChild(canvasRef.current);
-            }
+            if (staticCanvasRef.current?.parentNode) staticCanvasRef.current.parentNode.removeChild(staticCanvasRef.current);
+            if (dynamicCanvasRef.current?.parentNode) dynamicCanvasRef.current.parentNode.removeChild(dynamicCanvasRef.current);
         };
     }, [processedGeoJson, isRiverActive, map, mapOpacity]);
 
-    // Skema Pewarnaan Poligon Sungai Lebar / Danau / Waduk statis (Tidak Bergerak)
+    // Danau/Waduk Static Style
     const polyStyle = (opacity: number): PathOptions => ({
         color: '#155e75',
         fillColor: '#0e7490',
@@ -3658,7 +3688,352 @@ export default function RiverLayer() {
 
     return (
         <React.Fragment>
-            {/* Hanya gambar static polygons via Leaflet GeoJSON agar terekam layer koordinat dengan hemat */}
+            {isRiverActive && bogorSungaiPoly && (
+                <GeoJSON
+                    key={`river-poly-${mapOpacity}`}
+                    data={bogorSungaiPoly as any}
+                    style={() => polyStyle(mapOpacity)}
+                />
+            )}
+        </React.Fragment>
+    );
+}
+
+--- FILE: src\modules\admin\components\gis\layers\RiverLayerAnimated.tsx ---
+// src/modules/admin/components/gis/layers/RiverLayer.tsx
+import React, { useEffect, useMemo, useRef } from 'react';
+import { GeoJSON, useMap } from 'react-leaflet';
+import L, { PathOptions } from 'leaflet';
+import { useGisUIStore } from '@/store/useGisUIStore';
+import { useSijagaStore } from '@/store/useSijagaStore';
+
+// @ts-ignore
+import * as turf from '@turf/turf';
+
+// @ts-ignore
+import bogorSungaiLine from '@/assets/geojson/bogor-sungai-line.json';
+// @ts-ignore
+import bogorSungaiPoly from '@/assets/geojson/bogor-sungai-poly.json';
+
+// --- KONTRAK DATA INTERNAL ENGINE ---
+interface RiverSegment {
+    points: L.Point[];
+    color: string;
+    speed: number;
+}
+
+interface WaterParticle {
+    segmentIdx: number; // Berada di segmen sungai mana
+    ptIdx: number;      // Sedang menuju vertex ke-berapa
+    x: number;          // Posisi X saat ini
+    y: number;          // Posisi Y saat ini
+    speed: number;      // Kecepatan aliran (tergantung status polusi)
+    color: string;      // Warna komet
+}
+
+// Konfigurasi Engine Fluid Dynamics (Tuned)
+const PARTICLE_COUNT = 1000; // Partikel lebih padat agar aliran terlihat kontinu
+const FADE_RATE = 0.04;      // Lebih kecil = Jejak komet lebih panjang (Ilusi air menyambung)
+const ZOOM_LOD_THRESHOLD = 11; // Batas zoom-out diturunkan agar efek terlihat lebih luas
+
+/**
+ * ============================================================================
+ * RIVER LAYER (DUAL-CANVAS PARTICLE ENGINE)
+ * ============================================================================
+ * Menggunakan prinsip Pemisahan Tanggung Jawab (Separation of Concerns).
+ * - Canvas 1 (Statis): Menggambar dasar sungai sesuai warna Zona Polusi (Pemetaan Area).
+ * - Canvas 2 (Dinamis): Menjalankan partikel air 60FPS dengan Fading Trails (Ilusi Arus).
+ */
+export default function RiverLayer() {
+    const map = useMap();
+    const { activeLayers, mapOpacity } = useGisUIStore();
+    const { waterStations } = useSijagaStore();
+
+    // Ref untuk DOM Canvas ganda
+    const staticCanvasRef = useRef<HTMLCanvasElement | null>(null);
+    const dynamicCanvasRef = useRef<HTMLCanvasElement | null>(null);
+    const animationRef = useRef<number | null>(null);
+
+    const isRiverActive = activeLayers.includes('layer-river');
+
+    // ==========================================================================
+    // 1. SPATIAL JOIN (Turf.js Optimasi O(1)) - Pembagian Zona Kualitas Air
+    // ==========================================================================
+    const processedGeoJson = useMemo(() => {
+        if (!bogorSungaiLine || !waterStations || waterStations.length === 0) {
+            return bogorSungaiLine;
+        }
+
+        const geojson = JSON.parse(JSON.stringify(bogorSungaiLine));
+
+        geojson.features.forEach((feature: any) => {
+            const geom = feature.geometry;
+            if (!geom || (geom.type !== 'LineString' && geom.type !== 'MultiLineString')) return;
+
+            const coords = geom.type === 'LineString' ? geom.coordinates[0] : geom.coordinates[0][0];
+            if (!coords) return;
+
+            const riverPoint = turf.point([coords[0], coords[1]]);
+            let closestStationId = null;
+            let minDistance = Infinity;
+
+            waterStations.forEach((station) => {
+                const stationPoint = turf.point([station.lng, station.lat]);
+                const distance = turf.distance(riverPoint, stationPoint, { units: 'kilometers' });
+
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestStationId = station.id;
+                }
+            });
+
+            feature.properties = { ...feature.properties, nearestStationId: closestStationId };
+        });
+
+        return geojson;
+    }, [waterStations]);
+
+    // ==========================================================================
+    // 2. LIFECYCLE DUAL-CANVAS ENGINE
+    // ==========================================================================
+    useEffect(() => {
+        if (!isRiverActive || !processedGeoJson) {
+            if (staticCanvasRef.current?.parentNode) staticCanvasRef.current.parentNode.removeChild(staticCanvasRef.current);
+            if (dynamicCanvasRef.current?.parentNode) dynamicCanvasRef.current.parentNode.removeChild(dynamicCanvasRef.current);
+            if (animationRef.current) cancelAnimationFrame(animationRef.current);
+            return;
+        }
+
+        const overlayPane = map.getPanes().overlayPane;
+
+        const sCanvas = document.createElement('canvas');
+        sCanvas.className = 'leaflet-zoom-animated pointer-events-none mix-blend-screen';
+        sCanvas.style.position = 'absolute';
+        sCanvas.style.left = '0';
+        sCanvas.style.top = '0';
+        sCanvas.style.opacity = String(mapOpacity / 100);
+        sCanvas.style.transition = 'opacity 0.2s ease-in-out';
+        sCanvas.style.zIndex = '1';
+
+        const dCanvas = document.createElement('canvas');
+        dCanvas.className = 'leaflet-zoom-animated pointer-events-none mix-blend-screen';
+        dCanvas.style.position = 'absolute';
+        dCanvas.style.left = '0';
+        dCanvas.style.top = '0';
+        dCanvas.style.opacity = String(mapOpacity / 100);
+        dCanvas.style.transition = 'opacity 0.2s ease-in-out';
+        dCanvas.style.zIndex = '2';
+
+        overlayPane.appendChild(sCanvas);
+        overlayPane.appendChild(dCanvas);
+        staticCanvasRef.current = sCanvas;
+        dynamicCanvasRef.current = dCanvas;
+
+        const sCtx = sCanvas.getContext('2d');
+        const dCtx = dCanvas.getContext('2d');
+        if (!sCtx || !dCtx) return;
+
+        let activeSegments: RiverSegment[] = [];
+        let particles: WaterParticle[] = [];
+        let isAnimating = true;
+
+        // --- B. PRE-COMPUTING: Render Statis 1x & Seeding Partikel ---
+        const syncCanvasGeometry = () => {
+            const size = map.getSize();
+            sCanvas.width = size.x; sCanvas.height = size.y;
+            dCanvas.width = size.x; dCanvas.height = size.y;
+
+            const topLeft = map.containerPointToLayerPoint([0, 0]);
+            L.DomUtil.setPosition(sCanvas, topLeft);
+            L.DomUtil.setPosition(dCanvas, topLeft);
+
+            const mapBounds = map.getBounds().pad(0.15);
+            activeSegments = [];
+
+            processedGeoJson.features.forEach((feature: any) => {
+                const geom = feature.geometry;
+                if (!geom) return;
+
+                let isVisible = false;
+                if (geom.type === 'LineString') {
+                    isVisible = geom.coordinates.some((c: number[]) => mapBounds.contains([c[1], c[0]]));
+                } else if (geom.type === 'MultiLineString') {
+                    isVisible = geom.coordinates.some((line: number[][]) => line.some(c => mapBounds.contains([c[1], c[0]])));
+                }
+
+                if (!isVisible) return;
+
+                const nearestId = feature.properties?.nearestStationId;
+                const station = waterStations.find(s => s.id === nearestId);
+
+                // Tuned Speed & Color Mapping
+                let color = '#22d3ee'; // Cyan (Sehat)
+                let speed = 0.5;       // Aliran natural air bersih
+
+                if (station) {
+                    const isCritical = station.currentData.bod > 3.0 || station.currentData.cod > 25.0 || station.currentData.do < 4.0;
+                    if (isCritical) {
+                        color = '#f43f5e'; // Merah (Kritis)
+                        speed = 0.15;      // Sangat mampet/kental
+                    } else if (station.currentData.bod > 2.0) {
+                        color = '#fbbf24'; // Kuning (Waspada)
+                        speed = 0.3;       // Agak lambat
+                    }
+                }
+
+                const processLine = (coords: number[][]) => {
+                    const points = coords.map(c => map.latLngToContainerPoint([c[1], c[0]]));
+                    activeSegments.push({ points, color, speed });
+                };
+
+                if (geom.type === 'LineString') processLine(geom.coordinates);
+                else if (geom.type === 'MultiLineString') geom.coordinates.forEach(processLine);
+            });
+
+            // 2. Gambar Rangka Dasar Sungai Berdasarkan Zona Warnanya (Menghindari tumpang tindih visual)
+            sCtx.clearRect(0, 0, sCanvas.width, sCanvas.height);
+            sCtx.lineCap = 'round';
+            sCtx.lineJoin = 'round';
+            sCtx.lineWidth = 4; // Lebih tebal agar area jelas
+
+            activeSegments.forEach(seg => {
+                if (seg.points.length < 2) return;
+                sCtx.beginPath();
+                sCtx.moveTo(seg.points[0].x, seg.points[0].y);
+                for (let i = 1; i < seg.points.length; i++) {
+                    sCtx.lineTo(seg.points[i].x, seg.points[i].y);
+                }
+                sCtx.strokeStyle = seg.color; // Mewarnai garis statis dengan warna stasiunnya
+                sCtx.globalAlpha = 0.35;      // Transparan sebagai dasar aliran
+                sCtx.stroke();
+            });
+
+            // 3. Taburkan Tetesan Partikel
+            particles = [];
+            if (activeSegments.length === 0) return;
+
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                const segIdx = Math.floor(Math.random() * activeSegments.length);
+                const segment = activeSegments[segIdx];
+                const ptIdx = Math.floor(Math.random() * (segment.points.length - 1));
+
+                particles.push({
+                    segmentIdx: segIdx,
+                    ptIdx: ptIdx,
+                    x: segment.points[ptIdx].x,
+                    y: segment.points[ptIdx].y,
+                    speed: segment.speed * (0.8 + Math.random() * 0.4),
+                    color: segment.color
+                });
+            }
+        };
+
+        // --- C. ENGINE ANIMASI (60 FPS PARTICLE ROUTING) ---
+        const renderLoop = () => {
+            if (!isAnimating || !dynamicCanvasRef.current) return;
+
+            const w = dCanvas.width;
+            const h = dCanvas.height;
+
+            // Fading Trail (Air Mengalir)
+            dCtx.globalCompositeOperation = 'destination-out';
+            dCtx.fillStyle = `rgba(0, 0, 0, ${FADE_RATE})`;
+            dCtx.fillRect(0, 0, w, h);
+
+            dCtx.globalCompositeOperation = 'source-over';
+            dCtx.lineWidth = 3.5; // Komet lebih tebal dan jelas
+            dCtx.lineCap = 'round';
+
+            particles.forEach(p => {
+                const segment = activeSegments[p.segmentIdx];
+                if (!segment) return;
+
+                const p1 = { x: p.x, y: p.y };
+                const p2 = segment.points[p.ptIdx + 1];
+
+                if (!p2) {
+                    p.segmentIdx = Math.floor(Math.random() * activeSegments.length);
+                    p.ptIdx = 0;
+                    p.x = activeSegments[p.segmentIdx].points[0].x;
+                    p.y = activeSegments[p.segmentIdx].points[0].y;
+                    return;
+                }
+
+                const dx = p2.x - p1.x;
+                const dy = p2.y - p1.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist < p.speed) {
+                    p.ptIdx++;
+                    p.x = p2.x;
+                    p.y = p2.y;
+                } else {
+                    p.x += (dx / dist) * p.speed;
+                    p.y += (dy / dist) * p.speed;
+                }
+
+                // Gambar goresan komet (membentuk ekor bercahaya)
+                dCtx.beginPath();
+                dCtx.moveTo(p1.x, p1.y);
+                dCtx.lineTo(p.x, p.y);
+                dCtx.strokeStyle = p.color;
+                dCtx.globalAlpha = 0.9;
+                dCtx.stroke();
+            });
+
+            animationRef.current = requestAnimationFrame(renderLoop);
+        };
+
+        // --- D. EVENT LISTENERS ---
+        const handleInteractionStart = () => {
+            isAnimating = false;
+            if (animationRef.current) cancelAnimationFrame(animationRef.current);
+            sCanvas.style.opacity = '0';
+            dCanvas.style.opacity = '0';
+        };
+
+        const handleInteractionEnd = () => {
+            syncCanvasGeometry();
+            isAnimating = true;
+            sCanvas.style.opacity = String(mapOpacity / 100);
+
+            // LOD Threshold Diperluas
+            if (map.getZoom() >= ZOOM_LOD_THRESHOLD) {
+                dCanvas.style.opacity = String(mapOpacity / 100);
+                renderLoop();
+            } else {
+                dCanvas.style.opacity = '0';
+            }
+        };
+
+        map.on('movestart zoomstart', handleInteractionStart);
+        map.on('moveend zoomend', handleInteractionEnd);
+
+        // Eksekusi Pertama
+        syncCanvasGeometry();
+        if (map.getZoom() >= ZOOM_LOD_THRESHOLD) renderLoop();
+
+        return () => {
+            isAnimating = false;
+            if (animationRef.current) cancelAnimationFrame(animationRef.current);
+            map.off('movestart zoomstart', handleInteractionStart);
+            map.off('moveend zoomend', handleInteractionEnd);
+            if (staticCanvasRef.current?.parentNode) staticCanvasRef.current.parentNode.removeChild(staticCanvasRef.current);
+            if (dynamicCanvasRef.current?.parentNode) dynamicCanvasRef.current.parentNode.removeChild(dynamicCanvasRef.current);
+        };
+    }, [processedGeoJson, isRiverActive, map, mapOpacity]);
+
+    // Danau/Waduk Static Style
+    const polyStyle = (opacity: number): PathOptions => ({
+        color: '#155e75',
+        fillColor: '#0e7490',
+        fillOpacity: (opacity / 100) * 0.35,
+        weight: 1,
+        interactive: false
+    });
+
+    return (
+        <React.Fragment>
             {isRiverActive && bogorSungaiPoly && (
                 <GeoJSON
                     key={`river-poly-${mapOpacity}`}
@@ -4148,6 +4523,7 @@ import AqiSurfaceLayer from './layers/AqiSurfaceLayer';
 import WindFlowLayer from './layers/WindFlowLayer';
 import CompanyMarkerLayer from './layers/CompanyMarkerLayer';
 import AqiHorizontalLegend from './AqiHorizontalLegend';
+import RiverHorizontalLegend from './RiverHorizontalLegend';
 import { Sparkles } from 'lucide-react';
 
 // --- [INJEKSI MODUL BARU] LAYER ALIRAN SUNGAI & TITIK SAMPEL AIR (PHASE 2) ---
@@ -4642,6 +5018,7 @@ export default function LimbahMap() {
             </MapContainer>
 
             {!isOfficer && <AqiHorizontalLegend />}
+            {!isOfficer && <RiverHorizontalLegend />}
         </div>
     );
 }
@@ -4654,35 +5031,26 @@ import { useGisUIStore } from "@/store/useGisUIStore";
 import { useSijagaStore } from "@/store/useSijagaStore";
 import { cn } from "@/lib/utils";
 
-/**
- * ============================================================================
- * MAP HUD (HEADS-UP DISPLAY) & TACTICAL LEGEND
- * ============================================================================
- * Mengadopsi desain GFW Paradigm (sharp edges, flat, tanpa shadow tebal).
- * Terletak absolut di kanan bawah layar secara imersif.
- */
 export default function MapHUD() {
     const { activeLayers } = useGisUIStore();
     const { currentUser } = useSijagaStore();
 
     const isOfficer = currentUser?.role === "PETUGAS_LAPANGAN";
 
-    // Cek apakah mode Telemetri AQI sedang aktif
+    // Cek apakah mode layar penuh (AQI atau Sungai) sedang aktif
     const isAqiActive = activeLayers.includes("layer-aqi");
+    const isRiverActive = activeLayers.includes("layer-river");
 
-    // Custom events untuk mengendalikan peta Leaflet secara decoupled
     const triggerZoomIn = () => window.dispatchEvent(new Event('map-zoom-in'));
     const triggerZoomOut = () => window.dispatchEvent(new Event('map-zoom-out'));
     const triggerResetView = () => window.dispatchEvent(new Event('map-reset-view'));
 
-    // Struktur Kontrak Legenda Baru
     type LegendItem = {
         label: string;
         color: string;
         shape: 'square' | 'circle' | 'pulsing' | 'line';
     };
 
-    // 1. [PERBAIKAN SIKLUS REACT] Deklarasikan Hooks SEBELUM kondisi Return apa pun!
     const legendItems = useMemo<LegendItem[]>(() => {
         if (isOfficer) {
             return [
@@ -4693,7 +5061,6 @@ export default function MapHUD() {
 
         const items: LegendItem[] = [];
 
-        // Kelompok Dokumen Lingkungan Sektoral
         if (activeLayers.includes("layer-amdal")) {
             items.push({ label: "Wajib AMDAL (Risiko Tinggi)", color: "bg-red-500", shape: 'square' });
         }
@@ -4703,66 +5070,46 @@ export default function MapHUD() {
         if (activeLayers.includes("layer-sppl")) {
             items.push({ label: "Wajib SPPL (Risiko Rendah)", color: "bg-emerald-500", shape: 'square' });
         }
-
-        // Kelompok Aliran Sungai & Stasiun Air (DAS)
-        if (activeLayers.includes("layer-river")) {
-            items.push({ label: "Aliran Sungai (Clipped)", color: "bg-cyan-400", shape: 'line' });
-        }
-        if (activeLayers.includes("layer-water-stations")) {
+        if (activeLayers.includes("layer-water-stations") && !isRiverActive) {
             items.push({ label: "Stasiun Air: Memenuhi Syarat", color: "bg-cyan-500", shape: 'circle' });
             items.push({ label: "Stasiun Air: Tercemar / Kritis", color: "bg-rose-600", shape: 'pulsing' });
         }
 
         return items;
-    }, [activeLayers, isOfficer]);
+    }, [activeLayers, isOfficer, isRiverActive]);
 
-    // 2. [EARLY RETURN] Tempatkan pemutus render SETELAH semua Hooks selesai diinisialisasi
-    // UX FOCUS MODE: Jika layer AQI aktif, matikan SELURUH HUD Kanan Bawah
-    if (isAqiActive) {
+    // ======================================================================
+    // UX FOCUS MODE:
+    // Jika layer AQI ATAU Sungai aktif, matikan SELURUH HUD Kanan Bawah
+    // karena mereka sudah punya Horizontal Legend di tengah bawah layar.
+    // ======================================================================
+    if (isAqiActive || isRiverActive) {
         return null;
     }
 
-    // Jika tidak ada layer aktif yang butuh legenda, sembunyikan kotak legenda, tampilkan navigasi saja
     const hasLegends = legendItems.length > 0;
 
     return (
         <div className="absolute bottom-8 right-8 z-30 pointer-events-auto flex flex-row items-end gap-4 select-none">
-
-            {/* KOTAK LEGENDA KEPATUHAN TERSEGMENTASI (Dinamis / Polimorfik) */}
             {hasLegends && (
                 <div className="bg-white/90 backdrop-blur border border-slate-300 shadow-sm rounded-none w-56 animate-in fade-in slide-in-from-bottom-4 flex flex-col max-h-[75vh] overflow-y-auto custom-scrollbar">
-
-                    {/* Header Legenda */}
                     <div className="flex items-center gap-2 px-3 py-2 bg-slate-50/90 border-b border-slate-200 sticky top-0 z-10 text-left">
                         <MapIcon size={12} className="text-emerald-700" />
                         <h4 className="text-[9px] font-black text-slate-700 uppercase tracking-widest">
                             {isOfficer ? "Legenda Sasaran Tugas" : "Legenda Kepatuhan"}
                         </h4>
                     </div>
-
-                    {/* Flush List Legenda Aktif */}
                     <div className="flex flex-col">
                         {legendItems.map((item, idx) => (
-                            <div
-                                key={idx}
-                                className="flex items-center gap-3 px-3 py-2 border-b border-slate-100 last:border-0 hover:bg-slate-50/40 transition-colors"
-                            >
+                            <div key={idx} className="flex items-center gap-3 px-3 py-2 border-b border-slate-100 last:border-0 hover:bg-slate-50/40 transition-colors">
                                 <div className="relative w-3 h-3 shrink-0 flex items-center justify-center">
                                     {item.shape === 'pulsing' && (
-                                        <span className={cn(
-                                            "absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping",
-                                            item.color.replace('600', '400')
-                                        )} />
+                                        <span className={cn("absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping", item.color.replace('600', '400'))} />
                                     )}
-
                                     {item.shape === 'line' ? (
                                         <div className={cn("w-full h-1 rounded-none", item.color)} />
                                     ) : (
-                                        <div className={cn(
-                                            "relative w-full h-full shadow-sm",
-                                            item.shape === 'square' ? "rounded-none border border-slate-200" : "rounded-full border border-white",
-                                            item.color
-                                        )} />
+                                        <div className={cn("relative w-full h-full shadow-sm", item.shape === 'square' ? "rounded-none border border-slate-200" : "rounded-full border border-white", item.color)} />
                                     )}
                                 </div>
                                 <span className="text-[10px] font-bold text-slate-650 tracking-tight leading-none text-left">
@@ -4774,33 +5121,17 @@ export default function MapHUD() {
                 </div>
             )}
 
-            {/* KONTROL ZOOM PETA (GFW Stack) */}
             <div className="flex flex-col bg-white/90 backdrop-blur border border-slate-300 shadow-none rounded-none overflow-hidden divide-y divide-slate-200 shrink-0">
-                <button
-                    onClick={triggerZoomIn}
-                    className="w-10 h-10 flex items-center justify-center text-slate-600 hover:bg-slate-100 hover:text-emerald-700 transition-colors active:bg-slate-200 rounded-none outline-none"
-                    title="Perbesar (Zoom In)"
-                >
+                <button onClick={triggerZoomIn} className="w-10 h-10 flex items-center justify-center text-slate-600 hover:bg-slate-100 hover:text-emerald-700 transition-colors active:bg-slate-200 rounded-none outline-none">
                     <Plus size={18} strokeWidth={2.5} />
                 </button>
-
-                <button
-                    onClick={triggerResetView}
-                    className="w-10 h-9 flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-emerald-700 transition-colors active:bg-slate-200 group rounded-none outline-none"
-                    title="Reset Titik Fokus"
-                >
+                <button onClick={triggerResetView} className="w-10 h-9 flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-emerald-700 transition-colors active:bg-slate-200 group rounded-none outline-none">
                     <Maximize size={14} strokeWidth={2.5} className="group-hover:scale-110 transition-transform" />
                 </button>
-
-                <button
-                    onClick={triggerZoomOut}
-                    className="w-10 h-10 flex items-center justify-center text-slate-600 hover:bg-slate-100 hover:text-emerald-700 transition-colors active:bg-slate-200 rounded-none outline-none"
-                    title="Perkecil (Zoom Out)"
-                >
+                <button onClick={triggerZoomOut} className="w-10 h-10 flex items-center justify-center text-slate-600 hover:bg-slate-100 hover:text-emerald-700 transition-colors active:bg-slate-200 rounded-none outline-none">
                     <Minus size={18} strokeWidth={2.5} />
                 </button>
             </div>
-
         </div>
     );
 }
@@ -4835,7 +5166,7 @@ import ExecutiveCopilotPanel from "@/modules/dashboard/components/auditor/Execut
  * Mengatur dua jenis perilaku panel dengan Sumbu X (Width) yang dinamis & reaktif:
  * 1. Panel Menu (Flush/Docked): Lebar dinamis (280px - 360px), menempel rapat di kiri (Zero Gap).
  * 2. Panel Detail (Floating): Melayang secara dinamis berdampingan mengikuti jumlah tumpukan.
- * 
+ *
  * GRASP: Indirection & Pure Fabrication
  */
 export default function PanelOrchestrator() {
@@ -5168,7 +5499,7 @@ export default function CompanyPanel() {
 
         // =========================================================================
         // FASE 1: INTEGRASI EVENT FLY-TO SECARA OTOMATIS [3]
-        // 
+        //
         // Mengirimkan sinyal koordinat spasial secara global agar didengar peta utama
         // sehingga kamera peta langsung terbang meluncur halus menyorot lokasi pabrik.
         // =========================================================================
@@ -5329,11 +5660,24 @@ import { apiService } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
+// Konstanta URL Backend untuk memuat berkas statis gambar [3]
+const BACKEND_URL = "http://localhost:5000";
+
 interface DetailPanelProps {
     companyData: any; // Menerima object company lengkap dari store/orchestrator
 }
 
 type DetailTabType = "umum" | "esg";
+
+// Helper untuk normalisasi dokumen lingkungan secara konsisten (AMDAL, UKL-UPL, SPPL) [3]
+const normalizeDocType = (docType: string): string => {
+    if (!docType) return "-";
+    const normalized = docType.trim().toUpperCase();
+    if (normalized === "AMDAL") return "AMDAL";
+    if (normalized === "SPPL") return "SPPL";
+    if (normalized.includes("UKL") || normalized.includes("UPL")) return "UKL-UPL";
+    return normalized;
+};
 
 export default function DetailPanel({ companyData }: DetailPanelProps) {
     const navigate = useNavigate();
@@ -5393,27 +5737,27 @@ export default function DetailPanel({ companyData }: DetailPanelProps) {
     };
 
     const getScoreLabel = () => {
-        if (score === 0) return "BELUM DIAUDIT";
-        if (score >= 80) return "PATUH (EXCELLENT)";
-        if (score >= 60) return "CUKUP (WARNING)";
-        return "KRITIS (DANGER)";
+        if (score === 0) return "Belum diaudit";
+        if (score >= 80) return "Patuh (Excellent)";
+        if (score >= 60) return "Cukup (Warning)";
+        return "Kritis (Danger)";
     };
 
     // [NEW HELPERS] Standardisasi kelas warna & deskripsi label AQI US EPA
     const getAqiColorClass = (aqiValue: number) => {
-        if (aqiValue <= 50) return "text-emerald-700 bg-emerald-50 border-emerald-200";
-        if (aqiValue <= 100) return "text-amber-700 bg-amber-50 border-amber-200";
-        if (aqiValue <= 150) return "text-orange-700 bg-orange-50 border-orange-200";
-        if (aqiValue <= 200) return "text-red-700 bg-red-50 border-red-200";
-        return "text-purple-700 bg-purple-50 border-purple-200";
+        if (aqiValue <= 50) return "text-emerald-700 border-emerald-100";
+        if (aqiValue <= 100) return "text-amber-700 border-amber-100";
+        if (aqiValue <= 150) return "text-orange-700 border-orange-100";
+        if (aqiValue <= 200) return "text-red-700 border-red-100";
+        return "text-purple-700 border-purple-100";
     };
 
     const getAqiStatusLabel = (aqiValue: number) => {
         if (aqiValue <= 50) return "Baik (Sehat)";
         if (aqiValue <= 100) return "Sedang (Waspada)";
-        if (aqiValue <= 150) return "Tidak Sehat (Grup Sensitif)";
-        if (aqiValue <= 200) return "Tidak Sehat (Bahaya)";
-        return "Sangat Berbahaya (Evakuasi)";
+        if (aqiValue <= 150) return "Tidak sehat (Grup sensitif)";
+        if (aqiValue <= 200) return "Tidak sehat (Bahaya)";
+        return "Sangat berbahaya";
     };
 
     // Handler memulai sidak untuk petugas lapangan
@@ -5429,21 +5773,21 @@ export default function DetailPanel({ companyData }: DetailPanelProps) {
     return (
         <div className="flex flex-col h-full w-full bg-white relative font-sans">
 
-            {/* TABS - Gaya GFW Edge-to-Edge */}
+            {/* TABS - Gaya GFW Edge-to-Edge (Refaktorisasi Bebas Capslock & Bold) */}
             <div className="flex bg-slate-50 border-b border-slate-200 shrink-0">
                 <button
                     onClick={() => setActiveTab("umum")}
-                    className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest transition-colors outline-none ${activeTab === "umum"
-                        ? "bg-white text-emerald-800 border-t-[3px] border-t-emerald-600 border-r border-slate-200 font-bold"
+                    className={`flex-1 py-3 text-xs font-normal transition-colors outline-none ${activeTab === "umum"
+                        ? "bg-white text-emerald-800 border-t-[3px] border-t-emerald-600 border-r border-slate-200"
                         : "bg-slate-50 text-slate-500 hover:text-slate-800 hover:bg-slate-100 border-t-[3px] border-t-transparent border-r border-slate-200"
                         }`}
                 >
-                    Profil Industri
+                    Profil industri
                 </button>
                 <button
                     onClick={() => setActiveTab("esg")}
-                    className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest transition-colors outline-none ${activeTab === "esg"
-                        ? "bg-white text-emerald-800 border-t-[3px] border-t-emerald-600 font-bold"
+                    className={`flex-1 py-3 text-xs font-normal transition-colors outline-none ${activeTab === "esg"
+                        ? "bg-white text-emerald-800 border-t-[3px] border-t-emerald-600"
                         : "bg-slate-50 text-slate-500 hover:text-slate-800 hover:bg-slate-100 border-t-[3px] border-t-transparent"
                         }`}
                 >
@@ -5456,36 +5800,61 @@ export default function DetailPanel({ companyData }: DetailPanelProps) {
                 {/* TAB 1: UMUM */}
                 {activeTab === "umum" && (
                     <div className="flex flex-col pb-6 animate-in fade-in duration-300">
-                        {/* Metadata Ringkas */}
-                        <div className="px-4 py-4 bg-white border-b border-slate-200 text-left">
-                            <div className="flex items-center gap-2 mb-2">
-                                <ShieldCheck size={14} className="text-emerald-600" />
-                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Izin: {companyData.docType}</span>
+
+                        {/* --- INTEGRASI VISUAL: FOTO PROFIL INDUSTRI (Apple-Style UI, Edge-to-Edge Seamless) --- */}
+                        <div className="w-full aspect-video bg-slate-50 border-b border-slate-100 overflow-hidden relative z-10 flex items-center justify-center">
+                            {companyData.companyPhotoUrl ? (
+                                <img
+                                    src={`${BACKEND_URL}${companyData.companyPhotoUrl}`}
+                                    alt={companyData.companyName}
+                                    className="w-full h-full object-cover animate-in fade-in duration-500"
+                                    onError={(e) => {
+                                        // Handling jika file statis di server terhapus / corrupt
+                                        e.currentTarget.src = "";
+                                        e.currentTarget.className = "hidden";
+                                        const fallbackEl = e.currentTarget.parentElement?.querySelector(".photo-fallback");
+                                        if (fallbackEl) fallbackEl.classList.remove("hidden");
+                                    }}
+                                />
+                            ) : null}
+                            {/* Fallback Element jika data bernilai null/error */}
+                            <div className={cn(
+                                "photo-fallback absolute inset-0 flex flex-col items-center justify-center bg-slate-50 text-slate-400 gap-1.5 select-none",
+                                companyData.companyPhotoUrl && "hidden"
+                            )}>
+                                <Factory size={22} className="text-slate-300" />
+                                <span className="text-[10px] font-normal text-slate-400">Foto pabrik belum tersedia</span>
                             </div>
-                            <p className="text-sm font-medium text-slate-800 text-justify leading-relaxed">
+                        </div>
+
+                        {/* Metadata Ringkas Deskripsi Profil */}
+                        <div className="px-4 py-3 bg-white border-b border-slate-100 text-left">
+                            <p className="text-xs font-normal text-slate-650 leading-relaxed text-left font-sans">
                                 Perusahaan ini bergerak di bidang manufaktur/pengolahan bahan baku dengan fokus operasional {companyData.rawMaterials || "umum"}.
                             </p>
                         </div>
 
                         {/* List Detail Spesifikasi */}
                         <div className="flex flex-col bg-white">
+                            <DetailRow icon={ShieldCheck} label="Izin" value={normalizeDocType(companyData.docType)} />
                             <DetailRow icon={MapPin} label="Alamat" value={companyData.address} />
                             <DetailRow icon={FileText} label="Nomor NIB" value={companyData.nib} />
-                            <DetailRow icon={Factory} label="Tahun Berdiri" value={companyData.yearBuilt} />
+                            <DetailRow icon={Factory} label="Tahun berdiri" value={companyData.yearBuilt} />
                             <DetailRow icon={Users} label="Karyawan" value={`${companyData.employees} Orang`} />
-                            <DetailRow icon={Activity} label="Luas Area" value={`${companyData.landArea?.toLocaleString()} m²`} />
-                            <DetailRow icon={Zap} label="Energi & Air" value={`${companyData.powerSource} / ${companyData.waterSource}`} />
+                            <DetailRow icon={Activity} label="Luas area" value={`${companyData.landArea?.toLocaleString()} m²`} />
+                            <DetailRow icon={Zap} label="Energi & air" value={`${companyData.powerSource} / ${companyData.waterSource}`} />
                         </div>
 
-                        <div className="px-4 py-4 bg-slate-50 border-y border-slate-200 mt-4 text-left">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Kontak Penanggung Jawab</p>
+                        {/* Kontak Penanggung Jawab (Flat Integration, Terikat sebagai kelanjutan tabel) */}
+                        <div className="px-4 py-3 border-b border-slate-100 bg-white text-left">
+                            <p className="text-xs font-bold text-slate-800 mb-2">Kontak penanggung jawab</p>
                             <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 bg-slate-200 rounded-none flex items-center justify-center text-slate-600 border border-slate-300">
-                                    <Phone size={14} />
+                                <div className="w-8 h-8 bg-slate-50 rounded-none flex items-center justify-center text-slate-500 border border-slate-150">
+                                    <Phone size={13} />
                                 </div>
                                 <div>
-                                    <p className="text-xs font-bold text-slate-800 leading-none">{companyData.picName}</p>
-                                    <p className="text-[10px] text-slate-500 font-medium mt-1">{companyData.picRole} • {companyData.picPhone}</p>
+                                    <p className="text-xs font-normal text-slate-700 leading-none">{companyData.picName}</p>
+                                    <p className="text-[10px] text-slate-500 font-normal mt-1">{companyData.picRole} • {companyData.picPhone}</p>
                                 </div>
                             </div>
                         </div>
@@ -5496,98 +5865,98 @@ export default function DetailPanel({ companyData }: DetailPanelProps) {
                 {activeTab === "esg" && (
                     <div className="flex flex-col pb-6 animate-in fade-in duration-300 space-y-4">
                         {/* HERO SCORE */}
-                        <div className="px-4 py-6 bg-slate-900 border-b border-slate-800 text-center flex flex-col items-center select-none shrink-0">
-                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3">Indeks Kepatuhan Lingkungan</p>
-                            <div className="flex items-end gap-1 mb-2">
-                                <h2 className="text-6xl font-black italic tracking-tighter text-white leading-none">{score}</h2>
-                                <span className="text-lg font-bold text-slate-500 mb-1">/100</span>
+                        <div className="px-4 py-5 bg-slate-900 border-b border-slate-800 text-center flex flex-col items-center select-none shrink-0">
+                            <p className="text-[14px] font-normal text-slate-400 mb-2.5 tracking-wider">Indeks Kepatuhan Lingkungan</p>
+                            <div className="flex items-end gap-0.5 mb-1.5">
+                                <h2 className="text-3xl font-bold text-white leading-none">{score}</h2>
+                                <span className="text-sm font-medium text-slate-400 mb-0.5">/100</span>
                             </div>
-                            <span className={`px-3 py-1 mt-2 text-[10px] font-black uppercase tracking-widest text-white border border-white/20 ${getScoreColor()}`}>
+                            <span className={`px-2.5 py-0.5 mt-1.5 text-[9px] font-normal text-white border border-white/10 ${getScoreColor()}`}>
                                 {getScoreLabel()}
                             </span>
                         </div>
 
                         {/* [NEW INTEGRATION]: COMPACT REAL-TIME ATMOSPHERE TELEMETRY WIDGET */}
                         <div className="px-4 text-left">
-                            <div className="border border-slate-200 bg-white rounded-none p-4 space-y-3">
-                                <div className="border-b pb-2 flex items-center justify-between">
+                            <div className="bg-white py-1 space-y-3.5">
+                                <div className="border-b border-slate-100 pb-2 flex items-center justify-between">
                                     <div className="flex items-center gap-1.5">
-                                        <CloudSun size={14} className="text-emerald-700 animate-pulse" />
-                                        <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-800">Telemetri Udara Terdekat</h4>
+                                        <CloudSun size={13} className="text-emerald-700 animate-pulse" />
+                                        <h4 className="text-xs font-normal text-slate-800">Telemetri udara terdekat</h4>
                                     </div>
-                                    <Badge className="bg-slate-100 text-slate-500 font-mono text-[8px] rounded-none border-none py-0.5">IQAir v2</Badge>
+                                    <Badge className="bg-slate-100 text-slate-500 font-sans text-[8px] rounded-none border-none py-0.5">IQAir v2</Badge>
                                 </div>
 
                                 {aqiLoading ? (
                                     <div className="py-8 flex flex-col items-center justify-center gap-2 text-slate-400">
                                         <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
-                                        <span className="text-[8px] font-black uppercase tracking-widest leading-none mt-1">Mengakses Pemantau Udara...</span>
+                                        <span className="text-[8px] font-normal text-slate-500 mt-1">Mengakses pemantau udara...</span>
                                     </div>
                                 ) : aqiData ? (
-                                    <div className="space-y-3 animate-in fade-in duration-200">
+                                    <div className="space-y-4 animate-in fade-in duration-200">
                                         {/* Colored AQI Box */}
-                                        <div className={cn("p-2.5 border flex items-center justify-between font-sans text-xs", getAqiColorClass(aqiData.aqi))}>
+                                        <div className={cn("p-2 border-b flex items-center justify-between font-sans text-xs", getAqiColorClass(aqiData.aqi))}>
                                             <div className="space-y-0.5 text-left">
-                                                <span className="text-[8px] font-black uppercase tracking-widest block opacity-70">Indeks Kualitas Udara (AQI)</span>
-                                                <span className="font-bold leading-none block">{getAqiStatusLabel(aqiData.aqi)}</span>
+                                                <span className="text-[12px] font-normal text-slate-800 block">Indeks kualitas udara (AQI)</span>
+                                                <span className="text-[12px] font-normal text-slate-750 leading-none block">{getAqiStatusLabel(aqiData.aqi)}</span>
                                             </div>
-                                            <span className="text-2xl font-black italic tracking-tighter leading-none">{aqiData.aqi}</span>
+                                            <span className="text-xl font-bold tracking-tight leading-none font-mono">{aqiData.aqi}</span>
                                         </div>
 
                                         {/* Weather parameters grid (2x2) */}
-                                        <div className="grid grid-cols-2 gap-2 font-mono text-[10px] font-bold text-slate-500">
-                                            <div className="bg-slate-50 border p-2 text-left">
-                                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block font-sans">Suhu Udara</span>
-                                                <span className="text-xs font-black text-slate-800 leading-none block mt-1">{aqiData.weather.temperature} °C</span>
+                                        <div className="grid grid-cols-2 gap-x-4 gap-y-3 font-sans text-[11px] text-slate-500">
+                                            <div className="border-b border-slate-250 pb-3.5 text-left">
+                                                <span className="text-[13px] font-normal text-slate-800 block">Suhu udara</span>
+                                                <span className="text-[11px] font-normal text-slate-500 leading-none block mt-1">{aqiData.weather.temperature} °C</span>
                                             </div>
-                                            <div className="bg-slate-50 border p-2 text-left">
-                                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block font-sans">Kelembapan</span>
-                                                <span className="text-xs font-black text-slate-800 leading-none block mt-1">{aqiData.weather.humidity} %</span>
+                                            <div className="border-b border-slate-250 pb-3.5 text-left">
+                                                <span className="text-[13px] font-normal text-slate-800 block">Kelembapan</span>
+                                                <span className="text-[11px] font-normal text-slate-500 leading-none block mt-1">{aqiData.weather.humidity} %</span>
                                             </div>
-                                            <div className="bg-slate-50 border p-2 text-left">
-                                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block font-sans">Kec. Angin</span>
-                                                <span className="text-xs font-black text-slate-800 leading-none block mt-1">{aqiData.weather.windSpeed} m/s</span>
+                                            <div className="pb-1 text-left">
+                                                <span className="text-[13px] font-normal text-slate-800 block">Kec. angin</span>
+                                                <span className="text-[11px ] font-normal text-slate-500 leading-none block mt-1">{aqiData.weather.windSpeed} m/s</span>
                                             </div>
-                                            <div className="bg-slate-50 border p-2 text-left overflow-hidden">
-                                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block font-sans">Polutan Utama</span>
-                                                <span className="text-[9px] font-black text-slate-800 leading-none truncate block mt-1.5">{aqiData.mainPollutant}</span>
+                                            <div className="pb-1 text-left overflow-hidden">
+                                                <span className="text-[13px] font-normal text-slate-800 block">Polutan utama</span>
+                                                <span className="text-[11px] font-normal text-slate-500 leading-none truncate block mt-1">{aqiData.mainPollutant}</span>
                                             </div>
                                         </div>
 
                                         {/* Telemetry data info */}
-                                        <div className="flex justify-between items-center text-[8px] text-slate-400 font-bold uppercase tracking-wider border-t pt-2">
-                                            <span>Sumber: {aqiData.source === 'simulation' ? 'Simulasi Spasial' : aqiData.source === 'cache' ? 'Cache Server' : 'IQAir Live'}</span>
+                                        <div className="flex justify-between items-center text-[10px] text-slate-400 font-normal border-t border-slate-250 pt-2">
+                                            <span>Sumber: {aqiData.source === 'simulation' ? 'Simulasi spasial' : aqiData.source === 'cache' ? 'Cache server' : 'IQAir live'}</span>
                                             {aqiData.cachedAt && <span>Jam: {new Date(aqiData.cachedAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>}
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="p-3 text-center text-[10px] text-slate-400 font-bold uppercase border">Koneksi sensor nihil</div>
+                                    <div className="p-3 text-center text-[10px] text-slate-400 font-normal border border-slate-100">Koneksi sensor nihil</div>
                                 )}
                             </div>
                         </div>
 
                         {/* BAR CHART SIMULASI */}
                         <div className="px-4 space-y-4 text-left">
-                            <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Parameter Penilaian Terakhir</h4>
+                            <h4 className="text-[14px] font-normal text-slate-800">Parameter penilaian terakhir</h4>
 
-                            <ProgressBar label="Manajemen Limbah B3" value={score > 0 ? 85 : 0} animate={animateBars} />
-                            <ProgressBar label="Pengolahan Air (IPAL)" value={score > 0 ? 70 : 0} animate={animateBars} />
-                            <ProgressBar label="Emisi & Kebisingan" value={score > 0 ? 90 : 0} animate={animateBars} />
-                            <ProgressBar label="Pelaporan Logbook" value={score > 0 ? 60 : 0} animate={animateBars} />
+                            <ProgressBar label="Manajemen limbah B3" value={score > 0 ? 85 : 0} animate={animateBars} />
+                            <ProgressBar label="Pengolahan air (IPAL)" value={score > 0 ? 70 : 0} animate={animateBars} />
+                            <ProgressBar label="Emisi & kebisingan" value={score > 0 ? 90 : 0} animate={animateBars} />
+                            <ProgressBar label="Pelaporan logbook" value={score > 0 ? 60 : 0} animate={animateBars} />
                         </div>
 
-                        {/* ACTION BUTTONS (Gaya GFW Sharp) */}
+                        {/* ACTION BUTTONS */}
                         <div className="mt-4 flex flex-col border-t border-slate-200">
                             {/* ADAPTIVE ACTION BUTTON */}
                             {isOfficer ? (
-                                // Render Tombol "Mulai Audit / Sidak" khsusus Petugas Lapangan
+                                // Render Tombol "Mulai Audit / Sidak" khusus Petugas Lapangan
                                 <button
                                     onClick={handleStartSidak}
-                                    className="w-full flex items-center justify-between px-4 py-3 bg-emerald-600 hover:bg-emerald-750 text-white transition-colors border-b border-slate-200 group outline-none"
+                                    className="w-full flex items-center justify-between px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white transition-colors border-b border-slate-200 group outline-none"
                                 >
                                     <div className="flex items-center gap-2">
                                         <Calendar size={14} className="text-white" />
-                                        <span className="text-[11px] font-black uppercase tracking-wider">Mulai Audit / Sidak</span>
+                                        <span className="text-xs font-normal">Mulai audit / sidak</span>
                                     </div>
                                     <span className="text-white opacity-0 group-hover:opacity-100 transition-opacity font-bold">→</span>
                                 </button>
@@ -5595,11 +5964,11 @@ export default function DetailPanel({ companyData }: DetailPanelProps) {
                                 // Render Tombol "Jadwalkan" untuk Admin / Auditor biasa
                                 <button
                                     onClick={() => toast.success(`Jadwal inspeksi untuk ${companyData.companyName} disiapkan.`)}
-                                    className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-emerald-50 text-slate-750 transition-colors border-b border-slate-200 group outline-none"
+                                    className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-emerald-50 text-slate-700 transition-colors border-b border-slate-200 group outline-none"
                                 >
                                     <div className="flex items-center gap-2">
                                         <Calendar size={14} className="text-emerald-600" />
-                                        <span className="text-[11px] font-black text-slate-700 uppercase tracking-wider">Jadwalkan Inspeksi Lapangan</span>
+                                        <span className="text-xs font-normal">Jadwalkan inspeksi lapangan</span>
                                     </div>
                                     <span className="text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity font-bold">→</span>
                                 </button>
@@ -5611,7 +5980,7 @@ export default function DetailPanel({ companyData }: DetailPanelProps) {
                             >
                                 <div className="flex items-center gap-2">
                                     <Activity size={14} className="text-slate-500" />
-                                    <span className="text-[11px] font-black text-slate-700 uppercase tracking-wider">Lihat Logbook Limbah</span>
+                                    <span className="text-xs font-normal text-slate-700">Lihat logbook limbah</span>
                                 </div>
                                 <span className="text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity font-bold">→</span>
                             </button>
@@ -5624,17 +5993,17 @@ export default function DetailPanel({ companyData }: DetailPanelProps) {
     );
 }
 
-// Komponen Pembantu Baris Data
+// Komponen Pembantu Baris Data (Konsistensi Ukuran Judul [text-xs] vs Isi [text-[11px]])
 function DetailRow({ icon: Icon, label, value }: { icon: any, label: string, value: string }) {
     return (
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between px-4 py-3 border-b border-slate-100 hover:bg-slate-50 transition-colors gap-1">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between px-4 py-2 border-b border-slate-100 hover:bg-slate-50/50 transition-colors gap-1">
             <div className="flex items-center gap-2 w-full sm:w-1/3 shrink-0">
                 <Icon size={12} className="text-emerald-600" />
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                <span className="text-xs font-normal text-slate-500">
                     {label}
                 </span>
             </div>
-            <span className="text-[11px] font-medium text-slate-800 text-left sm:text-right w-full sm:w-2/3 break-words">
+            <span className="text-[11px] font-normal text-slate-700 text-left sm:text-right w-full sm:w-2/3 break-words">
                 {value}
             </span>
         </div>
@@ -5643,14 +6012,13 @@ function DetailRow({ icon: Icon, label, value }: { icon: any, label: string, val
 
 // Komponen Pembantu Progress Bar
 function ProgressBar({ label, value, animate }: { label: string, value: number, animate: boolean }) {
-    // Hitung warna progres
     const color = value >= 80 ? 'bg-emerald-500' : value >= 60 ? 'bg-amber-500' : 'bg-red-500';
 
     return (
         <div className="flex flex-col gap-1.5">
             <div className="flex justify-between items-end">
-                <span className="text-[10px] font-bold text-slate-700 uppercase tracking-tight">{label}</span>
-                <span className="text-[10px] font-black text-slate-900">{value}%</span>
+                <span className="text-[12px] font-normal text-slate-800">{label}</span>
+                <span className="text-[12px] font-normal text-slate-600">{value}%</span>
             </div>
             <div className="w-full h-1 bg-slate-100 rounded-none overflow-hidden">
                 <div
@@ -5740,37 +6108,37 @@ export default function EnvironmentalTelemetryPanel({ companyData }: Environment
     // 3. COLOR & STATUS RESOLVERS (EPA Standard)
     const getAqiConfig = (aqiValue: number) => {
         if (aqiValue <= 50) return {
-            color: "text-emerald-700 bg-emerald-50 border-emerald-200",
+            color: "text-emerald-700 bg-emerald-50/40 border-emerald-100",
             barColor: "bg-emerald-500",
             label: "Baik (Sehat)",
             icon: <CheckCircle2 className="text-emerald-600 shrink-0" size={16} />,
             advisory: "Sangat ideal untuk beraktivitas luar ruangan. Kualitas udara tidak mendatangkan risiko kesehatan."
         };
         if (aqiValue <= 100) return {
-            color: "text-amber-700 bg-amber-50 border-amber-200",
+            color: "text-amber-700 bg-amber-50/40 border-amber-100",
             barColor: "bg-yellow-400",
             label: "Sedang (Waspada)",
             icon: <Info className="text-amber-500 shrink-0" size={16} />,
             advisory: "Udara dapat diterima. Namun, kelompok sensitif disarankan membatasi aktivitas fisik berat di luar ruangan."
         };
         if (aqiValue <= 150) return {
-            color: "text-orange-700 bg-orange-50 border-orange-200",
+            color: "text-orange-700 bg-orange-50/40 border-orange-100",
             barColor: "bg-orange-500",
-            label: "Tidak Sehat (Sensitif)",
+            label: "Tidak sehat (Sensitif)",
             icon: <AlertTriangle className="text-orange-500 shrink-0" size={16} />,
             advisory: "Kelompok rentan (anak-anak, lansia, penderita asma) dapat mengalami gangguan pernapasan. Gunakan masker medis."
         };
         if (aqiValue <= 200) return {
-            color: "text-red-700 bg-red-50 border-red-200",
+            color: "text-red-700 bg-red-50/40 border-red-100",
             barColor: "bg-red-500",
-            label: "Tidak Sehat",
+            label: "Tidak sehat",
             icon: <ShieldAlert className="text-red-600 shrink-0" size={16} />,
             advisory: "Masyarakat umum berpotensi mengalami gejala iritasi tenggorokan/mata. Hindari aktivitas di luar ruangan yang terlalu lama."
         };
         return {
-            color: "text-purple-700 bg-purple-50 border-purple-200",
+            color: "text-purple-700 bg-purple-50/40 border-purple-100",
             barColor: "bg-purple-600",
-            label: "Sangat Berbahaya",
+            label: "Sangat berbahaya",
             icon: <ShieldAlert className="text-purple-600 shrink-0" size={16} />,
             advisory: "Kondisi darurat polusi! Seluruh populasi berisiko tinggi terkena dampak kesehatan serius. Tutup jendela rapat-rapat."
         };
@@ -5804,8 +6172,8 @@ export default function EnvironmentalTelemetryPanel({ companyData }: Environment
                 {aqiLoading && (
                     <div className="py-24 flex flex-col items-center justify-center gap-2.5 text-slate-400">
                         <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
-                        <span className="text-[10px] font-black uppercase tracking-widest leading-none mt-1">Mengakses Pemantau Udara...</span>
-                        <span className="text-[9px] text-slate-400 font-bold uppercase leading-none">Sinkronisasi Jaringan Stasiun Sampit</span>
+                        <span className="text-[10px] font-normal leading-none mt-1">Mengakses pemantau udara...</span>
+                        <span className="text-[9px] text-slate-400 font-normal leading-none">Sinkronisasi jaringan stasiun Sampit</span>
                     </div>
                 )}
 
@@ -5814,70 +6182,70 @@ export default function EnvironmentalTelemetryPanel({ companyData }: Environment
                     <div className="py-16 p-4 text-center space-y-3">
                         <AlertTriangle className="mx-auto text-amber-500 animate-bounce" size={24} />
                         <div>
-                            <p className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Sinyal Udara Terputus</p>
-                            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1">{aqiError}</p>
+                            <p className="text-[10px] font-normal text-slate-700 uppercase tracking-widest">Sinyal udara terputus</p>
+                            <p className="text-[9px] text-slate-400 font-normal tracking-wider mt-1">{aqiError}</p>
                         </div>
                     </div>
                 )}
 
                 {/* MAIN CONTENT TELEMETRY VIEW */}
                 {!aqiLoading && aqiData && (
-                    <div className="space-y-4 animate-in fade-in duration-300">
+                    <div className="space-y-1 animate-in fade-in duration-300">
 
-                        {/* WIDGET HERO: AQI VALUE HEADER */}
-                        <div className={cn("p-4 border text-left flex items-start justify-between rounded-none shadow-sm", aqiStyle.color)}>
+                        {/* WIDGET HERO: AQI VALUE HEADER (Penyelarasan Proporsi Apple Layout & Tanpa Italic) */}
+                        <div className={cn("p-4 -mx-4 -mt-4 border-b border-slate-100 text-left flex items-start justify-between select-none", aqiStyle.color)}>
                             <div className="space-y-1">
-                                <span className="text-[8px] font-black uppercase tracking-[0.2em] block opacity-75">US EPA Air Quality Index</span>
-                                <h3 className="text-sm font-black uppercase tracking-tight leading-none">{aqiStyle.label}</h3>
-                                <p className="text-[9px] font-medium leading-normal opacity-90 text-justify pt-1.5">{aqiStyle.advisory}</p>
+                                <span className="text-sm font-bold text-slate-850 block">Indeks kualitas udara (AQI)</span>
+                                <h3 className="text-xs font-normal text-slate-600 leading-none">{aqiStyle.label}</h3>
+                                <p className="text-xs font-normal text-slate-600 leading-normal text-left pt-1.5">{aqiStyle.advisory}</p>
                             </div>
-                            <div className="text-right shrink-0">
-                                <span className="text-4xl font-black italic tracking-tighter leading-none font-mono block">{aqi}</span>
-                                <span className="text-[8px] font-black opacity-70 tracking-widest block mt-1 uppercase">US-AQI</span>
+                            <div className="text-right shrink-0 border-l border-slate-200/40 pl-3.5 ml-3.5 flex flex-col justify-center h-full">
+                                <span className="text-3xl font-normal tracking-tight leading-none font-mono block">{aqi}</span>
+                                <span className="text-[10px] font-normal text-slate-500 block mt-1">US-AQI</span>
                             </div>
                         </div>
 
                         {/* WIDGET 2: HIGH-DENSITY WEATHER GRID */}
-                        <div className="space-y-1.5">
-                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block text-left">Telemetri Stasiun Terdekat</span>
-                            <div className="grid grid-cols-2 gap-2 font-mono text-[10px] font-bold text-slate-500">
-                                <div className="bg-slate-50 border p-2.5 text-left rounded-none">
-                                    <div className="flex justify-between items-center text-slate-400 font-sans">
-                                        <span className="text-[8px] font-black uppercase tracking-widest">Suhu Udara</span>
+                        <div className="py-4 border-b border-slate-100 space-y-3 text-left">
+                            <span className="text-xs font-normal text-slate-700 block">Telemetri stasiun terdekat</span>
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-3 font-sans text-slate-500">
+                                <div className="border-b border-slate-100 pb-1.5 text-left">
+                                    <div className="flex justify-between items-center text-slate-700">
+                                        <span className="text-xs font-normal">Suhu udara</span>
                                         <Thermometer size={12} className="text-rose-500" />
                                     </div>
-                                    <span className="text-base font-black text-slate-800 leading-none block mt-1.5">{aqiData.weather.temperature}°C</span>
+                                    <span className="text-[10px] font-normal text-slate-500 leading-none block mt-1">{aqiData.weather.temperature} °C</span>
                                 </div>
 
-                                <div className="bg-slate-50 border p-2.5 text-left rounded-none">
-                                    <div className="flex justify-between items-center text-slate-400 font-sans">
-                                        <span className="text-[8px] font-black uppercase tracking-widest">Kelembapan</span>
+                                <div className="border-b border-slate-100 pb-1.5 text-left">
+                                    <div className="flex justify-between items-center text-slate-700">
+                                        <span className="text-xs font-normal">Kelembapan</span>
                                         <Droplets size={12} className="text-blue-500" />
                                     </div>
-                                    <span className="text-base font-black text-slate-800 leading-none block mt-1.5">{aqiData.weather.humidity}%</span>
+                                    <span className="text-[10px] font-normal text-slate-500 leading-none block mt-1">{aqiData.weather.humidity} %</span>
                                 </div>
 
-                                <div className="bg-slate-50 border p-2.5 text-left rounded-none">
-                                    <div className="flex justify-between items-center text-slate-400 font-sans">
-                                        <span className="text-[8px] font-black uppercase tracking-widest">Kec. Angin</span>
+                                <div className="border-b border-slate-100 pb-1.5 text-left">
+                                    <div className="flex justify-between items-center text-slate-700">
+                                        <span className="text-xs font-normal">Kec. angin</span>
                                         <Wind size={12} className="text-emerald-500" />
                                     </div>
-                                    <span className="text-base font-black text-slate-800 leading-none block mt-1.5">{aqiData.weather.windSpeed} m/s</span>
+                                    <span className="text-[10px] font-normal text-slate-500 leading-none block mt-1">{aqiData.weather.windSpeed} m/s</span>
                                 </div>
 
-                                <div className="bg-slate-50 border p-2.5 text-left rounded-none overflow-hidden">
-                                    <div className="flex justify-between items-center text-slate-400 font-sans">
-                                        <span className="text-[8px] font-black uppercase tracking-widest">Polutan Utama</span>
+                                <div className="border-b border-slate-100 pb-1.5 text-left overflow-hidden">
+                                    <div className="flex justify-between items-center text-slate-700">
+                                        <span className="text-xs font-normal">Polutan utama</span>
                                         <Gauge size={12} className="text-indigo-500" />
                                     </div>
-                                    <span className="text-xs font-black text-slate-800 leading-none truncate block mt-2">{aqiData.mainPollutant}</span>
+                                    <span className="text-[10px] font-normal text-slate-500 leading-none truncate block mt-1">{aqiData.mainPollutant}</span>
                                 </div>
                             </div>
                         </div>
 
-                        {/* WIDGET 3: 24-HOUR FORECAST CHART (SPARKLINE DESIGN) */}
-                        <div className="bg-white border border-slate-200 p-3 text-left space-y-2.5">
-                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block border-b pb-1">Prediksi Polusi Udara 24 Jam</span>
+                        {/* WIDGET 3: 24-HOUR FORECAST CHART (Seamless Flat Section) */}
+                        <div className="py-4 border-b border-slate-100 text-left space-y-3">
+                            <span className="text-xs font-normal text-slate-700 block">Prediksi polusi udara 24 jam</span>
                             <div className="flex justify-between items-end h-16 pt-2">
                                 {forecastBars.map((bar, i) => {
                                     const heightPercent = Math.min(100, (bar.val / 150) * 100);
@@ -5886,33 +6254,33 @@ export default function EnvironmentalTelemetryPanel({ companyData }: Environment
                                     return (
                                         <div key={i} className="flex flex-col items-center flex-1 group relative">
                                             {/* Tooltip Hover Sparkline */}
-                                            <div className="absolute bottom-full mb-1 bg-slate-800 text-white text-[8px] font-black px-1 py-0.5 rounded-none opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                                            <div className="absolute bottom-full mb-1 bg-slate-800 text-white text-[8px] font-normal px-1 py-0.5 rounded-none opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
                                                 {bar.val} AQI
                                             </div>
                                             {/* Kolom Bar */}
-                                            <div className="w-4 bg-slate-100 h-10 flex items-end">
+                                            <div className="w-4 bg-slate-50 h-10 flex items-end">
                                                 <div
                                                     className={cn("w-full transition-all duration-500", barConfig.barColor)}
                                                     style={{ height: `${heightPercent}%` }}
                                                 />
                                             </div>
                                             {/* Waktu */}
-                                            <span className="text-[7px] font-black text-slate-400 mt-1 font-mono leading-none">{bar.time}</span>
+                                            <span className="text-[7px] font-normal text-slate-400 mt-1 font-mono leading-none">{bar.time}</span>
                                         </div>
                                     );
                                 })}
                             </div>
                         </div>
 
-                        {/* WIDGET 4: WIND ROSE COMPASS WIDGET */}
-                        <div className="bg-slate-50 border border-slate-200 p-3 grid grid-cols-12 gap-3 items-center rounded-none text-left select-none">
+                        {/* WIDGET 4: WIND ROSE COMPASS WIDGET (Seamless Flat Section) */}
+                        <div className="py-4 border-b border-slate-100 grid grid-cols-12 gap-4 items-center text-left select-none">
                             <div className="col-span-4 flex items-center justify-center">
                                 {/* SVG Compass Dial */}
-                                <div className="relative w-14 h-14 bg-white rounded-full border border-slate-200 flex items-center justify-center shrink-0">
-                                    <span className="absolute top-0.5 text-[7px] font-black text-slate-400 leading-none">N</span>
-                                    <span className="absolute right-1 text-[7px] font-black text-slate-400 leading-none">E</span>
-                                    <span className="absolute bottom-0.5 text-[7px] font-black text-slate-400 leading-none">S</span>
-                                    <span className="absolute left-1 text-[7px] font-black text-slate-400 leading-none">W</span>
+                                <div className="relative w-14 h-14 bg-slate-50 rounded-full border border-slate-200 flex items-center justify-center shrink-0">
+                                    <span className="absolute top-0.5 text-[7px] font-normal text-slate-400 leading-none">N</span>
+                                    <span className="absolute right-1 text-[7px] font-normal text-slate-400 leading-none">E</span>
+                                    <span className="absolute bottom-0.5 text-[7px] font-normal text-slate-400 leading-none">S</span>
+                                    <span className="absolute left-1 text-[7px] font-normal text-slate-400 leading-none">W</span>
                                     {/* Arrow Rotated based on wd degree */}
                                     <div style={compassArrowStyle} className="w-6 h-6 flex items-center justify-center">
                                         <svg className="w-4.5 h-4.5 text-emerald-600" fill="currentColor" viewBox="0 0 24 24">
@@ -5923,14 +6291,14 @@ export default function EnvironmentalTelemetryPanel({ companyData }: Environment
                             </div>
 
                             <div className="col-span-8 space-y-1">
-                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none block">Vektor Embusan Angin</span>
-                                <h5 className="text-[11px] font-black text-slate-800 leading-none">Arah: {aqiData.weather.windDirection}° ({getWindDirectionName(aqiData.weather.windDirection)})</h5>
-                                <p className="text-[9px] text-slate-500 font-semibold leading-normal">Kecepatan angin {aqiData.weather.windSpeed} m/s memengaruhi arah persebaran partikel asap/polutan pabrik [3].</p>
+                                <span className="text-[12px] font-normal text-slate-800 block">Vektor embusan angin</span>
+                                <h5 className="text-[11px] font-normal text-slate-500 leading-none mt-1">Arah: {aqiData.weather.windDirection}° ({getWindDirectionName(aqiData.weather.windDirection)})</h5>
+                                <p className="text-[11px] font-normal text-slate-500 leading-normal mt-1">Kecepatan angin {aqiData.weather.windSpeed} m/s memengaruhi arah persebaran partikel asap/polutan pabrik [3].</p>
                             </div>
                         </div>
 
                         {/* DATA SOURCE FOOTER */}
-                        <div className="flex justify-between items-center text-[8px] text-slate-400 font-bold uppercase tracking-wider pt-2 border-t">
+                        <div className="flex justify-between items-center text-[9px] text-slate-500 font-normal pt-3">
                             <span>Sektor: {companyData.companyName}</span>
                             <span>Cache: {aqiData.source === 'simulation' ? 'Simulated' : aqiData.source === 'cache' ? 'Settle Cached' : 'Live Synchronized'}</span>
                         </div>
@@ -5940,12 +6308,12 @@ export default function EnvironmentalTelemetryPanel({ companyData }: Environment
             </div>
 
             {/* ACTION FOOTER */}
-            <div className="p-4 border-t border-slate-200 bg-white shrink-0">
+            <div className="p-4 border-t border-slate-150 bg-white shrink-0">
                 <button
                     onClick={() => toast.success(`Analisis spasial udara dicatat ke audit log.`)}
-                    className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white rounded-none font-black text-[10px] uppercase tracking-widest shadow-none transition-colors flex items-center justify-center gap-1.5"
+                    className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white rounded-none font-normal text-xs transition-colors flex items-center justify-center gap-1.5 border-none outline-none cursor-pointer"
                 >
-                    Amankan Log Telemetri <ArrowUpRight size={12} />
+                    Amankan log telemetri <ArrowUpRight size={12} />
                 </button>
             </div>
         </div>
@@ -5955,8 +6323,8 @@ export default function EnvironmentalTelemetryPanel({ companyData }: Environment
 // Resolver Arah Angin Derajat Kompas ke Nama Arah Kardinal
 function getWindDirectionName(degree: number): string {
     const directions = [
-        "Utara", "Timur Laut", "Timur", "Tenggara",
-        "Selatan", "Barat Daya", "Barat", "Barat Laut"
+        "Utara", "Timur laut", "Timur", "Tenggara",
+        "Selatan", "Barat daya", "Barat", "Barat laut"
     ];
     // Membagi lingkaran 360 derajat menjadi 8 bagian
     const idx = Math.round(((degree % 360) / 45)) % 8;
@@ -5975,7 +6343,7 @@ import { useSijagaStore } from "@/store/useSijagaStore";
 
 /**
  * LayerPanel - GFW Paradigm (High-Density Data & Solid UI)
- * Murni mengelola Feature Layers & Administratif. 
+ * Murni mengelola Feature Layers & Administratif.
  * Basemap & Overlay yang tidak relevan telah di-decouple ke laci terpisah (BasemapPanel).
  */
 export default function LayerPanel() {
@@ -6163,7 +6531,7 @@ export default function PatrolTaskPanel() {
 
     // 1. Saring tugas yang "Terjadwal" dan ditugaskan ke petugas ini (Gaya Information Expert)
     const myTasks = useMemo(() => {
-        // FASE 2: Memperbaiki Filter Mismatch dengan menggunakan UUID asli (currentUser.id) 
+        // FASE 2: Memperbaiki Filter Mismatch dengan menggunakan UUID asli (currentUser.id)
         // serta fallback ke officerId jika di-set.
         const userId = currentUser?.id;
         const officerId = currentUser?.officerId;
@@ -6955,6 +7323,125 @@ export default function WaterTelemetryPanel({ stationData }: WaterTelemetryPanel
     );
 }
 
+--- FILE: src\modules\admin\components\gis\RiverHorizontalLegend.tsx ---
+// src/modules/admin/components/gis/RiverHorizontalLegend.tsx
+import React, { useState, useEffect } from "react";
+import { Droplets, Plus, Minus, Maximize } from "lucide-react";
+import { useGisUIStore } from "@/store/useGisUIStore";
+import { cn } from "@/lib/utils";
+
+/**
+ * ============================================================================
+ * RIVER HORIZONTAL LEGEND & EMBEDDED ZOOM HUD (GFW PARADIGM)
+ * ============================================================================
+ * HUD mendatar khusus untuk menjelaskan spektrum warna garis sungai.
+ * Akan otomatis mengkalkulasi ruang layar agar selalu berada di tengah (Centered)
+ * meskipun laci panel sebelah kiri dibuka-tutup.
+ */
+export default function RiverHorizontalLegend() {
+    const { activeLayers, activePanels } = useGisUIStore();
+
+    // State lokal untuk melacak perubahan resolusi lebar layar (Responsive Sync)
+    const [windowWidth, setWindowWidth] = useState(
+        typeof window !== "undefined" ? window.innerWidth : 1200
+    );
+
+    useEffect(() => {
+        const handleResize = () => setWindowWidth(window.innerWidth);
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
+
+    // Hanya tampilkan legenda ini jika Layer Sungai sedang diaktifkan
+    if (!activeLayers.includes("layer-river")) return null;
+
+    // Spektrum Warna Kualitas Air berdasarkan Baku Mutu PP 22/2021
+    const riverSpectrum = [
+        { label: "Normal (Sehat)", range: "BOD < 2.0 mg/L", color: "#22d3ee", text: "text-slate-900" },   // Cyan 400
+        { label: "Waspada (Ringan)", range: "BOD 2.0 - 3.0", color: "#fbbf24", text: "text-slate-900" }, // Amber 400
+        { label: "Kritis (Berat)", range: "BOD > 3.0 mg/L", color: "#f43f5e", text: "text-white" }         // Rose 500
+    ];
+
+    // ==========================================================================
+    // MATHEMATICAL DYNAMIC CENTERING CALCULATION
+    // ==========================================================================
+    const leftSidebarWidth = 64; // Lebar tetap sidebar kiri (w-16)
+
+    // Hitung total akumulasi lebar laci yang sedang aktif di sebelah kiri
+    const activePanelsWidth = activePanels.reduce((sum, panel) => {
+        if (panel.type === "ai-copilot" || panel.type === "detil-perusahaan") return sum + 360;
+        if (panel.type === "telemetri-lingkungan" || panel.type === "detail-tugas") return sum + 320;
+        return sum + 280;
+    }, 0);
+
+    const totalLeftBlockedWidth = leftSidebarWidth + activePanelsWidth;
+    const remainingWidth = windowWidth - totalLeftBlockedWidth;
+    const calculatedLeftPosition = totalLeftBlockedWidth + (remainingWidth / 2);
+
+    return (
+        <div
+            className="absolute bottom-8 z-[9999] pointer-events-auto flex flex-col items-center animate-in fade-in slide-in-from-bottom-4 duration-500 shadow-2xl transition-all ease-in-out"
+            style={{ left: `${calculatedLeftPosition}px`, transform: "translateX(-50%)" }}
+        >
+            {/* Header Legenda Tipis */}
+            <div className="bg-white/90 backdrop-blur border border-slate-200 border-b-0 px-3 py-1 flex items-center gap-1.5 shadow-sm">
+                <Droplets size={12} className="text-cyan-600 animate-pulse" />
+                <span className="text-[9px] font-black uppercase tracking-widest text-slate-700">
+                    Baku Mutu Air Sungai (PP 22/2021 Kelas II)
+                </span>
+            </div>
+
+            {/* Bilah Warna & Kontrol Zoom Terpadu */}
+            <div className="flex bg-white border border-slate-200 shadow-lg shadow-slate-900/20 rounded-none overflow-hidden">
+
+                {/* 1. SEGMEN BLOK WARNA (DISCRETE SPECTRUM) */}
+                <div className="flex">
+                    {riverSpectrum.map((item, idx) => (
+                        <div
+                            key={idx}
+                            className={cn(
+                                "flex flex-col items-center justify-center px-4 md:px-6 py-2 min-w-[90px] md:min-w-[130px] border-r border-black/10 transition-all hover:backdrop-brightness-110",
+                                item.text
+                            )}
+                            style={{ backgroundColor: item.color }}
+                            title={`Status: ${item.label}`}
+                        >
+                            <span className="text-[10px] font-black tracking-tight whitespace-nowrap leading-none uppercase drop-shadow-sm">
+                                {item.label}
+                            </span>
+                            <span className="text-[9px] font-bold opacity-90 mt-1.5 leading-none drop-shadow-sm font-mono">
+                                {item.range}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+
+                {/* 2. SEGMEN TOMBOL ZOOM EMBEDDED */}
+                <div className="flex bg-slate-950 text-slate-300 select-none divide-x divide-white/10 shrink-0">
+                    <button
+                        onClick={() => window.dispatchEvent(new Event('map-zoom-in'))}
+                        className="w-10 h-full flex items-center justify-center hover:bg-cyan-600 hover:text-white transition-colors duration-150 outline-none cursor-pointer"
+                    >
+                        <Plus size={14} strokeWidth={3} />
+                    </button>
+                    <button
+                        onClick={() => window.dispatchEvent(new Event('map-reset-view'))}
+                        className="w-11 h-full flex items-center justify-center hover:bg-cyan-600 hover:text-white transition-colors duration-150 outline-none cursor-pointer"
+                    >
+                        <Maximize size={12} strokeWidth={3} />
+                    </button>
+                    <button
+                        onClick={() => window.dispatchEvent(new Event('map-zoom-out'))}
+                        className="w-10 h-full flex items-center justify-center hover:bg-cyan-600 hover:text-white transition-colors duration-150 outline-none cursor-pointer"
+                    >
+                        <Minus size={14} strokeWidth={3} />
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 --- FILE: src\modules\admin\GISMonitoring.tsx ---
 // src/modules/admin/GISMonitoring.tsx
 import React, { useEffect } from 'react';
@@ -7115,6 +7602,7 @@ export default function AddAmdalPage() {
 
   // Document Uploads State (Simpan langsung instansi File)
   const [uploadedFiles, setUploadedFiles] = useState<Record<string, File>>({});
+  const [companyPhoto, setCompanyPhoto] = useState<File | null>(null); // State untuk file foto industri baru
 
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -7145,6 +7633,21 @@ export default function AddAmdalPage() {
       [key]: file
     }));
     toast.success(`Berkas ${file.name} berhasil dimuat.`);
+  };
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const ext = "." + file.name.split(".").pop()?.toLowerCase();
+    const allowedExts = [".jpg", ".jpeg", ".png"];
+    if (!allowedExts.includes(ext)) {
+      toast.error(`Format gambar ${file.name} tidak sesuai! Hanya menerima format JPG, JPEG, PNG.`);
+      return;
+    }
+
+    setCompanyPhoto(file);
+    toast.success(`Foto ${file.name} berhasil dimuat.`);
   };
 
   const removeFile = (key: string) => {
@@ -7247,7 +7750,7 @@ export default function AddAmdalPage() {
     try {
       // Konstruksi FormData multipart/form-data
       const formData = new FormData();
-      
+
       // Lampirkan data tekstual
       Object.entries(form).forEach(([key, val]) => {
         if (val !== undefined && val !== null) {
@@ -7261,6 +7764,11 @@ export default function AddAmdalPage() {
           formData.append(key, file);
         }
       });
+
+      // Lampirkan biner foto industri baru ke payload form data
+      if (companyPhoto) {
+        formData.append("companyPhoto", companyPhoto);
+      }
 
       const { addManualAmdalCompany } = useSijagaStore.getState();
       await addManualAmdalCompany(formData);
@@ -7624,7 +8132,7 @@ export default function AddAmdalPage() {
                 </div>
                 <div className="flex items-center gap-1.5 text-[8.5px] font-black uppercase tracking-wide">
                   <span className="bg-rose-500 text-white px-2 py-0.5 rounded-none">3 Wajib</span>
-                  <span className="bg-slate-700 text-white px-2 py-0.5 rounded-none">2 Opsional</span>
+                  <span className="bg-slate-700 text-white px-2 py-0.5 rounded-none">3 Opsional</span>
                 </div>
               </div>
 
@@ -7705,6 +8213,61 @@ export default function AddAmdalPage() {
                     </div>
                   );
                 })}
+
+                {/* FOTO PROFIL INDUSTRI / PABRIK (INJEKSI BARU - MANUAL AMDAL ENTRY) */}
+                <div className="p-3.5 rounded-none border border-slate-100 bg-slate-50/20 flex flex-col justify-between gap-3 shadow-sm hover:border-slate-350 transition-all bg-white relative">
+                  <div className="flex justify-between items-start gap-2 text-left">
+                    <div className="space-y-0.5">
+                      <span className="text-[7.5px] font-black text-slate-400 uppercase tracking-widest block">ASET VISUAL</span>
+                      <h4 className="text-xs font-black text-slate-800 leading-snug">Foto Profil Industri / Pabrik</h4>
+                      <span className="text-[8.5px] font-bold text-rose-550 block">Gambar (JPG, JPEG, PNG) Saja</span>
+                    </div>
+                    <span className="px-1.5 py-0.5 rounded-none text-[7.5px] font-black uppercase tracking-widest shrink-0 border leading-none bg-slate-100 text-slate-500 border-slate-200">
+                      OPSIONAL
+                    </span>
+                  </div>
+
+                  {companyPhoto ? (
+                    <div className="bg-emerald-50/50 border border-emerald-250 rounded-none p-2.5 flex items-center justify-between gap-2 text-xs font-bold text-emerald-950 animate-in zoom-in-95">
+                      <div className="min-w-0 flex items-center gap-2">
+                        <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                        <div className="min-w-0">
+                          <p className="truncate text-[10.5px] font-bold text-emerald-950">{companyPhoto.name}</p>
+                          <p className="text-[8px] font-bold text-emerald-650 uppercase tracking-wider">
+                            {(companyPhoto.size / 1024).toFixed(1)} KB
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        type="button"
+                        onClick={() => setCompanyPhoto(null)}
+                        className="h-7 w-7 p-0 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-none"
+                      >
+                        <Trash2 size={14} />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <input
+                        type="file"
+                        accept=".jpg,.jpeg,.png"
+                        id="file-upload-company-photo"
+                        className="hidden"
+                        onChange={handlePhotoUpload}
+                      />
+                      <label
+                        htmlFor="file-upload-company-photo"
+                        className="border border-dashed border-slate-250 bg-slate-50 hover:bg-slate-100 hover:border-slate-350 rounded-none p-3 flex flex-col items-center justify-center text-center cursor-pointer transition-colors h-[54px] shadow-inner"
+                      >
+                        <UploadCloud size={16} className="text-slate-400 shrink-0 mb-1" />
+                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-450 block leading-none">UNGGAH FOTO PABRIK</span>
+                      </label>
+                    </div>
+                  )}
+                </div>
+
               </div>
 
               <div className="pt-4 flex justify-between border-t border-slate-100">
@@ -9300,7 +9863,7 @@ export default function UserRegisterPage() {
       /**
        * 2. Hit API menggunakan apiService
        * Catatan: Backend registerSchema membutuhkan {name, email, password}.
-       * apiService Anda memiliki payload {name, email, role}. 
+       * apiService Anda memiliki payload {name, email, role}.
        * Kita kirimkan semua field yang dibutuhkan backend melalui spread operator.
        */
       const response = await apiService.auth.register({
@@ -9573,6 +10136,7 @@ export default function RegistrationPage() {
   const [npwpFile, setNpwpFile] = useState<File | null>(null);
   const [siteplanFile, setSiteplanFile] = useState<File | null>(null);
   const [docTemplateFile, setDocTemplateFile] = useState<File | null>(null);
+  const [companyPhotoFile, setCompanyPhotoFile] = useState<File | null>(null); // State baru untuk foto profil industri
 
   const methods = useForm<RegistrationFormValues>({
     resolver: zodResolver(registrationSchema) as any,
@@ -9628,7 +10192,7 @@ export default function RegistrationPage() {
   const navigate = useNavigate();
 
   const onSubmit = async (data: RegistrationFormValues) => {
-    // Validasi berkas legalitas wajib sebelum dikirim ke API [3]
+    // Validasi berkas legalitas wajib sebelum dikirim ke API
     if (!isEdit) {
       if (!nibFile) {
         toast.error("Dokumen NIB wajib diunggah.");
@@ -9674,6 +10238,9 @@ export default function RegistrationPage() {
       }
       if (docTemplateFile) {
         formData.append("docTemplate", docTemplateFile);
+      }
+      if (companyPhotoFile) {
+        formData.append("companyPhoto", companyPhotoFile); // Lampirkan file foto industri ke multipart payload
       }
 
       if (isEdit && existingCompany) {
@@ -9786,17 +10353,17 @@ export default function RegistrationPage() {
                       <FormGroup label="Tahun Berdiri" name="yearBuilt" placeholder="2026" type="number" />
                     </div>
 
-                    {/* Dokumen Legalitas Upload (Edge-to-Edge Style) */}
+                    {/* Dokumen Legalitas Upload (Edge-to-Edge Style - Pembaruan Struktur Grid Simetris) */}
                     <div className="space-y-3 pt-4 border-t border-slate-100 text-left">
                       <div className="flex items-center gap-2 pb-1 border-b border-slate-100">
                         <FileText size={14} className="text-emerald-600 shrink-0" />
-                        <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-widest">Upload Dokumen Legalitas</h3>
+                        <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-widest">Upload Dokumen & Aset Visual</h3>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {/* NIB */}
                         <FileUploadBox
-                          label="Scan NIB"
+                          label="Scan NIB *"
                           required={!isEdit}
                           accept=".pdf,.jpg,.jpeg,.png"
                           file={nibFile}
@@ -9807,7 +10374,7 @@ export default function RegistrationPage() {
 
                         {/* NPWP */}
                         <FileUploadBox
-                          label="Scan NPWP"
+                          label="Scan NPWP *"
                           required={!isEdit}
                           accept=".pdf,.jpg,.jpeg,.png"
                           file={npwpFile}
@@ -9818,13 +10385,24 @@ export default function RegistrationPage() {
 
                         {/* Siteplan */}
                         <FileUploadBox
-                          label="Siteplan / Layout"
+                          label="Siteplan / Layout (Opsional)"
                           required={false}
                           accept=".pdf,.jpg,.jpeg,.png"
                           file={siteplanFile}
                           onFileChange={setSiteplanFile}
-                          hint="Opsional — denah lokasi usaha"
+                          hint="Denah tata letak lokasi usaha"
                           existingUrl={isEdit ? existingCompany?.docSiteplanUrl || undefined : undefined}
+                        />
+
+                        {/* FOTO PROFIL INDUSTRI (NEW FIELD INTEGRATION) */}
+                        <FileUploadBox
+                          label="Foto Profil Industri / Pabrik (Opsional)"
+                          required={false}
+                          accept="image/*"
+                          file={companyPhotoFile}
+                          onFileChange={setCompanyPhotoFile}
+                          hint="Format JPG, JPEG, PNG, maks 5 MB"
+                          existingUrl={isEdit ? existingCompany?.companyPhotoUrl || undefined : undefined}
                         />
                       </div>
 
@@ -9832,7 +10410,7 @@ export default function RegistrationPage() {
                       <div className="flex items-start gap-2.5 p-3 bg-amber-50 border border-amber-200 rounded-none">
                         <AlertCircle size={14} className="text-amber-500 shrink-0 mt-0.5" />
                         <p className="text-[10px] font-bold text-amber-700 leading-snug">
-                          Dokumen NIB dan NPWP <span className="underline">wajib</span> diunggah. Dokumen tidak lengkap akan menghambat proses verifikasi otomatis [3].
+                          Dokumen NIB dan NPWP <span className="underline">wajib</span> diunggah. Foto profil pabrik direkomendasikan untuk mempermudah identifikasi spasial oleh verifikator DLH [3].
                         </p>
                       </div>
                     </div>
@@ -9920,9 +10498,9 @@ export default function RegistrationPage() {
               {/* STEP 4: MATRIKS ISIAN TEKNIS (DOWNLOAD & UPLOAD) */}
               {currentStep === 4 && (
                 <Card className="bg-white border-2 border-slate-900 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] rounded-none overflow-hidden animate-in fade-in slide-in-from-right-4 text-left">
-                  <CardHeaderLayout 
-                    title={`Langkah 4: Matriks Isian Teknis ${docType}`} 
-                    desc={`Unduh template resmi ${docType} dari DLH, lengkapi, lalu unggah kembali dokumen tersebut.`} 
+                  <CardHeaderLayout
+                    title={`Langkah 4: Matriks Isian Teknis ${docType}`}
+                    desc={`Unduh template resmi ${docType} dari DLH, lengkapi, lalu unggah kembali dokumen tersebut.`}
                   />
                   <CardContent className="p-6 space-y-6">
                     {/* SECTION 1: DOWNLOAD TEMPLATE */}
@@ -9987,25 +10565,25 @@ export default function RegistrationPage() {
                         </div>
                         <h3 className="text-xs font-black text-slate-850 uppercase tracking-widest">3. Keterangan Tambahan Metode Pembuangan Limbah</h3>
                       </div>
-                      <FormGroup 
-                        label="Uraian Metode Pembuangan / Informasi Limbah" 
-                        name="wasteInfo" 
-                        placeholder="Contoh: Limbah cair domestik dialirkan ke septik tank, oli bekas disimpan di TPS B3 berizin..." 
+                      <FormGroup
+                        label="Uraian Metode Pembuangan / Informasi Limbah"
+                        name="wasteInfo"
+                        placeholder="Contoh: Limbah cair domestik dialirkan ke septik tank, oli bekas disimpan di TPS B3 berizin..."
                       />
                     </div>
 
                     {/* BUTTONS NAVIGATION */}
                     <div className="flex justify-between pt-4 border-t gap-2">
-                      <Button 
-                        type="button" 
-                        variant="outline" 
-                        onClick={prevStep} 
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={prevStep}
                         className="h-10 px-6 rounded-none font-bold text-[10px] border-slate-200 text-slate-500 uppercase tracking-widest"
                       >
                         Kembali
                       </Button>
-                      <Button 
-                        type="button" 
+                      <Button
+                        type="button"
                         onClick={() => {
                           if (!isEdit && !docTemplateFile && !existingCompany?.docTemplateUrl) {
                             toast.error(`Dokumen Matriks ${docType} wajib diunggah sebelum lanjut.`);
@@ -10065,6 +10643,7 @@ export default function RegistrationPage() {
                         <FileStatusRow label="NPWP" file={npwpFile} required={!isEdit} existingUrl={isEdit ? existingCompany?.docNpwpUrl || undefined : undefined} />
                         <FileStatusRow label="Siteplan / Layout" file={siteplanFile} required={false} existingUrl={isEdit ? existingCompany?.docSiteplanUrl || undefined : undefined} />
                         <FileStatusRow label={`Matriks Isian Teknis ${docType}`} file={docTemplateFile} required={!isEdit} existingUrl={isEdit ? existingCompany?.docTemplateUrl || undefined : undefined} />
+                        <FileStatusRow label="Foto Profil Industri" file={companyPhotoFile} required={false} existingUrl={isEdit ? existingCompany?.companyPhotoUrl || undefined : undefined} />
                       </div>
                     </div>
 
@@ -10124,12 +10703,12 @@ function FileUploadBox({ label, required, accept, file, onFileChange, hint, exis
         if (inputRef.current) inputRef.current.value = "";
         return;
       }
-      
+
       if (accept) {
         const allowedExtensions = accept.split(",").map(ext => ext.trim().toLowerCase());
         const fileName = selected.name.toLowerCase();
         const isValidExtension = allowedExtensions.some(ext => fileName.endsWith(ext));
-        
+
         if (!isValidExtension && allowedExtensions.length > 0) {
           toast.error(`Format file tidak didukung. Harap unggah file dengan format: ${accept}`);
           if (inputRef.current) inputRef.current.value = "";
@@ -11113,7 +11692,6 @@ export const EnvironmentalRegistration = () => {
     window.location.href = "/";
   };
 
-
   const determineType = () => {
     const isUklUpl =
       Number(formValues.luas_lahan_m2) > 10000 ||
@@ -11433,7 +12011,7 @@ export const registrationSchema = z.object({
   sumber_air: z.string(),
   sumber_listrik: z.string(),
   penggunaan_bbm: z.string(),
-  
+
   // Penentu (Internal Logic)
   registration_type: z.enum(["SPPL", "UKL_UPL"]).optional(),
 
@@ -11478,7 +12056,7 @@ import LimbahMap from "@/modules/admin/components/gis/LimbahMap";
  * Mengadopsi arsitektur Infinite Canvas (GFW Paradigm) 100% konsisten:
  * 1. Peta LimbahMap mendominasi dasar layar (Z-0) [3].
  * 2. Navbar, Sidebar, & HUD melayang tanpa rounded gemuk.
- * 3. Sidebar secara otomatis mendeteksi role Petugas Lapangan untuk memunculkan 
+ * 3. Sidebar secara otomatis mendeteksi role Petugas Lapangan untuk memunculkan
  *    laci "Tugas Patroli" alih-alih "Katalog Industri" [3].
  */
 export default function OfficerGISPage() {
@@ -13418,47 +13996,6 @@ export interface WaterStationNode {
     deviceId?: string;                  // MAC Address perangkat keras IoT fisik
 }
 
---- FILE: tailwind.config.js ---
-/** @type {import('tailwindcss').Config} */
-export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-    "./src/modules/**/*.{js,ts,jsx,tsx}",
-    "./src/components/**/*.{js,ts,jsx,tsx}",
-  ],
-  theme: {
-    extend: {
-      // Injeksi Roboto sebagai font sans utama
-      fontFamily: {
-        sans: ['Roboto', 'sans-serif'],
-      },
-      colors: {
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
-        primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
-        },
-        secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
-        },
-        emerald: {
-          50: '#ecfdf5',
-          100: '#d1fae5',
-          600: '#059669',
-          700: '#047857',
-        }
-      },
-    },
-  },
-  plugins: [require("tailwindcss-animate")],
-}
-
 --- FILE: tsconfig.json ---
 {
   "compilerOptions": {
@@ -13500,4 +14037,3 @@ export default defineConfig({
     },
   },
 })
-

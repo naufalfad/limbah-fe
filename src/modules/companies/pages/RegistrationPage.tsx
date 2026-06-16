@@ -94,6 +94,7 @@ export default function RegistrationPage() {
   const [npwpFile, setNpwpFile] = useState<File | null>(null);
   const [siteplanFile, setSiteplanFile] = useState<File | null>(null);
   const [docTemplateFile, setDocTemplateFile] = useState<File | null>(null);
+  const [companyPhotoFile, setCompanyPhotoFile] = useState<File | null>(null); // State baru untuk foto profil industri
 
   const methods = useForm<RegistrationFormValues>({
     resolver: zodResolver(registrationSchema) as any,
@@ -149,7 +150,7 @@ export default function RegistrationPage() {
   const navigate = useNavigate();
 
   const onSubmit = async (data: RegistrationFormValues) => {
-    // Validasi berkas legalitas wajib sebelum dikirim ke API [3]
+    // Validasi berkas legalitas wajib sebelum dikirim ke API
     if (!isEdit) {
       if (!nibFile) {
         toast.error("Dokumen NIB wajib diunggah.");
@@ -195,6 +196,9 @@ export default function RegistrationPage() {
       }
       if (docTemplateFile) {
         formData.append("docTemplate", docTemplateFile);
+      }
+      if (companyPhotoFile) {
+        formData.append("companyPhoto", companyPhotoFile); // Lampirkan file foto industri ke multipart payload
       }
 
       if (isEdit && existingCompany) {
@@ -307,17 +311,17 @@ export default function RegistrationPage() {
                       <FormGroup label="Tahun Berdiri" name="yearBuilt" placeholder="2026" type="number" />
                     </div>
 
-                    {/* Dokumen Legalitas Upload (Edge-to-Edge Style) */}
+                    {/* Dokumen Legalitas Upload (Edge-to-Edge Style - Pembaruan Struktur Grid Simetris) */}
                     <div className="space-y-3 pt-4 border-t border-slate-100 text-left">
                       <div className="flex items-center gap-2 pb-1 border-b border-slate-100">
                         <FileText size={14} className="text-emerald-600 shrink-0" />
-                        <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-widest">Upload Dokumen Legalitas</h3>
+                        <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-widest">Upload Dokumen & Aset Visual</h3>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {/* NIB */}
                         <FileUploadBox
-                          label="Scan NIB"
+                          label="Scan NIB *"
                           required={!isEdit}
                           accept=".pdf,.jpg,.jpeg,.png"
                           file={nibFile}
@@ -328,7 +332,7 @@ export default function RegistrationPage() {
 
                         {/* NPWP */}
                         <FileUploadBox
-                          label="Scan NPWP"
+                          label="Scan NPWP *"
                           required={!isEdit}
                           accept=".pdf,.jpg,.jpeg,.png"
                           file={npwpFile}
@@ -339,13 +343,24 @@ export default function RegistrationPage() {
 
                         {/* Siteplan */}
                         <FileUploadBox
-                          label="Siteplan / Layout"
+                          label="Siteplan / Layout (Opsional)"
                           required={false}
                           accept=".pdf,.jpg,.jpeg,.png"
                           file={siteplanFile}
                           onFileChange={setSiteplanFile}
-                          hint="Opsional — denah lokasi usaha"
+                          hint="Denah tata letak lokasi usaha"
                           existingUrl={isEdit ? existingCompany?.docSiteplanUrl || undefined : undefined}
+                        />
+
+                        {/* FOTO PROFIL INDUSTRI (NEW FIELD INTEGRATION) */}
+                        <FileUploadBox
+                          label="Foto Profil Industri / Pabrik (Opsional)"
+                          required={false}
+                          accept="image/*"
+                          file={companyPhotoFile}
+                          onFileChange={setCompanyPhotoFile}
+                          hint="Format JPG, JPEG, PNG, maks 5 MB"
+                          existingUrl={isEdit ? existingCompany?.companyPhotoUrl || undefined : undefined}
                         />
                       </div>
 
@@ -353,7 +368,7 @@ export default function RegistrationPage() {
                       <div className="flex items-start gap-2.5 p-3 bg-amber-50 border border-amber-200 rounded-none">
                         <AlertCircle size={14} className="text-amber-500 shrink-0 mt-0.5" />
                         <p className="text-[10px] font-bold text-amber-700 leading-snug">
-                          Dokumen NIB dan NPWP <span className="underline">wajib</span> diunggah. Dokumen tidak lengkap akan menghambat proses verifikasi otomatis [3].
+                          Dokumen NIB dan NPWP <span className="underline">wajib</span> diunggah. Foto profil pabrik direkomendasikan untuk mempermudah identifikasi spasial oleh verifikator DLH [3].
                         </p>
                       </div>
                     </div>
@@ -441,9 +456,9 @@ export default function RegistrationPage() {
               {/* STEP 4: MATRIKS ISIAN TEKNIS (DOWNLOAD & UPLOAD) */}
               {currentStep === 4 && (
                 <Card className="bg-white border-2 border-slate-900 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] rounded-none overflow-hidden animate-in fade-in slide-in-from-right-4 text-left">
-                  <CardHeaderLayout 
-                    title={`Langkah 4: Matriks Isian Teknis ${docType}`} 
-                    desc={`Unduh template resmi ${docType} dari DLH, lengkapi, lalu unggah kembali dokumen tersebut.`} 
+                  <CardHeaderLayout
+                    title={`Langkah 4: Matriks Isian Teknis ${docType}`}
+                    desc={`Unduh template resmi ${docType} dari DLH, lengkapi, lalu unggah kembali dokumen tersebut.`}
                   />
                   <CardContent className="p-6 space-y-6">
                     {/* SECTION 1: DOWNLOAD TEMPLATE */}
@@ -508,25 +523,25 @@ export default function RegistrationPage() {
                         </div>
                         <h3 className="text-xs font-black text-slate-850 uppercase tracking-widest">3. Keterangan Tambahan Metode Pembuangan Limbah</h3>
                       </div>
-                      <FormGroup 
-                        label="Uraian Metode Pembuangan / Informasi Limbah" 
-                        name="wasteInfo" 
-                        placeholder="Contoh: Limbah cair domestik dialirkan ke septik tank, oli bekas disimpan di TPS B3 berizin..." 
+                      <FormGroup
+                        label="Uraian Metode Pembuangan / Informasi Limbah"
+                        name="wasteInfo"
+                        placeholder="Contoh: Limbah cair domestik dialirkan ke septik tank, oli bekas disimpan di TPS B3 berizin..."
                       />
                     </div>
 
                     {/* BUTTONS NAVIGATION */}
                     <div className="flex justify-between pt-4 border-t gap-2">
-                      <Button 
-                        type="button" 
-                        variant="outline" 
-                        onClick={prevStep} 
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={prevStep}
                         className="h-10 px-6 rounded-none font-bold text-[10px] border-slate-200 text-slate-500 uppercase tracking-widest"
                       >
                         Kembali
                       </Button>
-                      <Button 
-                        type="button" 
+                      <Button
+                        type="button"
                         onClick={() => {
                           if (!isEdit && !docTemplateFile && !existingCompany?.docTemplateUrl) {
                             toast.error(`Dokumen Matriks ${docType} wajib diunggah sebelum lanjut.`);
@@ -586,6 +601,7 @@ export default function RegistrationPage() {
                         <FileStatusRow label="NPWP" file={npwpFile} required={!isEdit} existingUrl={isEdit ? existingCompany?.docNpwpUrl || undefined : undefined} />
                         <FileStatusRow label="Siteplan / Layout" file={siteplanFile} required={false} existingUrl={isEdit ? existingCompany?.docSiteplanUrl || undefined : undefined} />
                         <FileStatusRow label={`Matriks Isian Teknis ${docType}`} file={docTemplateFile} required={!isEdit} existingUrl={isEdit ? existingCompany?.docTemplateUrl || undefined : undefined} />
+                        <FileStatusRow label="Foto Profil Industri" file={companyPhotoFile} required={false} existingUrl={isEdit ? existingCompany?.companyPhotoUrl || undefined : undefined} />
                       </div>
                     </div>
 
@@ -645,12 +661,12 @@ function FileUploadBox({ label, required, accept, file, onFileChange, hint, exis
         if (inputRef.current) inputRef.current.value = "";
         return;
       }
-      
+
       if (accept) {
         const allowedExtensions = accept.split(",").map(ext => ext.trim().toLowerCase());
         const fileName = selected.name.toLowerCase();
         const isValidExtension = allowedExtensions.some(ext => fileName.endsWith(ext));
-        
+
         if (!isValidExtension && allowedExtensions.length > 0) {
           toast.error(`Format file tidak didukung. Harap unggah file dengan format: ${accept}`);
           if (inputRef.current) inputRef.current.value = "";

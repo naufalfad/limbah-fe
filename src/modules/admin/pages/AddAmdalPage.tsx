@@ -89,6 +89,7 @@ export default function AddAmdalPage() {
 
   // Document Uploads State (Simpan langsung instansi File)
   const [uploadedFiles, setUploadedFiles] = useState<Record<string, File>>({});
+  const [companyPhoto, setCompanyPhoto] = useState<File | null>(null); // State untuk file foto industri baru
 
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -119,6 +120,21 @@ export default function AddAmdalPage() {
       [key]: file
     }));
     toast.success(`Berkas ${file.name} berhasil dimuat.`);
+  };
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const ext = "." + file.name.split(".").pop()?.toLowerCase();
+    const allowedExts = [".jpg", ".jpeg", ".png"];
+    if (!allowedExts.includes(ext)) {
+      toast.error(`Format gambar ${file.name} tidak sesuai! Hanya menerima format JPG, JPEG, PNG.`);
+      return;
+    }
+
+    setCompanyPhoto(file);
+    toast.success(`Foto ${file.name} berhasil dimuat.`);
   };
 
   const removeFile = (key: string) => {
@@ -221,7 +237,7 @@ export default function AddAmdalPage() {
     try {
       // Konstruksi FormData multipart/form-data
       const formData = new FormData();
-      
+
       // Lampirkan data tekstual
       Object.entries(form).forEach(([key, val]) => {
         if (val !== undefined && val !== null) {
@@ -235,6 +251,11 @@ export default function AddAmdalPage() {
           formData.append(key, file);
         }
       });
+
+      // Lampirkan biner foto industri baru ke payload form data
+      if (companyPhoto) {
+        formData.append("companyPhoto", companyPhoto);
+      }
 
       const { addManualAmdalCompany } = useSijagaStore.getState();
       await addManualAmdalCompany(formData);
@@ -598,7 +619,7 @@ export default function AddAmdalPage() {
                 </div>
                 <div className="flex items-center gap-1.5 text-[8.5px] font-black uppercase tracking-wide">
                   <span className="bg-rose-500 text-white px-2 py-0.5 rounded-none">3 Wajib</span>
-                  <span className="bg-slate-700 text-white px-2 py-0.5 rounded-none">2 Opsional</span>
+                  <span className="bg-slate-700 text-white px-2 py-0.5 rounded-none">3 Opsional</span>
                 </div>
               </div>
 
@@ -679,6 +700,61 @@ export default function AddAmdalPage() {
                     </div>
                   );
                 })}
+
+                {/* FOTO PROFIL INDUSTRI / PABRIK (INJEKSI BARU - MANUAL AMDAL ENTRY) */}
+                <div className="p-3.5 rounded-none border border-slate-100 bg-slate-50/20 flex flex-col justify-between gap-3 shadow-sm hover:border-slate-350 transition-all bg-white relative">
+                  <div className="flex justify-between items-start gap-2 text-left">
+                    <div className="space-y-0.5">
+                      <span className="text-[7.5px] font-black text-slate-400 uppercase tracking-widest block">ASET VISUAL</span>
+                      <h4 className="text-xs font-black text-slate-800 leading-snug">Foto Profil Industri / Pabrik</h4>
+                      <span className="text-[8.5px] font-bold text-rose-550 block">Gambar (JPG, JPEG, PNG) Saja</span>
+                    </div>
+                    <span className="px-1.5 py-0.5 rounded-none text-[7.5px] font-black uppercase tracking-widest shrink-0 border leading-none bg-slate-100 text-slate-500 border-slate-200">
+                      OPSIONAL
+                    </span>
+                  </div>
+
+                  {companyPhoto ? (
+                    <div className="bg-emerald-50/50 border border-emerald-250 rounded-none p-2.5 flex items-center justify-between gap-2 text-xs font-bold text-emerald-950 animate-in zoom-in-95">
+                      <div className="min-w-0 flex items-center gap-2">
+                        <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                        <div className="min-w-0">
+                          <p className="truncate text-[10.5px] font-bold text-emerald-950">{companyPhoto.name}</p>
+                          <p className="text-[8px] font-bold text-emerald-650 uppercase tracking-wider">
+                            {(companyPhoto.size / 1024).toFixed(1)} KB
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        type="button"
+                        onClick={() => setCompanyPhoto(null)}
+                        className="h-7 w-7 p-0 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-none"
+                      >
+                        <Trash2 size={14} />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <input
+                        type="file"
+                        accept=".jpg,.jpeg,.png"
+                        id="file-upload-company-photo"
+                        className="hidden"
+                        onChange={handlePhotoUpload}
+                      />
+                      <label
+                        htmlFor="file-upload-company-photo"
+                        className="border border-dashed border-slate-250 bg-slate-50 hover:bg-slate-100 hover:border-slate-350 rounded-none p-3 flex flex-col items-center justify-center text-center cursor-pointer transition-colors h-[54px] shadow-inner"
+                      >
+                        <UploadCloud size={16} className="text-slate-400 shrink-0 mb-1" />
+                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-450 block leading-none">UNGGAH FOTO PABRIK</span>
+                      </label>
+                    </div>
+                  )}
+                </div>
+
               </div>
 
               <div className="pt-4 flex justify-between border-t border-slate-100">

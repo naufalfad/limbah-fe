@@ -44,7 +44,8 @@ export interface Company {
   docNpwpUrl?: string;
   docSiteplanUrl?: string;
   docTemplateUrl?: string;
-  
+  companyPhotoUrl?: string | null;
+
   // AMDAL specific fields
   activityName?: string;
   envApprovalNo?: string;

@@ -17,19 +17,75 @@ import BasemapPanel from "./panels/BasemapPanel";
 import WaterTelemetryPanel from "./panels/WaterTelemetryPanel";
 
 // MODULAR: Mengimpor laci taktis telemetri live dari modul transport
-import ActiveFleetPanel  from "@/modules/transport/components/gis/panels/ActiveFleetPanel";
+import ActiveFleetPanel from "@/modules/transport/components/gis/panels/ActiveFleetPanel";
 
 // [NEW MODULE] Mengimpor laci asisten AI Forensik untuk Pimpinan/Admin
 import ExecutiveCopilotPanel from "@/modules/dashboard/components/auditor/ExecutiveCopilotPanel";
 
-/**
- * PanelOrchestrator - The Stacking Drawer (GFW Paradigm)
- * Mengatur dua jenis perilaku panel dengan Sumbu X (Width) yang dinamis & reaktif:
- * 1. Panel Menu (Flush/Docked): Lebar dinamis (280px - 360px), menempel rapat di kiri (Zero Gap).
- * 2. Panel Detail (Floating): Melayang secara dinamis berdampingan mengikuti jumlah tumpukan.
- * 
- * GRASP: Indirection & Pure Fabrication
- */
+// =========================================================================
+// MAPPER BAHASA INDONESIA: Menerjemahkan Tipe Panel Teknis ke Label Kategori
+// Diperbesar ke text-sm, tanpa bold, tanpa capslock (Apple-Style UI) [3]
+// =========================================================================
+const getPanelCategoryLabel = (type: GisPanelType): string => {
+    const labels: Record<GisPanelType, string> = {
+        'layer-kewajiban': 'Konfigurasi layer',
+        'basemap-gallery': 'Katalog peta dasar',
+        'katalog-perusahaan': 'Katalog industri',
+        'detil-perusahaan': 'Detail perusahaan',
+        'telemetri-lingkungan': 'Telemetri lingkungan',
+        'tugas-patroli': 'Tugas patroli',
+        'detail-tugas': 'Detail tugas',
+        'armada-tracking': 'Pelacakan armada',
+        'hasil-pencarian': 'Hasil pencarian',
+        'tentang': 'Tentang sistem',
+        'ai-copilot': 'AI Analisis Spasial', // Diperbarui sesuai permintaan revisi
+        'sensor-management': 'Manajemen sensor'
+    };
+    return labels[type] || type.replace("-", " ");
+};
+
+// =========================================================================
+// OTAC RESOLVER DINAMIS: Mengekstrak Nama Perusahaan / Stasiun Aktif (Information Expert)
+// Jika terdeteksi, gantikan judul statis default dengan nama entitas riil [3]
+// =========================================================================
+const getPanelDynamicTitle = (panel: any): string => {
+    if (!panel) return "";
+
+    // JIKA PANEL ADALAH AI COPILOT: Hapus subtitle kedua agar tidak redundant dengan spanduk dalam
+    if (panel.type === 'ai-copilot') {
+        return "";
+    }
+
+    if (!panel.data) return panel.title;
+
+    // A. Deteksi detail industri aktif
+    if (panel.type === 'detil-perusahaan' && panel.data.companyName) {
+        return panel.data.companyName;
+    }
+
+    // B. Deteksi telemetri aktif (mendukung stasiun air & stasiun udara)
+    if (panel.type === 'telemetri-lingkungan') {
+        if (panel.data.isWaterStation && panel.data.name) {
+            return panel.data.name;
+        }
+        if (panel.data.companyName) {
+            return panel.data.companyName;
+        }
+    }
+
+    // C. Deteksi detail penugasan sidak aktif
+    if (panel.type === 'detail-tugas') {
+        if (panel.data.companyId === 'COM-UNKNOWN') {
+            return 'Penyelidikan pengaduan warga';
+        }
+        if (panel.data.companyName) {
+            return panel.data.companyName;
+        }
+    }
+
+    return panel.title;
+};
+
 export default function PanelOrchestrator() {
     const { activePanels, closePanel, closePanelsToTheRight } = useGisUIStore();
     const [isMobile, setIsMobile] = useState(false);
@@ -58,7 +114,7 @@ export default function PanelOrchestrator() {
     };
 
     return (
-        <div className="absolute top-16 bottom-0 left-16 z-30 pointer-events-none flex items-start">
+        <div className="absolute top-16 bottom-0 left-16 z-30 pointer-events-auto flex items-start">
             {activePanels.map((panel, index) => {
                 // 1. EVALUASI TIPOLOGI PANEL SECARA DINAMIS
                 const isFloating =
@@ -132,15 +188,19 @@ export default function PanelOrchestrator() {
                                 }
                         }
                     >
-                        {/* HEADER PANEL */}
-                        <div className="px-4 py-3 border-b border-slate-200 flex justify-between items-center bg-slate-50 shrink-0 select-none">
-                            <div className="flex flex-col text-left">
-                                <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest leading-none">
-                                    {panel.type.replace("-", " ")}
+                        {/* HEADER PANEL (Penyelarasan Hirarki Visual, Tanpa Bold/Capslock) */}
+                        <div className="px-4 py-3 border-b border-slate-200 flex justify-between items-center bg-slate-50 shrink-0 select-none text-left">
+                            <div className="flex flex-col">
+                                {/* Kategori Atas: Diperbesar ke text-sm, warna emerald, tidak tebal, tidak capslock */}
+                                <span className="text-sm font-normal text-emerald-600 leading-none">
+                                    {getPanelCategoryLabel(panel.type)}
                                 </span>
-                                <h3 className="text-[11px] font-bold text-slate-800 truncate max-w-[280px] tracking-tight mt-1 uppercase leading-none">
-                                    {panel.title}
-                                </h3>
+                                {/* Judul/Nama Entitas Bawah: Hanya dirender jika string dinamis tidak kosong */}
+                                {getPanelDynamicTitle(panel) && (
+                                    <h3 className="text-xs font-normal text-slate-505 truncate max-w-[280px] tracking-tight mt-1.5 leading-none">
+                                        {getPanelDynamicTitle(panel)}
+                                    </h3>
+                                )}
                             </div>
 
                             <button
