@@ -117,7 +117,7 @@ export default function GisSidebar() {
                     <button
                         onClick={() => {
                             closePanelsToTheRight(-1);
-                            openPanel("tentang", "Tentang GIS Pantau Limbah");
+                            openPanel("tentang", "Tentang GIS Geo Limbah");
                         }}
                         className={`w-full h-16 flex items-center justify-center transition-colors relative active:bg-slate-100 rounded-none outline-none border-l-[3px] ${isPanelActive("tentang") ? "bg-emerald-50 text-emerald-700 border-emerald-600" : "bg-transparent text-slate-400 hover:bg-slate-50 hover:text-slate-800 border-transparent"}`}
                     >

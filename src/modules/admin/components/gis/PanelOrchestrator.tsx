@@ -260,7 +260,7 @@ function renderPanelContent(type: GisPanelType, data: any) {
                 <div className="p-6 text-center space-y-3 text-slate-500 font-sans">
                     <MapIcon size={32} className="mx-auto text-emerald-600/40 animate-pulse" />
                     <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-600 leading-none">PANTAU LIMBAH GIS</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-600 leading-none">GEO LIMBAH GIS</p>
                         <p className="text-[11px] mt-2 font-medium leading-relaxed text-justify">Sistem Pemetaan Geospasial Kepatuhan Lingkungan v1.0</p>
                     </div>
                 </div>

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Mail, Lock, ArrowRight, Sparkles, ArrowLeft, Loader2 } from "lucide-react";
+import { User, Mail, Lock, ArrowRight, Leaf, ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -109,10 +109,10 @@ export default function UserRegisterPage() {
           <div className="space-y-6">
             <div className="text-center space-y-2">
               <div className="w-14 h-14 bg-gradient-to-br from-emerald-400 to-emerald-600 text-white rounded-2xl flex items-center justify-center mx-auto shadow-md shadow-emerald-200">
-                <Sparkles size={24} />
+                <Leaf size={24} />
               </div>
-              <h1 className="text-2xl font-black text-slate-800 tracking-tight italic">
-                PANTAU <span className="text-emerald-600">LIMBAH</span>
+              <h1 className="font-sans font-semibold text-xl tracking-tight text-slate-800">
+                Geo <span className="text-emerald-600">Limbah</span>
               </h1>
               <p className="text-slate-500 text-xs font-semibold uppercase tracking-widest">
                 Registrasi Akun Pengguna Baru
@@ -219,7 +219,7 @@ export default function UserRegisterPage() {
           <span className="text-emerald-600 font-semibold cursor-pointer hover:underline">
             Syarat &amp; Ketentuan
           </span>{" "}
-          PANTAU LIMBAH.
+          Geo Limbah.
         </p>
       </div>
     </div>

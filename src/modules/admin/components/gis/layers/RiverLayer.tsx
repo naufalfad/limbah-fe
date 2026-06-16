@@ -1,17 +1,15 @@
 // src/modules/admin/components/gis/layers/RiverLayer.tsx
 import React, { useEffect, useMemo, useRef } from 'react';
-import { GeoJSON, useMap } from 'react-leaflet';
-import L, { PathOptions } from 'leaflet';
+import { useMap } from 'react-leaflet';
+import L from 'leaflet';
 import { useGisUIStore } from '@/store/useGisUIStore';
 import { useSijagaStore } from '@/store/useSijagaStore';
 
 // @ts-ignore
 import * as turf from '@turf/turf';
 
-// @ts-ignore
+// @ts-ignore - Hanya mengimpor garis aliran sungai utama Kabupaten Bogor
 import bogorSungaiLine from '@/assets/geojson/bogor-sungai-line.json';
-// @ts-ignore
-import bogorSungaiPoly from '@/assets/geojson/bogor-sungai-poly.json';
 
 // --- KONTRAK DATA INTERNAL ENGINE ---
 interface RiverSegment {
@@ -29,14 +27,16 @@ interface WaterParticle {
     color: string;      // Warna komet
 }
 
-// Konfigurasi Engine Fluid Dynamics (Tuned)
-const PARTICLE_COUNT = 1000; // Partikel lebih padat agar aliran terlihat kontinu
-const FADE_RATE = 0.04;      // Lebih kecil = Jejak komet lebih panjang (Ilusi air menyambung)
-const ZOOM_LOD_THRESHOLD = 11; // Batas zoom-out diturunkan agar efek terlihat lebih luas
+// ============================================================================
+// CONFIGURASI FLUID DYNAMICS (DIET & MINIMALIST TUNING)
+// ============================================================================
+const PARTICLE_COUNT = 500;  // Diturunkan menjadi 500 agar visual tenang dan lapang
+const FADE_RATE = 0.03;       // Peluruhan jejak lebih halus untuk komet tipis
+const ZOOM_LOD_THRESHOLD = 11; // Batas minimal zoom untuk animasi
 
 /**
  * ============================================================================
- * RIVER LAYER (DUAL-CANVAS PARTICLE ENGINE)
+ * RIVER LAYER (CANVAS FLUID PARTICLE ENGINE)
  * ============================================================================
  * Menggunakan prinsip Pemisahan Tanggung Jawab (Separation of Concerns).
  * - Canvas 1 (Statis): Menggambar dasar sungai sesuai warna Zona Polusi (Pemetaan Area).
@@ -164,18 +164,20 @@ export default function RiverLayer() {
                 const nearestId = feature.properties?.nearestStationId;
                 const station = waterStations.find(s => s.id === nearestId);
 
-                // Tuned Speed & Color Mapping
-                let color = '#22d3ee'; // Cyan (Sehat)
-                let speed = 0.5;       // Aliran natural air bersih
+                // ====================================================================
+                // MUTED EDITORIAL COLOR PALETTE (Menghilangkan kontras laser/neon pekat)
+                // ====================================================================
+                let color = '#7dd3fc'; // Sky Blue 300 (Normal / Sehat)
+                let speed = 0.4;       // Aliran natural air bersih yang tenang
 
                 if (station) {
                     const isCritical = station.currentData.bod > 3.0 || station.currentData.cod > 25.0 || station.currentData.do < 4.0;
                     if (isCritical) {
-                        color = '#f43f5e'; // Merah (Kritis)
-                        speed = 0.15;      // Sangat mampet/kental
+                        color = '#fda4af'; // Rose 300 (Kritis - Soft Muted Pink)
+                        speed = 0.12;      // Lambat/kental
                     } else if (station.currentData.bod > 2.0) {
-                        color = '#fbbf24'; // Kuning (Waspada)
-                        speed = 0.3;       // Agak lambat
+                        color = '#fde047'; // Yellow 300 (Waspada - Soft Muted Yellow)
+                        speed = 0.25;      // Sedikit lambat
                     }
                 }
 
@@ -188,11 +190,12 @@ export default function RiverLayer() {
                 else if (geom.type === 'MultiLineString') geom.coordinates.forEach(processLine);
             });
 
-            // 2. Gambar Rangka Dasar Sungai Berdasarkan Zona Warnanya (Menghindari tumpang tindih visual)
+            // 2. Gambar Rangka Dasar Sungai (Tipis, Samar, sebagai Pembimbing Aliran)
             sCtx.clearRect(0, 0, sCanvas.width, sCanvas.height);
             sCtx.lineCap = 'round';
             sCtx.lineJoin = 'round';
-            sCtx.lineWidth = 4; // Lebih tebal agar area jelas
+            sCtx.lineWidth = 1.5; // Dikecilkan dari 4 agar anggun minimalis
+            sCtx.globalAlpha = 0.2; // Dibuat sangat tipis agar menyatu halus dengan basemap
 
             activeSegments.forEach(seg => {
                 if (seg.points.length < 2) return;
@@ -201,8 +204,7 @@ export default function RiverLayer() {
                 for (let i = 1; i < seg.points.length; i++) {
                     sCtx.lineTo(seg.points[i].x, seg.points[i].y);
                 }
-                sCtx.strokeStyle = seg.color; // Mewarnai garis statis dengan warna stasiunnya
-                sCtx.globalAlpha = 0.35;      // Transparan sebagai dasar aliran
+                sCtx.strokeStyle = seg.color;
                 sCtx.stroke();
             });
 
@@ -233,14 +235,15 @@ export default function RiverLayer() {
             const w = dCanvas.width;
             const h = dCanvas.height;
 
-            // Fading Trail (Air Mengalir)
+            // Fading Trail (Jejak Air Mengalir)
             dCtx.globalCompositeOperation = 'destination-out';
             dCtx.fillStyle = `rgba(0, 0, 0, ${FADE_RATE})`;
             dCtx.fillRect(0, 0, w, h);
 
             dCtx.globalCompositeOperation = 'source-over';
-            dCtx.lineWidth = 3.5; // Komet lebih tebal dan jelas
+            dCtx.lineWidth = 1.0; // Dikecilkan dari 3.5 menjadi 1.0 (Sehalus benang sutra!)
             dCtx.lineCap = 'round';
+            dCtx.globalAlpha = 0.5; // Transparansi 50% agar komet membaur lembut
 
             particles.forEach(p => {
                 const segment = activeSegments[p.segmentIdx];
@@ -270,12 +273,11 @@ export default function RiverLayer() {
                     p.y += (dy / dist) * p.speed;
                 }
 
-                // Gambar goresan komet (membentuk ekor bercahaya)
+                // Gambar goresan komet (membentuk ekor mengalir kontinu)
                 dCtx.beginPath();
                 dCtx.moveTo(p1.x, p1.y);
                 dCtx.lineTo(p.x, p.y);
                 dCtx.strokeStyle = p.color;
-                dCtx.globalAlpha = 0.9;
                 dCtx.stroke();
             });
 
@@ -321,24 +323,6 @@ export default function RiverLayer() {
         };
     }, [processedGeoJson, isRiverActive, map, mapOpacity]);
 
-    // Danau/Waduk Static Style
-    const polyStyle = (opacity: number): PathOptions => ({
-        color: '#155e75',
-        fillColor: '#0e7490',
-        fillOpacity: (opacity / 100) * 0.35,
-        weight: 1,
-        interactive: false
-    });
-
-    return (
-        <React.Fragment>
-            {isRiverActive && bogorSungaiPoly && (
-                <GeoJSON
-                    key={`river-poly-${mapOpacity}`}
-                    data={bogorSungaiPoly as any}
-                    style={() => polyStyle(mapOpacity)}
-                />
-            )}
-        </React.Fragment>
-    );
+    // Kembalikan null karena rendering elemen poligon danau/waduk telah di-diet bersih
+    return null;
 }

@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Building2, Trash2, Map,
-  ShieldCheck, CreditCard, Bell, LogOut, Menu, X,
+  ShieldCheck, Leaf, CreditCard, Bell, LogOut, Menu, X,
   ChevronRight, Search, Truck, ClipboardList, BarChart4,
   Users, Key, Layers, Activity, AlertTriangle, CheckCircle, Info
 } from "lucide-react";
@@ -118,12 +118,12 @@ export default function DashboardLayout({ children, noPadding = false }: any) {
         {/* 1. Logo Section (DIET HEIGHT: h-20 -> h-16) */}
         <div className="h-16 flex items-center px-4 gap-3 border-b border-white/10 shrink-0">
           <div className="w-8 h-8 bg-emerald-600 flex items-center justify-center text-white shrink-0">
-            <ShieldCheck size={18} />
+            <Leaf size={18} />
           </div>
           {sidebarOpen && (
             <div className="flex flex-col leading-none overflow-hidden">
-              <span className="font-black text-lg tracking-tighter text-white whitespace-nowrap">
-                PANTAU <span className="text-emerald-500">LIMBAH</span>
+              <span className="font-sans font-semibold text-xl tracking-tight text-white whitespace-nowrap">
+                Geo <span className="text-emerald-500">Limbah</span>
               </span>
             </div>
           )}

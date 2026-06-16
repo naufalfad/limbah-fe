@@ -163,7 +163,7 @@ export default function PaymentSimulator({ isOpen, onClose, invoice }: PaymentSi
 
                                         <div className="space-y-0.5 font-sans">
                                             <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block">BILLER NAME</span>
-                                            <span className="font-black text-slate-800 text-[11px]">{activeCompany?.companyName || "N/A"} (PANTAU LIMBAH)</span>
+                                            <span className="font-black text-slate-800 text-[11px]">{activeCompany?.companyName || "N/A"} (GEO LIMBAH)</span>
                                         </div>
 
                                         <div className="space-y-0.5 font-sans border-t border-slate-200 pt-2">

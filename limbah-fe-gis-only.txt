@@ -1122,7 +1122,7 @@ import {
 import {
   Search, Filter, RefreshCw, FileText, Phone, User, Award, ShieldAlert,
   Calendar, CheckCircle, XCircle, AlertOctagon, Download, Eye, Building2,
-  Lock, Unlock, ArrowUpRight, Scale, Info, MapPin
+  Lock, Unlock, ArrowUpRight, Scale, Info
 } from "lucide-react";
 import { useSijagaStore } from "@/store/useSijagaStore";
 import { cn } from "@/lib/utils";
@@ -1190,8 +1190,6 @@ export default function CompanyManagement() {
   // States for Action Confirmation Dialog
   const [actionTarget, setActionTarget] = useState<{ company: Company; nextStatus: "SUSPENDED" | "APPROVED" } | null>(null);
   const [isActionOpen, setIsActionOpen] = useState(false);
-
-  // RESOLUSI KONFLIK: Sesuai kode rekan Anda, State isAmdalOpen, amdalForm, dan handlernya dihapus sepenuhnya [3]
 
   useEffect(() => {
     fetchCompanies();
@@ -1333,7 +1331,6 @@ export default function CompanyManagement() {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* RESOLUSI KONFLIK: Tombol mengarahkan ke halaman rute baru sesuai kode rekan Anda */}
             <Button
               onClick={() => navigate("/admin/companies/add-amdal")}
               className="bg-rose-600 hover:bg-rose-700 text-white flex items-center gap-2 font-black rounded-none h-9 px-4 text-[10px] uppercase tracking-widest shadow-sm"
@@ -1352,9 +1349,8 @@ export default function CompanyManagement() {
           </div>
         </div>
 
-        {/* --- METRICS CARDS (Curated Aesthetics) --- */}
+        {/* --- METRICS CARDS --- */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-
           <Card className="rounded-none border border-slate-200 shadow-none bg-white relative overflow-hidden">
             <CardContent className="p-4 flex justify-between items-center">
               <div className="space-y-1">
@@ -1406,7 +1402,6 @@ export default function CompanyManagement() {
             </CardContent>
             <div className="absolute bottom-0 left-0 w-full h-1 bg-amber-500" />
           </Card>
-
         </div>
 
         {/* --- TABS SYSTEM --- */}
@@ -1417,9 +1412,7 @@ export default function CompanyManagement() {
               onClick={() => setStatusFilter(tab.key)}
               className={cn(
                 "flex items-center gap-2 px-3.5 py-1.5 rounded-none text-[9px] font-black uppercase tracking-wider transition-all border outline-none",
-                statusFilter === tab.key
-                  ? tab.active
-                  : "bg-white " + tab.color
+                statusFilter === tab.key ? tab.active : "bg-white " + tab.color
               )}
             >
               {tab.icon}
@@ -1437,8 +1430,6 @@ export default function CompanyManagement() {
         {/* --- SEARCH & QUICK FILTER BAR --- */}
         <Card className="rounded-none border border-slate-200 shadow-none p-3 bg-white">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-
-            {/* Search */}
             <div className="relative md:col-span-2">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
               <Input
@@ -1449,7 +1440,6 @@ export default function CompanyManagement() {
               />
             </div>
 
-            {/* Doc Type Filter */}
             <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 h-9">
               <Filter size={12} className="text-slate-400 shrink-0" />
               <select
@@ -1464,34 +1454,30 @@ export default function CompanyManagement() {
               </select>
             </div>
 
-            {/* Total Indicator */}
             <div className="flex items-center justify-end pr-2 text-right">
               <span className="text-[10px] font-mono font-black text-slate-400 uppercase tracking-widest">
                 Hasil: <span className="text-slate-800">{filteredCompanies.length}</span> Perusahaan
               </span>
             </div>
-
           </div>
         </Card>
 
-        {/* --- DENSE DATA TABLE --- */}
+        {/* --- DENSE COMPACT DATA TABLE --- */}
         <div className="bg-white rounded-none border border-slate-200 shadow-none overflow-hidden">
           <Table>
             <TableHeader className="bg-slate-50">
               <TableRow className="border-b border-slate-200 h-9">
-                <TableHead className="w-[120px] font-black text-slate-500 uppercase text-[9px] tracking-widest pl-4">No. Registrasi</TableHead>
-                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest">Perusahaan & Alamat</TableHead>
-                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest">Kontak PIC</TableHead>
-                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest">NIB & NPWP</TableHead>
-                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest">Masa Berlaku Izin</TableHead>
-                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest text-center">Status Izin</TableHead>
-                <TableHead className="text-right pr-4 font-black text-slate-500 uppercase text-[9px] tracking-widest w-[280px]">Aksi Pengawasan</TableHead>
+                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest pl-4 w-[280px]">Perusahaan & Alamat</TableHead>
+                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest w-[160px]">Kontak PIC</TableHead>
+                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest w-[150px]">Masa Berlaku Izin</TableHead>
+                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest text-center w-[120px]">Status Izin</TableHead>
+                <TableHead className="text-right pr-4 font-black text-slate-500 uppercase text-[9px] tracking-widest w-[140px]">Aksi Pengawasan</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredCompanies.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-16">
+                  <TableCell colSpan={5} className="text-center py-16">
                     <div className="flex flex-col items-center gap-2 text-slate-400">
                       <ShieldAlert size={24} className="opacity-40" />
                       <p className="font-black text-[10px] uppercase tracking-widest">Tidak ada data perusahaan ditemukan</p>
@@ -1508,62 +1494,49 @@ export default function CompanyManagement() {
                   return (
                     <TableRow key={c.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors h-14 group">
 
-                      {/* Registration ID */}
-                      <TableCell className="font-mono font-bold text-slate-500 pl-4 text-xs">
-                        {c.id.substring(0, 8)}...
-                      </TableCell>
-
-                      {/* Name & Address */}
-                      <TableCell>
+                      {/* Name & Address (Constrained, Wraps directly to new line) */}
+                      <TableCell className="pl-4 max-w-[280px] whitespace-normal break-words py-2.5">
                         <div className="flex flex-col text-left">
-                          <span className="font-bold text-slate-900 text-xs group-hover:text-emerald-700 transition-colors">{c.companyName}</span>
-                          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1 line-clamp-1">{c.address}</span>
+                          <span className="font-black text-slate-900 text-xs leading-tight group-hover:text-emerald-700 transition-colors">
+                            {c.companyName}
+                          </span>
+                          <span className="text-[9px] text-slate-450 font-bold uppercase tracking-wider mt-1.5 leading-snug">
+                            {c.address}
+                          </span>
                         </div>
                       </TableCell>
 
                       {/* PIC Contact */}
-                      <TableCell>
+                      <TableCell className="w-[160px] whitespace-normal">
                         <div className="flex flex-col text-left text-xs font-semibold text-slate-600">
-                          <span className="flex items-center gap-1"><User size={10} className="text-slate-400" /> {c.picName || "-"}</span>
-                          <a href={`tel:${c.picPhone}`} className="flex items-center gap-1 text-[10px] text-emerald-600 hover:underline mt-1 font-bold">
-                            <Phone size={10} /> {c.picPhone || "-"}
+                          <span className="flex items-center gap-1 leading-tight text-slate-700 font-bold">
+                            <User size={10} className="text-slate-400 shrink-0" /> {c.picName || "-"}
+                          </span>
+                          <a href={`tel:${c.picPhone}`} className="flex items-center gap-1 text-[10px] text-emerald-600 hover:underline mt-1 font-black tracking-tight leading-none shrink-0">
+                            <Phone size={10} className="shrink-0" /> {c.picPhone || "-"}
                           </a>
                         </div>
                       </TableCell>
 
-                      {/* NIB & NPWP */}
-                      <TableCell>
-                        <div className="flex flex-col text-left font-mono text-[10px] text-slate-500">
-                          <span className="font-bold">NIB: {c.nib}</span>
-                          <span className="mt-0.5">NPWP: {c.npwp || "-"}</span>
-                        </div>
-                      </TableCell>
-
-                      {/* Expiration date countdown */}
-                      <TableCell>
+                      {/* Expiration Date Countdown */}
+                      <TableCell className="w-[150px] whitespace-normal">
                         {isApproved && c.certificateActiveUntil ? (
                           <div className="flex flex-col text-left">
                             <span className="text-xs font-bold text-slate-800 flex items-center gap-1">
-                              <Calendar size={11} className="text-slate-400" /> {c.certificateActiveUntil}
+                              <Calendar size={11} className="text-slate-400 shrink-0" /> {c.certificateActiveUntil}
                             </span>
                             {daysRemaining !== null && (
                               <span className={cn(
                                 "text-[9px] font-black uppercase tracking-wider mt-1",
-                                daysRemaining < 0
-                                  ? "text-rose-600"
-                                  : daysRemaining <= 30
-                                    ? "text-amber-500"
-                                    : "text-emerald-600"
+                                daysRemaining < 0 ? "text-rose-600" : daysRemaining <= 30 ? "text-amber-500" : "text-emerald-600"
                               )}>
-                                {daysRemaining < 0
-                                  ? `Kadaluarsa ${Math.abs(daysRemaining)} hari`
-                                  : `Sisa ${daysRemaining} hari`}
+                                {daysRemaining < 0 ? `Kadaluarsa ${Math.abs(daysRemaining)} hari` : `Sisa ${daysRemaining} hari`}
                               </span>
                             )}
                           </div>
                         ) : isSuspended ? (
                           <span className="text-[10px] font-black text-rose-500 uppercase tracking-wider flex items-center gap-1">
-                            <Lock size={10} /> IZIN DITANGGUHKAN
+                            <Lock size={10} className="shrink-0" /> DITANGGUHKAN
                           </span>
                         ) : (
                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
@@ -1573,65 +1546,67 @@ export default function CompanyManagement() {
                       </TableCell>
 
                       {/* Status Badge */}
-                      <TableCell className="text-center">
+                      <TableCell className="text-center w-[120px]">
                         <StatusIndicator state={certState} docType={c.docType} />
                       </TableCell>
 
-                      {/* Tactical Actions */}
-                      <TableCell className="text-right pr-4">
+                      {/* Tactical Icon Actions (Compact Tooltip Style) */}
+                      <TableCell className="text-right pr-4 w-[140px]">
                         <div className="flex items-center justify-end gap-1.5">
 
-                          {/* Inspect Detail */}
+                          {/* Detail Button */}
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
-                            title="Detail Informasi"
-                            className="text-slate-600 font-bold hover:bg-slate-100 rounded-none h-8 w-8 p-0"
+                            title="Detail Informasi Perusahaan"
+                            className="text-slate-600 hover:text-emerald-600 hover:bg-slate-100 rounded-none h-8 w-8 p-0 border-slate-200"
                             onClick={() => handleOpenDetail(c)}
                           >
                             <Eye size={13} />
                           </Button>
 
-                          {/* Download Certificate */}
+                          {/* Download Certificate Button */}
                           <Button
                             variant="outline"
                             size="sm"
-                            title="Unduh Sertifikat Izin"
+                            title={!isApproved || (daysRemaining !== null && daysRemaining < 0) ? "Sertifikat Belum Terbit / Kadaluarsa" : "Unduh Sertifikat Izin"}
                             disabled={!isApproved || (daysRemaining !== null && daysRemaining < 0)}
-                            className="text-slate-700 hover:text-emerald-600 font-bold hover:bg-emerald-50/50 rounded-none h-8 text-[10px] tracking-widest gap-1 border-slate-300 disabled:opacity-40"
+                            className="text-slate-700 hover:text-emerald-600 hover:bg-emerald-50/50 rounded-none h-8 w-8 p-0 border-slate-200 disabled:opacity-40"
                             onClick={() => handleDownloadCertificate(c)}
                           >
-                            <Download size={11} /> UNDUH
+                            <Download size={13} />
                           </Button>
 
-                          {/* Suspend or Restore Actions */}
+                          {/* Suspend Action */}
                           {isApproved && (
                             <Button
                               variant="outline"
                               size="sm"
-                              title="Tangguhkan Izin Usaha"
-                              className="text-rose-600 hover:text-white hover:bg-rose-600 font-black rounded-none h-8 text-[10px] tracking-widest border-rose-200"
+                              title="Tangguhkan Izin Usaha (Suspend)"
+                              className="text-rose-600 hover:text-white hover:bg-rose-600 rounded-none h-8 w-8 p-0 border-rose-200"
                               onClick={() => handleTriggerAction(c, "SUSPENDED")}
                             >
-                              <Lock size={11} className="mr-1" /> SUSPEND
+                              <Lock size={13} />
                             </Button>
                           )}
 
+                          {/* Activate Action */}
                           {isSuspended && (
                             <Button
                               variant="outline"
                               size="sm"
-                              title="Pulihkan Izin Usaha"
-                              className="text-emerald-600 hover:text-white hover:bg-emerald-600 font-black rounded-none h-8 text-[10px] tracking-widest border-emerald-200"
+                              title="Pulihkan / Aktifkan Kembali Izin Usaha"
+                              className="text-emerald-600 hover:text-white hover:bg-emerald-600 rounded-none h-8 w-8 p-0 border-emerald-200"
                               onClick={() => handleTriggerAction(c, "APPROVED")}
                             >
-                              <Unlock size={11} className="mr-1" /> AKTIFKAN
+                              <Unlock size={13} />
                             </Button>
                           )}
 
+                          {/* Pending Review Placeholder */}
                           {!isApproved && !isSuspended && (
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-2.5 py-1">
-                              Menunggu Verifikasi
+                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none" title="Menunggu verifikasi administrasi / lapangan">
+                              PENDING
                             </span>
                           )}
 
@@ -1697,9 +1672,7 @@ export default function CompanyManagement() {
               onClick={handleConfirmAction}
               className={cn(
                 "rounded-none font-black text-xs h-9 uppercase tracking-wider",
-                actionTarget?.nextStatus === "SUSPENDED"
-                  ? "bg-rose-600 hover:bg-rose-700 text-white"
-                  : "bg-emerald-600 hover:bg-emerald-700 text-white"
+                actionTarget?.nextStatus === "SUSPENDED" ? "bg-rose-600 hover:bg-rose-700 text-white" : "bg-emerald-600 hover:bg-emerald-700 text-white"
               )}
             >
               YA, KONFIRMASI
@@ -1886,7 +1859,6 @@ export default function CompanyManagement() {
 
 function StatusIndicator({ state, docType }: { state: StatusFilter; docType: string }) {
   const normalizedDoc = docType === "UKL_UPL" ? "UKL-UPL" : docType;
-
   const isAmdal = normalizedDoc === "AMDAL";
 
   const configs: Record<StatusFilter, { label: string; style: string }> = {
@@ -2817,8 +2789,8 @@ export default function GisNavbar() {
                         <Leaf size={18} />
                     </div>
                     <div className="flex flex-col leading-none">
-                        <span className="text-sm font-black text-slate-800 tracking-tighter uppercase">
-                            PANTAU <span className="text-emerald-600">LIMBAH</span>
+                        <span className="font-sans font-semibold text-xl tracking-tight text-slate-800">
+                            Geo <span className="text-emerald-600">Limbah</span>
                         </span>
                         <span className="text-[8px] text-slate-400 font-bold tracking-[0.2em] uppercase mt-0.5">
                             Geospasial Kepatuhan
@@ -2993,7 +2965,7 @@ export default function GisSidebar() {
                     <button
                         onClick={() => {
                             closePanelsToTheRight(-1);
-                            openPanel("tentang", "Tentang GIS Pantau Limbah");
+                            openPanel("tentang", "Tentang GIS Geo Limbah");
                         }}
                         className={`w-full h-16 flex items-center justify-center transition-colors relative active:bg-slate-100 rounded-none outline-none border-l-[3px] ${isPanelActive("tentang") ? "bg-emerald-50 text-emerald-700 border-emerald-600" : "bg-transparent text-slate-400 hover:bg-slate-50 hover:text-slate-800 border-transparent"}`}
                     >
@@ -5156,19 +5128,75 @@ import BasemapPanel from "./panels/BasemapPanel";
 import WaterTelemetryPanel from "./panels/WaterTelemetryPanel";
 
 // MODULAR: Mengimpor laci taktis telemetri live dari modul transport
-import ActiveFleetPanel  from "@/modules/transport/components/gis/panels/ActiveFleetPanel";
+import ActiveFleetPanel from "@/modules/transport/components/gis/panels/ActiveFleetPanel";
 
 // [NEW MODULE] Mengimpor laci asisten AI Forensik untuk Pimpinan/Admin
 import ExecutiveCopilotPanel from "@/modules/dashboard/components/auditor/ExecutiveCopilotPanel";
 
-/**
- * PanelOrchestrator - The Stacking Drawer (GFW Paradigm)
- * Mengatur dua jenis perilaku panel dengan Sumbu X (Width) yang dinamis & reaktif:
- * 1. Panel Menu (Flush/Docked): Lebar dinamis (280px - 360px), menempel rapat di kiri (Zero Gap).
- * 2. Panel Detail (Floating): Melayang secara dinamis berdampingan mengikuti jumlah tumpukan.
- *
- * GRASP: Indirection & Pure Fabrication
- */
+// =========================================================================
+// MAPPER BAHASA INDONESIA: Menerjemahkan Tipe Panel Teknis ke Label Kategori
+// Diperbesar ke text-sm, tanpa bold, tanpa capslock (Apple-Style UI) [3]
+// =========================================================================
+const getPanelCategoryLabel = (type: GisPanelType): string => {
+    const labels: Record<GisPanelType, string> = {
+        'layer-kewajiban': 'Konfigurasi layer',
+        'basemap-gallery': 'Katalog peta dasar',
+        'katalog-perusahaan': 'Katalog industri',
+        'detil-perusahaan': 'Detail perusahaan',
+        'telemetri-lingkungan': 'Telemetri lingkungan',
+        'tugas-patroli': 'Tugas patroli',
+        'detail-tugas': 'Detail tugas',
+        'armada-tracking': 'Pelacakan armada',
+        'hasil-pencarian': 'Hasil pencarian',
+        'tentang': 'Tentang sistem',
+        'ai-copilot': 'AI Analisis Spasial', // Diperbarui sesuai permintaan revisi
+        'sensor-management': 'Manajemen sensor'
+    };
+    return labels[type] || type.replace("-", " ");
+};
+
+// =========================================================================
+// OTAC RESOLVER DINAMIS: Mengekstrak Nama Perusahaan / Stasiun Aktif (Information Expert)
+// Jika terdeteksi, gantikan judul statis default dengan nama entitas riil [3]
+// =========================================================================
+const getPanelDynamicTitle = (panel: any): string => {
+    if (!panel) return "";
+
+    // JIKA PANEL ADALAH AI COPILOT: Hapus subtitle kedua agar tidak redundant dengan spanduk dalam
+    if (panel.type === 'ai-copilot') {
+        return "";
+    }
+
+    if (!panel.data) return panel.title;
+
+    // A. Deteksi detail industri aktif
+    if (panel.type === 'detil-perusahaan' && panel.data.companyName) {
+        return panel.data.companyName;
+    }
+
+    // B. Deteksi telemetri aktif (mendukung stasiun air & stasiun udara)
+    if (panel.type === 'telemetri-lingkungan') {
+        if (panel.data.isWaterStation && panel.data.name) {
+            return panel.data.name;
+        }
+        if (panel.data.companyName) {
+            return panel.data.companyName;
+        }
+    }
+
+    // C. Deteksi detail penugasan sidak aktif
+    if (panel.type === 'detail-tugas') {
+        if (panel.data.companyId === 'COM-UNKNOWN') {
+            return 'Penyelidikan pengaduan warga';
+        }
+        if (panel.data.companyName) {
+            return panel.data.companyName;
+        }
+    }
+
+    return panel.title;
+};
+
 export default function PanelOrchestrator() {
     const { activePanels, closePanel, closePanelsToTheRight } = useGisUIStore();
     const [isMobile, setIsMobile] = useState(false);
@@ -5197,7 +5225,7 @@ export default function PanelOrchestrator() {
     };
 
     return (
-        <div className="absolute top-16 bottom-0 left-16 z-30 pointer-events-none flex items-start">
+        <div className="absolute top-16 bottom-0 left-16 z-30 pointer-events-auto flex items-start">
             {activePanels.map((panel, index) => {
                 // 1. EVALUASI TIPOLOGI PANEL SECARA DINAMIS
                 const isFloating =
@@ -5271,15 +5299,19 @@ export default function PanelOrchestrator() {
                                 }
                         }
                     >
-                        {/* HEADER PANEL */}
-                        <div className="px-4 py-3 border-b border-slate-200 flex justify-between items-center bg-slate-50 shrink-0 select-none">
-                            <div className="flex flex-col text-left">
-                                <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest leading-none">
-                                    {panel.type.replace("-", " ")}
+                        {/* HEADER PANEL (Penyelarasan Hirarki Visual, Tanpa Bold/Capslock) */}
+                        <div className="px-4 py-3 border-b border-slate-200 flex justify-between items-center bg-slate-50 shrink-0 select-none text-left">
+                            <div className="flex flex-col">
+                                {/* Kategori Atas: Diperbesar ke text-sm, warna emerald, tidak tebal, tidak capslock */}
+                                <span className="text-sm font-normal text-emerald-600 leading-none">
+                                    {getPanelCategoryLabel(panel.type)}
                                 </span>
-                                <h3 className="text-[11px] font-bold text-slate-800 truncate max-w-[280px] tracking-tight mt-1 uppercase leading-none">
-                                    {panel.title}
-                                </h3>
+                                {/* Judul/Nama Entitas Bawah: Hanya dirender jika string dinamis tidak kosong */}
+                                {getPanelDynamicTitle(panel) && (
+                                    <h3 className="text-xs font-normal text-slate-505 truncate max-w-[280px] tracking-tight mt-1.5 leading-none">
+                                        {getPanelDynamicTitle(panel)}
+                                    </h3>
+                                )}
                             </div>
 
                             <button
@@ -5339,7 +5371,7 @@ function renderPanelContent(type: GisPanelType, data: any) {
                 <div className="p-6 text-center space-y-3 text-slate-500 font-sans">
                     <MapIcon size={32} className="mx-auto text-emerald-600/40 animate-pulse" />
                     <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-600 leading-none">PANTAU LIMBAH GIS</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-600 leading-none">GEO LIMBAH GIS</p>
                         <p className="text-[11px] mt-2 font-medium leading-relaxed text-justify">Sistem Pemetaan Geospasial Kepatuhan Lingkungan v1.0</p>
                     </div>
                 </div>
@@ -5439,16 +5471,22 @@ export default function BasemapPanel() {
 --- FILE: src\modules\admin\components\gis\panels\CompanyPanel.tsx ---
 // src/modules/admin/components/gis/panels/CompanyPanel.tsx
 import React, { useState, useMemo } from "react";
-import { Search, Building2, ChevronRight, CheckCircle2, AlertTriangle, ShieldCheck, TrendingDown } from "lucide-react";
+import { Search, Building2, ChevronRight, TrendingDown } from "lucide-react";
 import { useSijagaStore } from "@/store/useSijagaStore";
 import { useGisUIStore } from "@/store/useGisUIStore";
 import { cn } from "@/lib/utils";
+
+// @ts-ignore - Bypass bundler mapping untuk Turf di TypeScript modern [3]
+import * as turf from '@turf/turf';
+import kecData from "@/assets/geojson/bogor-kecamatan.json";
 
 export default function CompanyPanel() {
     const { companies, currentUser } = useSijagaStore();
     const { openPanel, closePanelsToTheRight, setSelectedCompanyId, selectedCompanyId } = useGisUIStore();
 
     const [searchQuery, setSearchQuery] = useState("");
+    const [selectedDocType, setSelectedDocType] = useState<string>("ALL");
+    const [selectedSubdistrict, setSelectedSubdistrict] = useState<string>("ALL");
 
     const isAuditor = currentUser?.role === "AUDITOR";
 
@@ -5457,19 +5495,68 @@ export default function CompanyPanel() {
         return companies.filter(c => c.status === "APPROVED");
     }, [companies]);
 
-    // Filter Pencarian
+    // =========================================================================
+    // LOGIKA SPATIAL JOIN: MEMETAKAN PERUSAHAAN KE WILAYAH KECAMATAN (Turf.js PIP)
+    // Dihitung 1 kali di memori (useMemo) untuk efisiensi performa browser O(1)
+    // =========================================================================
+    const companyKecMap = useMemo(() => {
+        const mapping: Record<string, string> = {};
+        // Melakukan penanganan as any untuk menghindari strict json module type check di Vite
+        if (!kecData || !(kecData as any).features || approvedCompanies.length === 0) return mapping;
+
+        approvedCompanies.forEach((company) => {
+            const lat = parseFloat(company.lat);
+            const lng = parseFloat(company.lng);
+            if (isNaN(lat) || isNaN(lng)) return;
+
+            const pt = turf.point([lng, lat]);
+            const match = (kecData as any).features.find((feature: any) => {
+                try {
+                    return turf.booleanPointInPolygon(pt, feature);
+                } catch (e) {
+                    return false;
+                }
+            });
+
+            if (match && match.properties?.WADMKC) {
+                // Konversi nama kecamatan ke huruf biasa (Sentence Case) demi estetika
+                const rawName = match.properties.WADMKC.trim();
+                mapping[company.id] = rawName.charAt(0).toUpperCase() + rawName.slice(1).toLowerCase();
+            } else {
+                mapping[company.id] = "Luar Wilayah";
+            }
+        });
+        return mapping;
+    }, [approvedCompanies]);
+
+    // Mengambil daftar unik wilayah kecamatan aktif yang memiliki industri
+    const subdistricts = useMemo(() => {
+        const list = Object.values(companyKecMap);
+        return Array.from(new Set(list)).sort() as string[];
+    }, [companyKecMap]);
+
+    // Filter Gabungan: Pencarian Teks + Jenis Izin Sektoral + Batas Wilayah Spasial
     const filteredCompanies = useMemo(() => {
-        if (!searchQuery) return approvedCompanies;
-        const lowerQuery = searchQuery.toLowerCase();
-        return approvedCompanies.filter(c =>
-            c.companyName.toLowerCase().includes(lowerQuery) ||
-            c.address.toLowerCase().includes(lowerQuery) ||
-            c.docType.toLowerCase().includes(lowerQuery)
-        );
-    }, [searchQuery, approvedCompanies]);
+        return approvedCompanies.filter((c) => {
+            // 1. Filter Kueri Teks
+            const matchesSearch = searchQuery
+                ? c.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                c.address.toLowerCase().includes(searchQuery.toLowerCase())
+                : true;
+
+            // 2. Filter Jenis Izin Dokumen Lingkungan
+            const normalizedDoc = c.docType === "UKL_UPL" ? "UKL-UPL" : c.docType;
+            const matchesDocType = selectedDocType === "ALL" || normalizedDoc === selectedDocType;
+
+            // 3. Filter Wilayah Kecamatan (PIP Spasial)
+            const companyKec = companyKecMap[c.id] || "Luar Wilayah";
+            const matchesSubdistrict = selectedSubdistrict === "ALL" || companyKec === selectedSubdistrict;
+
+            return matchesSearch && matchesDocType && matchesSubdistrict;
+        });
+    }, [approvedCompanies, searchQuery, selectedDocType, selectedSubdistrict, companyKecMap]);
 
     // FASE 1 ARSITEKTUR: Polimorfisme Pengurutan (Sorting)
-    // Jika Auditor: Urutkan dari Skor terburuk (Kritis) ke terbaik. Yang belum diaudit ditaruh paling bawah.
     const displayList = useMemo(() => {
         if (!isAuditor) return filteredCompanies; // Admin DLH tidak diurutkan ulang
 
@@ -5497,12 +5584,6 @@ export default function CompanyPanel() {
         closePanelsToTheRight(-1); // Bersihkan panel melayang sebelumnya
         openPanel("detil-perusahaan", `Detail Industri`, company);
 
-        // =========================================================================
-        // FASE 1: INTEGRASI EVENT FLY-TO SECARA OTOMATIS [3]
-        //
-        // Mengirimkan sinyal koordinat spasial secara global agar didengar peta utama
-        // sehingga kamera peta langsung terbang meluncur halus menyorot lokasi pabrik.
-        // =========================================================================
         const lat = parseFloat(company.lat);
         const lng = parseFloat(company.lng);
         if (!isNaN(lat) && !isNaN(lng) && lat !== 0) {
@@ -5514,129 +5595,149 @@ export default function CompanyPanel() {
         }
     };
 
-    const getObligationIcon = (type: string) => {
-        if (type === 'AMDAL') return <AlertTriangle size={12} className="text-red-500" />;
-        if (type === 'UKL-UPL' || type === 'UKL_UPL') return <ShieldCheck size={12} className="text-amber-500" />;
-        return <CheckCircle2 size={12} className="text-emerald-500" />;
+    const getObligationBadge = (type: string) => {
+        const norm = type === "UKL_UPL" ? "UKL-UPL" : type;
+        if (norm === 'AMDAL') return <span className="text-[9px] font-normal text-rose-700 bg-rose-50/50 px-1.5 py-0.5 border border-rose-100">Amdal</span>;
+        if (norm === 'UKL-UPL') return <span className="text-[9px] font-normal text-amber-700 bg-amber-50/50 px-1.5 py-0.5 border border-amber-100">Ukl-upl</span>;
+        return <span className="text-[9px] font-normal text-emerald-700 bg-emerald-50/50 px-1.5 py-0.5 border border-emerald-100">Sppl</span>;
     };
 
     const getScoreBadge = (score?: number | null) => {
         if (score === null || score === undefined) {
-            return <span className="bg-slate-100 text-slate-500 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest border border-slate-200">Belum Audit</span>;
+            return <span className="bg-slate-100 text-slate-500 px-1.5 py-0.5 text-[9px] font-normal border border-slate-200">Belum audit</span>;
         }
         if (score >= 80) {
-            return <span className="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest border border-emerald-200">Patuh: {score}</span>;
+            return <span className="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 text-[9px] font-normal border border-emerald-200">Patuh: {score}</span>;
         }
         if (score >= 60) {
-            return <span className="bg-amber-50 text-amber-700 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest border border-amber-200">Peringatan: {score}</span>;
+            return <span className="bg-amber-50 text-amber-700 px-1.5 py-0.5 text-[9px] font-normal border border-amber-200">Peringatan: {score}</span>;
         }
-        return <span className="bg-rose-50 text-rose-700 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest border border-rose-200 animate-pulse">Kritis: {score}</span>;
+        return <span className="bg-rose-50 text-rose-700 px-1.5 py-0.5 text-[9px] font-normal border border-rose-200 animate-pulse">Kritis: {score}</span>;
     };
 
     return (
-        <div className="flex flex-col h-full bg-white pb-10 font-sans">
+        <div className="flex flex-col h-full bg-white pb-10 font-sans text-slate-800">
 
-            {/* SECTION 1: SEARCH & FILTER (Sticky Solid) */}
-            <div className="px-4 py-2 border-b border-slate-200 bg-slate-50 sticky top-0 z-10">
+            {/* SECTION 1: SEARCH & DUAL FILTER TOOLBAR (Sticky Flat Style, No Outline Box, No Shadow) */}
+            <div className="px-5 py-3.5 border-b border-slate-100 bg-white sticky top-0 z-10 space-y-2.5">
+                {/* Text Search */}
                 <div className="relative group">
                     <Search
                         className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-600 transition-colors"
-                        size={14}
+                        size={13}
                     />
                     <input
                         type="text"
                         placeholder="Cari nama atau alamat pabrik..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-none py-1.5 pl-8 pr-3 text-[12px] font-medium text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+                        className="w-full bg-slate-50/50 border border-slate-200 py-1.5 pl-8 pr-3 text-xs font-normal text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-slate-350 focus:bg-white transition-all"
                     />
+                </div>
+                {/* Dropdown Filters */}
+                <div className="grid grid-cols-2 gap-2">
+                    <select
+                        value={selectedDocType}
+                        onChange={(e) => setSelectedDocType(e.target.value)}
+                        className="h-8 px-2 bg-slate-50/50 border border-slate-200 text-[11px] font-normal text-slate-600 focus:outline-none focus:bg-white transition-colors cursor-pointer"
+                    >
+                        <option value="ALL">Semua jenis izin</option>
+                        <option value="AMDAL">AMDAL</option>
+                        <option value="UKL-UPL">UKL-UPL</option>
+                        <option value="SPPL">SPPL</option>
+                    </select>
+                    <select
+                        value={selectedSubdistrict}
+                        onChange={(e) => setSelectedSubdistrict(e.target.value)}
+                        className="h-8 px-2 bg-slate-50/50 border border-slate-200 text-[11px] font-normal text-slate-600 focus:outline-none focus:bg-white transition-colors cursor-pointer"
+                    >
+                        <option value="ALL">Semua wilayah</option>
+                        {subdistricts.map(kec => (
+                            <option key={kec} value={kec}>{kec}</option>
+                        ))}
+                    </select>
                 </div>
             </div>
 
             {/* SECTION 2: COMPANY FLUSH LIST */}
             <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col">
 
-                {/* HEADER POLIMORFIK: Beda Role, Beda Header */}
+                {/* HEADER POLIMORFIK (Flat Banner, No Box, No Caps) */}
                 {isAuditor ? (
-                    <div className="px-4 py-3 bg-slate-900 border-b border-slate-800 text-white space-y-3">
-                        <div className="flex items-center gap-2">
-                            <TrendingDown size={14} className="text-rose-400" />
-                            <h3 className="text-[10px] font-black uppercase tracking-widest">Papan Kepatuhan (Leaderboard)</h3>
+                    <div className="px-5 py-3.5 bg-slate-50/50 border-b border-slate-100 text-left space-y-2.5 select-none">
+                        <div className="flex items-center gap-1.5 text-slate-700">
+                            <TrendingDown size={13} className="text-rose-500" />
+                            <span className="text-xs font-bold">Papan kepatuhan (Leaderboard)</span>
                         </div>
-                        <div className="flex gap-2 text-[9px] font-bold uppercase tracking-wider text-center">
-                            <div className="flex-1 bg-rose-950/50 border border-rose-500/30 p-1.5 text-rose-300">
-                                {auditorStats.kritis} Kritis
+                        <div className="flex gap-2 text-[10px] text-center font-normal">
+                            <div className="flex-1 bg-rose-50/50 border border-rose-100 py-1.5 px-2 text-rose-700">
+                                {auditorStats.kritis} kritis
                             </div>
-                            <div className="flex-1 bg-amber-950/50 border border-amber-500/30 p-1.5 text-amber-300">
-                                {auditorStats.peringatan} Rawan
+                            <div className="flex-1 bg-amber-50/50 border border-amber-100 py-1.5 px-2 text-amber-700">
+                                {auditorStats.peringatan} rawan
                             </div>
-                            <div className="flex-1 bg-emerald-950/50 border border-emerald-500/30 p-1.5 text-emerald-300">
-                                {auditorStats.patuh} Patuh
+                            <div className="flex-1 bg-emerald-50/50 border border-emerald-100 py-1.5 px-2 text-emerald-700">
+                                {auditorStats.patuh} patuh
                             </div>
                         </div>
                     </div>
                 ) : (
-                    <div className="px-4 py-2.5 bg-emerald-50/50 border-b border-slate-200 flex items-start gap-2.5">
-                        <Building2 size={14} className="text-emerald-600 mt-0.5 shrink-0" />
-                        <p className="text-[10px] text-slate-600 leading-relaxed font-medium">
-                            Katalog geospasial menampilkan {approvedCompanies.length} pelaku usaha dengan dokumen lingkungan aktif. Klik untuk melihat analisis ESG.
+                    <div className="px-5 py-3 border-b border-slate-100 flex items-start gap-2 bg-slate-50/50 select-none">
+                        <Building2 size={13} className="text-emerald-600 mt-0.5 shrink-0" />
+                        <p className="text-xs font-normal text-slate-500 leading-normal">
+                            Katalog geospasial menampilkan {approvedCompanies.length} pelaku usaha dengan dokumen lingkungan aktif. Klik untuk melihat analisis esg.
                         </p>
                     </div>
                 )}
 
+                {/* LIST ELEMENT (Flat, Edge-to-Edge Seamless, py-2.5 Tighter Padding & Auto-Wrapping) */}
                 {displayList.length > 0 ? (
                     displayList.map((c) => {
                         const isActive = selectedCompanyId === c.id;
+                        const companyKec = companyKecMap[c.id] || "Luar Wilayah";
 
                         return (
                             <button
                                 key={c.id}
                                 onClick={() => handleCompanyClick(c)}
                                 className={cn(
-                                    "group flex items-center justify-between px-4 py-3 border-b border-slate-200 hover:bg-slate-50 transition-colors text-left w-full outline-none",
-                                    isActive ? "bg-emerald-50/30 border-l-[3px] border-l-emerald-600" : "bg-white border-l-[3px] border-l-transparent"
+                                    "w-full px-5 py-2.5 border-b border-slate-100 hover:bg-slate-50/60 transition-colors text-left outline-none flex items-center justify-between gap-3 min-w-0",
+                                    isActive ? "bg-emerald-50/20 border-l-[3px] border-l-emerald-600" : "bg-white border-l-[3px] border-l-transparent"
                                 )}
                             >
-                                <div className="flex flex-col gap-1 pr-4 min-w-0">
-                                    {/* Sub-Header Polimorfik */}
-                                    {isAuditor ? (
-                                        <div className="flex items-center gap-2 mb-0.5">
-                                            {getScoreBadge(c.score)}
-                                        </div>
-                                    ) : (
-                                        <div className="flex items-center gap-1.5">
-                                            {getObligationIcon(c.docType)}
-                                            <span className={cn("text-[9px] font-black uppercase tracking-widest", isActive ? "text-emerald-700" : "text-slate-400 group-hover:text-slate-500")}>
-                                                {c.docType === "UKL_UPL" ? "UKL-UPL" : c.docType}
-                                            </span>
-                                        </div>
-                                    )}
+                                <div className="flex flex-col gap-0.5 min-w-0 flex-1 text-left">
+                                    {/* Chip Tag Atas (Sentence Case & Thin Badges) */}
+                                    <div className="flex items-center gap-2">
+                                        {isAuditor ? getScoreBadge(c.score) : getObligationBadge(c.docType)}
+                                    </div>
 
-                                    <h4 className={cn("text-[12px] leading-tight truncate", isActive ? "font-bold text-emerald-900" : "font-semibold text-slate-800")}>
+                                    {/* Nama Industri (Wrapped and break-words, No Clip) */}
+                                    <h4 className={cn("text-xs leading-tight mt-1 whitespace-normal break-words", isActive ? "font-normal text-emerald-950" : "font-normal text-slate-800")}>
                                         {c.companyName}
                                     </h4>
 
-                                    <p className="text-[10px] text-slate-500 truncate">
-                                        {c.address}
+                                    {/* Alamat & Informasi Kecamatan Spasial (Wrapped and break-words, No Clip) */}
+                                    <p className="text-[10px] text-slate-400 mt-0.5 whitespace-normal break-words leading-relaxed">
+                                        Kec. {companyKec} • {c.address}
                                     </p>
                                 </div>
 
                                 <ChevronRight
-                                    size={16}
-                                    className={cn("shrink-0 transition-transform", isActive ? "text-emerald-600 translate-x-1" : "text-slate-300 group-hover:text-slate-500 group-hover:translate-x-1")}
+                                    size={15}
+                                    className={cn("shrink-0 transition-transform text-slate-350", isActive ? "text-emerald-600 translate-x-0.5" : "text-slate-300 group-hover:text-slate-500 group-hover:translate-x-0.5")}
                                 />
                             </button>
                         );
                     })
                 ) : (
-                    /* Empty State - High Density */
-                    <div className="flex flex-col items-center justify-center py-12 text-center space-y-3 px-4">
-                        <div className="w-10 h-10 rounded-none bg-slate-50 flex items-center justify-center text-slate-400 border border-slate-200">
-                            <Search size={18} />
+                    /* Empty State - Flat Seamless */
+                    <div className="flex flex-col items-center justify-center py-16 text-center space-y-2.5 px-5 select-none">
+                        <div className="w-10 h-10 rounded-none bg-slate-50 flex items-center justify-center text-slate-300 border border-slate-150">
+                            <Search size={16} />
                         </div>
-                        <div className="space-y-1">
-                            <p className="text-[11px] font-bold text-slate-700 uppercase tracking-widest">Tidak Ditemukan</p>
-                            <p className="text-[10px] text-slate-500 font-medium">Perusahaan belum terdaftar / disetujui DLH.</p>
+                        <div className="space-y-0.5">
+                            <p className="text-xs font-normal text-slate-700">Tidak ditemukan</p>
+                            <p className="text-[10px] text-slate-400 font-normal">Perusahaan tidak terdaftar atau tidak berada di penapis wilayah terpilih.</p>
                         </div>
                     </div>
                 )}
@@ -6195,7 +6296,7 @@ export default function EnvironmentalTelemetryPanel({ companyData }: Environment
                         {/* WIDGET HERO: AQI VALUE HEADER (Penyelarasan Proporsi Apple Layout & Tanpa Italic) */}
                         <div className={cn("p-4 -mx-4 -mt-4 border-b border-slate-100 text-left flex items-start justify-between select-none", aqiStyle.color)}>
                             <div className="space-y-1">
-                                <span className="text-sm font-bold text-slate-850 block">Indeks kualitas udara (AQI)</span>
+                                <span className="text-sm font-normal text-slate-850 block">Indeks kualitas udara (AQI)</span>
                                 <h3 className="text-xs font-normal text-slate-600 leading-none">{aqiStyle.label}</h3>
                                 <p className="text-xs font-normal text-slate-600 leading-normal text-left pt-1.5">{aqiStyle.advisory}</p>
                             </div>
@@ -6340,12 +6441,8 @@ import {
 } from "lucide-react";
 import { useGisUIStore } from "@/store/useGisUIStore";
 import { useSijagaStore } from "@/store/useSijagaStore";
+import { cn } from "@/lib/utils";
 
-/**
- * LayerPanel - GFW Paradigm (High-Density Data & Solid UI)
- * Murni mengelola Feature Layers & Administratif.
- * Basemap & Overlay yang tidak relevan telah di-decouple ke laci terpisah (BasemapPanel).
- */
 export default function LayerPanel() {
     const {
         activeLayers, toggleLayer,
@@ -6357,51 +6454,55 @@ export default function LayerPanel() {
     const { currentUser } = useSijagaStore();
     const isOfficer = currentUser?.role === "PETUGAS_LAPANGAN";
 
-    // --- DAFTAR LAYER TERINTEGRASI (AMDAL, UKL-UPL, SPPL, AQI, Sungai & Stasiun Air) ---
-    const layerKewajiban = [
-        { id: "layer-amdal", label: "AMDAL", desc: "Risiko Tinggi", color: "bg-red-500", icon: ShieldCheck },
-        { id: "layer-uklupl", label: "UKL-UPL", desc: "Risiko Menengah", color: "bg-amber-500", icon: ShieldCheck },
-        { id: "layer-sppl", label: "SPPL", desc: "Risiko Rendah", color: "bg-emerald-500", icon: ShieldCheck },
-        { id: "layer-aqi", label: "Kualitas Udara (AQI)", desc: "Telemetri Udara Real-time", color: "bg-teal-500", icon: Wind },
+    // 1. Kelompok 1: Klasifikasi Risiko Limbah
+    const riskLayers = [
+        { id: "layer-amdal", label: "AMDAL", desc: "Pabrik wajib risiko tinggi", color: "bg-red-500" },
+        { id: "layer-uklupl", label: "UKL-UPL", desc: "Pabrik wajib risiko menengah", color: "bg-amber-500" },
+        { id: "layer-sppl", label: "SPPL", desc: "Pabrik wajib risiko rendah", color: "bg-emerald-500" },
+    ];
 
-        // Layer Spasial Sungai & Kualitas Air (BOD/COD/DO) [3]
-        { id: "layer-river", label: "Aliran Sungai (Bogor)", desc: "Jejak Geografis Sungai", color: "bg-cyan-400", icon: Droplets },
-        { id: "layer-water-stations", label: "Stasiun Sampel Air", desc: "Baku Mutu BOD/COD/DO", color: "bg-blue-600", icon: Droplets },
+    // 2. Kelompok 2: Kualitas Udara
+    const airLayers = [
+        { id: "layer-aqi", label: "Kualitas udara (AQI)", desc: "Telemetri atmosfer real-time", color: "bg-teal-500" },
+    ];
+
+    // 3. Kelompok 3: Kualitas Air
+    const waterLayers = [
+        { id: "layer-river", label: "Aliran sungai (Bogor)", desc: "Jejak geospasial aliran sungai", color: "bg-cyan-400" },
+        { id: "layer-water-stations", label: "Stasiun sampel air", desc: "Parameter baku mutu air sungai", color: "bg-blue-600" },
     ];
 
     return (
-        <div className="flex flex-col h-full bg-white pb-10 font-sans">
+        <div className="flex flex-col h-full bg-white pb-10 font-sans text-slate-800">
 
-            {/* SECTION 1: FEATURE LAYERS */}
+            {/* HANYA DIAKSES OLEH VERIFIKATOR / AUDITOR / SUPER ADMIN */}
             {!isOfficer && (
                 <div className="flex flex-col animate-in fade-in duration-300">
-                    <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border-b border-slate-200 text-slate-500">
-                        <Layers size={14} className="text-emerald-700" />
-                        <h4 className="text-[11px] font-bold uppercase tracking-wider">Feature Layers</h4>
+
+                    {/* --- KATEGORI 1: KLASIFIKASI RISIKO LIMBAH --- */}
+                    <div className="px-5 py-3 bg-slate-50 border-b border-slate-100 flex items-center gap-2 text-slate-700 select-none">
+                        <ShieldCheck size={13} className="text-emerald-700" />
+                        <h4 className="text-xs font-bold text-slate-800">Klasifikasi risiko limbah</h4>
                     </div>
-
                     <div className="flex flex-col">
-                        {layerKewajiban.map((layer) => {
+                        {riskLayers.map((layer) => {
                             const isActive = activeLayers.includes(layer.id);
-
                             return (
                                 <button
                                     key={layer.id}
                                     onClick={() => toggleLayer(layer.id)}
-                                    className="group flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-white hover:bg-slate-50 transition-colors text-left w-full outline-none"
+                                    className="group flex items-center justify-between px-5 py-3 border-b border-slate-100 bg-white hover:bg-slate-50/60 transition-colors text-left w-full outline-none"
                                 >
                                     <div className="flex items-center gap-3">
+                                        {/* KEMBALI KE DESAIN TOGGLE KLASIK (KONTRAK VISUAL JELAS) [3] */}
                                         <div className={`relative inline-flex h-3.5 w-7 shrink-0 items-center rounded-full transition-colors duration-200 ease-in-out ${isActive ? 'bg-emerald-500' : 'bg-slate-300'}`}>
                                             <span className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white shadow-sm transition duration-200 ease-in-out ${isActive ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
                                         </div>
-
                                         <div className="flex items-center gap-2.5">
-                                            <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${layer.color} shadow-sm border border-slate-200`} />
+                                            <span className={cn("w-2 h-2 rounded-full shrink-0 border border-slate-200", layer.color)} />
                                             <div className="flex flex-col">
-                                                <span className={`text-[12px] transition-colors ${isActive ? 'text-emerald-800 font-bold' : 'text-slate-700 font-medium group-hover:text-slate-900'}`}>
-                                                    {layer.label}
-                                                </span>
-                                                <span className="text-[10px] font-medium text-slate-500 leading-none">{layer.desc}</span>
+                                                <span className="text-xs font-normal text-slate-700 leading-none">{layer.label}</span>
+                                                <span className="text-[10px] font-normal text-slate-400 leading-none mt-1">{layer.desc}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -6409,32 +6510,96 @@ export default function LayerPanel() {
                             );
                         })}
                     </div>
+
+                    {/* --- KATEGORI 2: KUALITAS UDARA --- */}
+                    <div className="px-5 py-3 bg-slate-50 border-y border-slate-100 flex items-center gap-2 text-slate-700 select-none">
+                        <Wind size={13} className="text-emerald-700" />
+                        <h4 className="text-xs font-bold text-slate-800">Kualitas udara</h4>
+                    </div>
+                    <div className="flex flex-col">
+                        {airLayers.map((layer) => {
+                            const isActive = activeLayers.includes(layer.id);
+                            return (
+                                <button
+                                    key={layer.id}
+                                    onClick={() => toggleLayer(layer.id)}
+                                    className="group flex items-center justify-between px-5 py-3 border-b border-slate-100 bg-white hover:bg-slate-50/60 transition-colors text-left w-full outline-none"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        {/* KEMBALI KE DESAIN TOGGLE KLASIK (KONTRAK VISUAL JELAS) [3] */}
+                                        <div className={`relative inline-flex h-3.5 w-7 shrink-0 items-center rounded-full transition-colors duration-200 ease-in-out ${isActive ? 'bg-emerald-500' : 'bg-slate-300'}`}>
+                                            <span className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white shadow-sm transition duration-200 ease-in-out ${isActive ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+                                        </div>
+                                        <div className="flex items-center gap-2.5">
+                                            <span className={cn("w-2 h-2 rounded-full shrink-0 border border-slate-200", layer.color)} />
+                                            <div className="flex flex-col">
+                                                <span className="text-xs font-normal text-slate-700 leading-none">{layer.label}</span>
+                                                <span className="text-[10px] font-normal text-slate-400 leading-none mt-1">{layer.desc}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {/* --- KATEGORI 3: KUALITAS AIR --- */}
+                    <div className="px-5 py-3 bg-slate-50 border-y border-slate-100 flex items-center gap-2 text-slate-700 select-none">
+                        <Droplets size={13} className="text-emerald-700" />
+                        <h4 className="text-xs font-bold text-slate-800">Kualitas air</h4>
+                    </div>
+                    <div className="flex flex-col">
+                        {waterLayers.map((layer) => {
+                            const isActive = activeLayers.includes(layer.id);
+                            return (
+                                <button
+                                    key={layer.id}
+                                    onClick={() => toggleLayer(layer.id)}
+                                    className="group flex items-center justify-between px-5 py-3 border-b border-slate-100 bg-white hover:bg-slate-50/60 transition-colors text-left w-full outline-none"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        {/* KEMBALI KE DESAIN TOGGLE KLASIK (KONTRAK VISUAL JELAS) [3] */}
+                                        <div className={`relative inline-flex h-3.5 w-7 shrink-0 items-center rounded-full transition-colors duration-200 ease-in-out ${isActive ? 'bg-emerald-500' : 'bg-slate-300'}`}>
+                                            <span className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white shadow-sm transition duration-200 ease-in-out ${isActive ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+                                        </div>
+                                        <div className="flex items-center gap-2.5">
+                                            <span className={cn("w-2 h-2 rounded-full shrink-0 border border-slate-200", layer.color)} />
+                                            <div className="flex flex-col">
+                                                <span className="text-xs font-normal text-slate-700 leading-none">{layer.label}</span>
+                                                <span className="text-[10px] font-normal text-slate-400 leading-none mt-1">{layer.desc}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </button>
+                            );
+                        })}
+                    </div>
+
                 </div>
             )}
 
-            {/* SECTION 2: BATAS ADMINISTRASI & SPATIAL ANALYTICS */}
-            <div className="flex flex-col mt-0 border-t-4 border-slate-100">
-                <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border-b border-slate-200 text-slate-500">
-                    <MapPin size={14} className="text-emerald-700" />
-                    <h4 className="text-[11px] font-bold uppercase tracking-wider">Batas Wilayah & Analitik</h4>
+            {/* SECTION 2: BATAS ADMINISTRASI & SPATIAL ANALYTICS (Flat Seamless) */}
+            <div className="flex flex-col mt-0">
+                <div className="px-5 py-3 bg-slate-50 border-y border-slate-100 flex items-center gap-2 text-slate-700 select-none">
+                    <MapPin size={13} className="text-emerald-700" />
+                    <h4 className="text-xs font-bold text-slate-800">Batas wilayah & analitik</h4>
                 </div>
 
                 <div className="flex flex-col">
                     <button
                         onClick={() => setActiveAdminBoundary(activeAdminBoundary === 'kecamatan' ? 'none' : 'kecamatan')}
-                        className="group flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-white hover:bg-slate-50 transition-colors text-left w-full outline-none"
+                        className="group flex items-center justify-between px-5 py-3 border-b border-slate-100 bg-white hover:bg-slate-50/60 transition-colors text-left w-full outline-none"
                     >
                         <div className="flex items-center gap-3">
-                            <div className={`relative inline-flex h-3.5 w-7 shrink-0 items-center rounded-full transition-colors duration-200 ease-in-out ${activeAdminBoundary === 'kecamatan' ? 'bg-indigo-500' : 'bg-slate-300'}`}>
+                            {/* KEMBALI KE DESAIN TOGGLE KLASIK (KONTRAK VISUAL JELAS) [3] */}
+                            <div className={`relative inline-flex h-3.5 w-7 shrink-0 items-center rounded-full transition-colors duration-200 ease-in-out ${activeAdminBoundary === 'kecamatan' ? "bg-indigo-500" : "bg-slate-300"}`}>
                                 <span className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white shadow-sm transition duration-200 ease-in-out ${activeAdminBoundary === 'kecamatan' ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
                             </div>
                             <div className="flex items-center gap-2.5">
-                                <span className="w-2.5 h-2.5 rounded-none shrink-0 bg-indigo-500 shadow-sm border border-slate-200" />
+                                <span className="w-2 h-2 rounded-none shrink-0 bg-indigo-500 border border-slate-200" />
                                 <div className="flex flex-col">
-                                    <span className={`text-[12px] transition-colors ${activeAdminBoundary === 'kecamatan' ? 'text-indigo-800 font-bold' : 'text-slate-700 font-medium group-hover:text-slate-900'}`}>
-                                        Peta Kepadatan Kecamatan
-                                    </span>
-                                    <span className="text-[10px] font-medium text-slate-500 leading-none">Agregasi pabrik per wilayah (Bogor)</span>
+                                    <span className="text-xs font-normal text-slate-700">Peta kepadatan kecamatan</span>
+                                    <span className="text-[10px] font-normal text-slate-400 leading-none mt-1">Agregasi pabrik per wilayah (Bogor)</span>
                                 </div>
                             </div>
                         </div>
@@ -6442,19 +6607,18 @@ export default function LayerPanel() {
 
                     <button
                         onClick={() => setActiveAdminBoundary(activeAdminBoundary === 'desa' ? 'none' : 'desa')}
-                        className="group flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-white hover:bg-slate-50 transition-colors text-left w-full outline-none"
+                        className="group flex items-center justify-between px-5 py-3 border-b border-slate-100 bg-white hover:bg-slate-50/60 transition-colors text-left w-full outline-none"
                     >
                         <div className="flex items-center gap-3">
-                            <div className={`relative inline-flex h-3.5 w-7 shrink-0 items-center rounded-full transition-colors duration-200 ease-in-out ${activeAdminBoundary === 'desa' ? 'bg-blue-500' : 'bg-slate-300'}`}>
+                            {/* KEMBALI KE DESAIN TOGGLE KLASIK (KONTRAK VISUAL JELAS) [3] */}
+                            <div className={`relative inline-flex h-3.5 w-7 shrink-0 items-center rounded-full transition-colors duration-200 ease-in-out ${activeAdminBoundary === 'desa' ? "bg-blue-500" : "bg-slate-300"}`}>
                                 <span className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white shadow-sm transition duration-200 ease-in-out ${activeAdminBoundary === 'desa' ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
                             </div>
                             <div className="flex items-center gap-2.5">
-                                <span className="w-2.5 h-2.5 rounded-none shrink-0 bg-transparent border-2 border-blue-500 border-dashed" />
+                                <span className="w-2 h-2 rounded-none shrink-0 bg-transparent border-2 border-blue-500 border-dashed" />
                                 <div className="flex flex-col">
-                                    <span className={`text-[12px] transition-colors ${activeAdminBoundary === 'desa' ? 'text-blue-800 font-bold' : 'text-slate-700 font-medium group-hover:text-slate-900'}`}>
-                                        Garis Batas Desa
-                                    </span>
-                                    <span className="text-[10px] font-medium text-slate-500 leading-none">Pemetaan wilayah tingkat kelurahan</span>
+                                    <span className="text-xs font-normal text-slate-700">Garis batas desa</span>
+                                    <span className="text-[10px] font-normal text-slate-400 leading-none mt-1">Pemetaan wilayah tingkat kelurahan</span>
                                 </div>
                             </div>
                         </div>
@@ -6462,20 +6626,20 @@ export default function LayerPanel() {
                 </div>
             </div>
 
-            {/* SECTION 3: VISUAL CONTROLS (OPACITY) */}
+            {/* SECTION 3: VISUAL CONTROLS (OPACITY - Flat Seamless) */}
             {!isOfficer && (
-                <div className="flex flex-col mt-0 border-t-4 border-slate-100 animate-in fade-in duration-350">
-                    <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border-b border-slate-200 text-slate-500">
-                        <Settings2 size={14} className="text-emerald-700" />
-                        <h4 className="text-[11px] font-bold uppercase tracking-wider">Kontrol Visual Peta</h4>
+                <div className="flex flex-col">
+                    <div className="px-5 py-3 bg-slate-50 border-y border-slate-100 flex items-center gap-2 text-slate-700 select-none">
+                        <Settings2 size={13} className="text-emerald-700" />
+                        <h4 className="text-xs font-bold text-slate-800">Kontrol visual peta</h4>
                     </div>
 
                     <div className="flex flex-col divide-y divide-slate-100">
                         {/* Slider 1: Poligon/Heatmap Opacity */}
-                        <div className="px-4 py-3 bg-white space-y-2.5">
+                        <div className="px-5 py-3.5 bg-white space-y-2.5 border-b border-slate-100">
                             <div className="flex justify-between items-center">
-                                <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Opacity Layer Aktif</span>
-                                <span className="text-[9px] font-black text-emerald-800 font-mono bg-emerald-50 px-1.5 py-0.5 border border-emerald-100">{mapOpacity}%</span>
+                                <span className="text-xs font-normal text-slate-700">Transparansi layer aktif</span>
+                                <span className="text-[10px] font-normal text-emerald-800 font-mono bg-emerald-50 px-1.5 py-0.5 border border-emerald-100">{mapOpacity}%</span>
                             </div>
                             <input
                                 type="range"
@@ -6488,10 +6652,10 @@ export default function LayerPanel() {
                         </div>
 
                         {/* Slider 2: Masking Opacity (Area Luar) */}
-                        <div className="px-4 py-3 border-b border-slate-200 bg-white space-y-2.5">
+                        <div className="px-5 py-3.5 bg-white space-y-2.5 border-b border-slate-100">
                             <div className="flex justify-between items-center">
-                                <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Masking Luar Wilayah</span>
-                                <span className="text-[9px] font-black text-slate-800 font-mono bg-slate-100 px-1.5 py-0.5 border border-slate-200">{maskOpacity}%</span>
+                                <span className="text-xs font-normal text-slate-700">Peredupan luar wilayah</span>
+                                <span className="text-[10px] font-normal text-slate-800 font-mono bg-slate-100 px-1.5 py-0.5 border border-slate-200">{maskOpacity}%</span>
                             </div>
                             <input
                                 type="range"
@@ -7045,7 +7209,7 @@ export default function WaterTelemetryPanel({ stationData }: WaterTelemetryPanel
 
     if (!stationData) {
         return (
-            <div className="p-6 text-center text-xs font-bold text-slate-400 uppercase tracking-widest">
+            <div className="p-6 text-center text-xs font-normal text-slate-400 uppercase tracking-widest">
                 Data stasiun air tidak termuat.
             </div>
         );
@@ -7074,25 +7238,25 @@ export default function WaterTelemetryPanel({ stationData }: WaterTelemetryPanel
 
         if (infractions.length === 0) {
             return {
-                status: "MEMENUHI SYARAT",
+                status: "Memenuhi syarat",
                 desc: "Kualitas air sungai terpantau bersih, sehat, dan memenuhi baku mutu nasional Kelas II.",
-                colorClass: "text-emerald-700 bg-emerald-50 border-emerald-200",
+                colorClass: "text-emerald-700 bg-emerald-50/40 border-emerald-100",
                 barColor: "bg-emerald-500",
                 infractions
             };
         } else if (infractions.length <= 2) {
             return {
-                status: "TERCEMAR RINGAN",
+                status: "Tercemar ringan",
                 desc: "Terdeteksi anomali pada beberapa parameter air. Diperlukan pengawasan preventif.",
-                colorClass: "text-amber-700 bg-amber-50 border-amber-200",
+                colorClass: "text-amber-700 bg-amber-50/40 border-amber-100",
                 barColor: "bg-amber-500",
                 infractions
             };
         } else {
             return {
-                status: "TERCEMAR BERAT",
+                status: "Tercemar berat",
                 desc: "Kondisi air kritis! Parameter kimia dan organik melebihi ambang batas baku mutu secara ekstrem.",
-                colorClass: "text-rose-700 bg-rose-50 border-rose-200 animate-pulse",
+                colorClass: "text-rose-700 bg-rose-50/40 border-rose-100 animate-pulse",
                 barColor: "bg-rose-600",
                 infractions
             };
@@ -7105,51 +7269,51 @@ export default function WaterTelemetryPanel({ stationData }: WaterTelemetryPanel
 
     return (
         <div className="flex flex-col h-full w-full bg-white relative font-sans text-slate-800">
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-1">
 
-                {/* --- HEADER: METADATA STASIUN (tactical design) --- */}
-                <div className="bg-slate-50 border border-slate-200 p-4 text-left space-y-1.5 relative overflow-hidden">
-                    <div className="absolute top-2 right-2 flex gap-1">
-                        <Badge className="bg-slate-900 text-white rounded-none border-none text-[7px] font-mono uppercase tracking-widest px-1.5 py-0.5">
-                            {sourceType || "SIMULATED"}
+                {/* --- HEADER: METADATA STASIUN (Seamless Top Hero) --- */}
+                <div className="bg-slate-50/50 p-4 -mx-4 -mt-4 border-b border-slate-100 text-left space-y-1.5 relative overflow-hidden select-none">
+                    <div className="absolute top-3 right-4 flex gap-1">
+                        <Badge className="bg-slate-900 text-white rounded-none border-none text-[8px] font-normal py-0.5 px-1.5">
+                            {sourceType === "PHYSICAL_IOT" ? "Sensor fisik" : "Model simulasi"}
                         </Badge>
                         <Badge className={cn(
-                            "rounded-none border-none text-[7px] font-mono uppercase tracking-widest px-1.5 py-0.5",
+                            "rounded-none border-none text-[8px] font-normal py-0.5 px-1.5",
                             status === "ACTIVE" ? "bg-emerald-600 text-white" : "bg-amber-500 text-slate-950"
                         )}>
-                            {status || "ACTIVE"}
+                            {status === "ACTIVE" ? "Aktif" : status === "MAINTENANCE" ? "Kalibrasi" : "Offline"}
                         </Badge>
                     </div>
-                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">ID Stasiun: {id}</span>
-                    <h3 className="text-sm font-black text-slate-900 leading-tight uppercase pr-16">{name}</h3>
-                    <div className="flex justify-between items-center text-[8px] text-slate-400 font-bold uppercase tracking-wider pt-1.5 border-t border-slate-250">
-                        <span>LAT: {stationData.lat}</span>
-                        <span>LNG: {stationData.lng}</span>
+                    <span className="text-[10px] font-normal text-slate-400 block leading-none">Identitas stasiun: {id}</span>
+                    <h3 className="text-sm font-bold text-slate-800 leading-tight pr-24">{name}</h3>
+                    <div className="flex justify-between items-center text-[10px] text-slate-400 font-normal pt-1.5 border-t border-slate-200/50 mt-1">
+                        <span>Lintang: {stationData.lat}</span>
+                        <span>Bujur: {stationData.lng}</span>
                     </div>
                 </div>
 
-                {/* --- HERO PANEL: STATUS KELAYAKAN SPASIAL --- */}
-                <div className={cn("p-4 border text-left flex flex-col space-y-2.5 rounded-none shadow-sm", evaluation.colorClass)}>
+                {/* --- HERO PANEL: STATUS KELAYAKAN SPASIAL (Flat & Borderless) --- */}
+                <div className={cn("py-4 border-b border-slate-100 text-left flex flex-col space-y-2", evaluation.colorClass.replace("border-", "border-b-0"))}>
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5">
                             {evaluation.infractions.length === 0 ? (
-                                <CheckCircle2 className="shrink-0" size={14} />
+                                <CheckCircle2 className="shrink-0 text-emerald-600" size={13} />
                             ) : (
-                                <AlertTriangle className="shrink-0" size={14} />
+                                <AlertTriangle className="shrink-0 text-amber-600" size={13} />
                             )}
-                            <h4 className="text-[10px] font-black uppercase tracking-widest">Status Baku Mutu Air</h4>
+                            <h4 className="text-xs font-bold text-slate-800">Status baku mutu air</h4>
                         </div>
-                        <span className="text-xs font-black italic tracking-tight">{evaluation.status}</span>
+                        <span className="text-xs font-normal">{evaluation.status.toLowerCase()}</span>
                     </div>
-                    <p className="text-[10px] font-medium leading-relaxed text-justify opacity-90">
+                    <p className="text-[11px] font-normal leading-relaxed text-left text-slate-650">
                         {evaluation.desc}
                     </p>
                     {evaluation.infractions.length > 0 && (
-                        <div className="border-t border-current/25 pt-2 space-y-1">
-                            <span className="text-[8px] font-black uppercase tracking-wider block">Pelanggaran Parameter:</span>
+                        <div className="pt-1.5 space-y-1">
+                            <span className="text-[10px] font-normal text-slate-400 block">Pelanggaran parameter:</span>
                             <div className="flex flex-wrap gap-1">
                                 {evaluation.infractions.map((inf, idx) => (
-                                    <Badge key={idx} className="bg-black/10 text-current border-none text-[8px] rounded-none px-1.5 py-0">
+                                    <Badge key={idx} className="bg-rose-50/50 text-rose-700 border border-rose-100 text-[8px] rounded-none px-1.5 py-0 shadow-none font-normal">
                                         {inf}
                                     </Badge>
                                 ))}
@@ -7158,76 +7322,76 @@ export default function WaterTelemetryPanel({ stationData }: WaterTelemetryPanel
                     )}
                 </div>
 
-                {/* --- GRID 2X2: DETAIL PARAMETER AKTIF --- */}
-                <div className="space-y-1.5 text-left">
-                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Parameter Pengujian</span>
-                    <div className="grid grid-cols-2 gap-2 font-mono text-[10px] font-bold text-slate-500">
+                {/* --- GRID 2X2: DETAIL PARAMETER AKTIF (Apple Minimalist Grid, Bottom Border Only) --- */}
+                <div className="py-4 border-slate-100 space-y-1.5 text-left">
+                    <span className="text-xs font-bold text-slate-800 block">Parameter pengujian aktif</span>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-3 font-sans text-slate-500">
 
                         {/* BOD */}
-                        <div className="bg-slate-50 border p-3 text-left rounded-none relative">
-                            <div className="flex justify-between items-center text-slate-400 font-sans">
-                                <span className="text-[8px] font-black uppercase tracking-widest">Kadar BOD</span>
-                                <span className="text-[8px] font-bold text-slate-400">Limit: 3.0</span>
+                        <div className="border-b border-slate-100 pb-1.5 text-left">
+                            <div className="flex justify-between items-center text-slate-700">
+                                <span className="text-xs font-normal">Kadar BOD</span>
+                                <span className="text-[10px] font-normal text-slate-400">Limit: 3.0</span>
                             </div>
                             <span className={cn(
-                                "text-base font-black leading-none block mt-1.5",
-                                currentData.bod > BAKU_MUTU_LIMITS.BOD ? "text-rose-600" : "text-slate-800"
+                                "text-[10px] font-normal leading-none block mt-1",
+                                currentData.bod > BAKU_MUTU_LIMITS.BOD ? "text-rose-600" : "text-slate-500"
                             )}>{currentData.bod} mg/L</span>
                         </div>
 
                         {/* COD */}
-                        <div className="bg-slate-50 border p-3 text-left rounded-none relative">
-                            <div className="flex justify-between items-center text-slate-400 font-sans">
-                                <span className="text-[8px] font-black uppercase tracking-widest">Kadar COD</span>
-                                <span className="text-[8px] font-bold text-slate-400">Limit: 25.0</span>
+                        <div className="border-b border-slate-100 pb-1.5 text-left">
+                            <div className="flex justify-between items-center text-slate-700">
+                                <span className="text-xs font-normal">Kadar COD</span>
+                                <span className="text-[10px] font-normal text-slate-400">Limit: 25.0</span>
                             </div>
                             <span className={cn(
-                                "text-base font-black leading-none block mt-1.5",
-                                currentData.cod > BAKU_MUTU_LIMITS.COD ? "text-rose-600" : "text-slate-800"
+                                "text-[10px] font-normal leading-none block mt-1",
+                                currentData.cod > BAKU_MUTU_LIMITS.COD ? "text-rose-600" : "text-slate-500"
                             )}>{currentData.cod} mg/L</span>
                         </div>
 
                         {/* DO (Dissolved Oxygen) */}
-                        <div className="bg-slate-50 border p-3 text-left rounded-none relative">
-                            <div className="flex justify-between items-center text-slate-400 font-sans">
-                                <span className="text-[8px] font-black uppercase tracking-widest">Oksigen (DO)</span>
-                                <span className="text-[8px] font-bold text-slate-400">Limit: &ge; 4.0</span>
+                        <div className="border-b border-slate-100 pb-1.5 text-left">
+                            <div className="flex justify-between items-center text-slate-700">
+                                <span className="text-xs font-normal">Oksigen terlarut (DO)</span>
+                                <span className="text-[10px] font-normal text-slate-400">Limit: &ge; 4.0</span>
                             </div>
                             <span className={cn(
-                                "text-base font-black leading-none block mt-1.5",
+                                "text-[10px] font-normal leading-none block mt-1",
                                 currentData.do < BAKU_MUTU_LIMITS.DO ? "text-rose-600" : "text-emerald-600"
                             )}>{currentData.do} mg/L</span>
                         </div>
 
                         {/* pH */}
-                        <div className="bg-slate-50 border p-3 text-left rounded-none relative">
-                            <div className="flex justify-between items-center text-slate-400 font-sans">
-                                <span className="text-[8px] font-black uppercase tracking-widest">pH Derajat</span>
-                                <span className="text-[8px] font-bold text-slate-400">Limit: 6 - 9</span>
+                        <div className="border-b border-slate-100 pb-1.5 text-left">
+                            <div className="flex justify-between items-center text-slate-700">
+                                <span className="text-xs font-normal">pH air</span>
+                                <span className="text-[10px] font-normal text-slate-400">Limit: 6.0 - 9.0</span>
                             </div>
                             <span className={cn(
-                                "text-base font-black leading-none block mt-1.5",
-                                (currentData.ph < BAKU_MUTU_LIMITS.PH_MIN || currentData.ph > BAKU_MUTU_LIMITS.PH_MAX) ? "text-rose-600" : "text-slate-800"
+                                "text-[10px] font-normal leading-none block mt-1",
+                                (currentData.ph < BAKU_MUTU_LIMITS.PH_MIN || currentData.ph > BAKU_MUTU_LIMITS.PH_MAX) ? "text-rose-600" : "text-slate-500"
                             )}>{currentData.ph}</span>
                         </div>
 
                     </div>
                 </div>
 
-                {/* --- VISUALISASI RECHARTS TREN BULANAN --- */}
-                <div className="bg-white border border-slate-200 p-3 text-left space-y-3">
-                    <div className="border-b pb-1.5 flex justify-between items-center">
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                            <TrendingUp size={12} className="text-cyan-600" /> Tren Pencemaran Bulanan
+                {/* --- VISUALISASI RECHARTS TREN BULANAN (Seamless Flat) --- */}
+                <div className="py-1 border-b border-slate-100 text-left space-y-3">
+                    <div className="flex justify-between items-center">
+                        <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                            <TrendingUp size={13} className="text-cyan-600" /> Tren pencemaran bulanan
                         </span>
 
-                        {/* CHART SUB-TABS INTERAKTIF (Mencegah kompresi skala BOD & COD) */}
-                        <div className="flex bg-slate-100 p-0.5 border border-slate-200">
+                        {/* CHART SUB-TABS INTERAKTIF */}
+                        <div className="flex bg-slate-50 p-0.5 border border-slate-100">
                             <button
                                 onClick={() => setChartTab("BOD")}
                                 className={cn(
-                                    "px-2 py-0.5 text-[8px] font-black uppercase tracking-wider transition-all",
-                                    chartTab === "BOD" ? "bg-white text-slate-900 border shadow-sm" : "text-slate-400 hover:text-slate-600"
+                                    "px-2 py-0.5 text-[10px] font-normal transition-all outline-none",
+                                    chartTab === "BOD" ? "bg-white text-slate-800 border shadow-sm" : "text-slate-400 hover:text-slate-600"
                                 )}
                             >
                                 BOD
@@ -7235,8 +7399,8 @@ export default function WaterTelemetryPanel({ stationData }: WaterTelemetryPanel
                             <button
                                 onClick={() => setChartTab("COD")}
                                 className={cn(
-                                    "px-2 py-0.5 text-[8px] font-black uppercase tracking-wider transition-all",
-                                    chartTab === "COD" ? "bg-white text-slate-900 border shadow-sm" : "text-slate-400 hover:text-slate-600"
+                                    "px-2 py-0.5 text-[10px] font-normal transition-all outline-none",
+                                    chartTab === "COD" ? "bg-white text-slate-800 border shadow-sm" : "text-slate-400 hover:text-slate-600"
                                 )}
                             >
                                 COD
@@ -7245,7 +7409,7 @@ export default function WaterTelemetryPanel({ stationData }: WaterTelemetryPanel
                     </div>
 
                     {/* RENDER DUAL LINECHART WITH THRESHOLD REFERENCE LINE */}
-                    <div className="h-[160px] w-full bg-slate-50 border p-2 font-mono text-[9px] rounded-none">
+                    <div className="h-[160px] w-full font-sans text-[10px] pt-1">
                         <ResponsiveContainer width="100%" height="100%">
                             <LineChart data={monthlyHistory} margin={{ top: 10, right: 5, left: -25, bottom: 5 }}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -7256,12 +7420,12 @@ export default function WaterTelemetryPanel({ stationData }: WaterTelemetryPanel
                                         if (active && payload && payload.length) {
                                             const data = payload[0].payload;
                                             return (
-                                                <div className="bg-slate-900 text-white p-2 border border-slate-700 text-[8px] space-y-1 text-left rounded-none">
-                                                    <p className="font-black border-b border-white/10 pb-0.5 mb-1 uppercase">Bulan: {data.month}</p>
+                                                <div className="bg-slate-900 text-white p-2 border border-slate-800 text-[9px] space-y-1 text-left rounded-none">
+                                                    <p className="border-b border-white/10 pb-0.5 mb-1">Bulan: {data.month}</p>
                                                     {chartTab === "BOD" ? (
-                                                        <p className="text-cyan-400 font-bold">Kadar BOD: {data.bod} mg/L</p>
+                                                        <p className="text-cyan-400 font-normal">Kadar BOD: {data.bod} mg/L</p>
                                                     ) : (
-                                                        <p className="text-amber-400 font-bold">Kadar COD: {data.cod} mg/L</p>
+                                                        <p className="text-amber-400 font-normal">Kadar COD: {data.cod} mg/L</p>
                                                     )}
                                                     <p className="text-slate-400">Oksigen (DO): {data.do} mg/L</p>
                                                 </div>
@@ -7272,12 +7436,12 @@ export default function WaterTelemetryPanel({ stationData }: WaterTelemetryPanel
                                 />
                                 {chartTab === "BOD" ? (
                                     <>
-                                        <Line type="monotone" dataKey="bod" stroke="#22d3ee" strokeWidth={2.5} activeDot={{ r: 4 }} />
+                                        <Line type="monotone" dataKey="bod" stroke="#22d3ee" strokeWidth={2} activeDot={{ r: 4 }} />
                                         <ReferenceLine y={BAKU_MUTU_LIMITS.BOD} stroke="#f43f5e" strokeDasharray="3 3" label={{ value: 'Batas BOD (3)', fill: '#f43f5e', fontSize: 7, position: 'top' }} />
                                     </>
                                 ) : (
                                     <>
-                                        <Line type="monotone" dataKey="cod" stroke="#fbbf24" strokeWidth={2.5} activeDot={{ r: 4 }} />
+                                        <Line type="monotone" dataKey="cod" stroke="#fbbf24" strokeWidth={2} activeDot={{ r: 4 }} />
                                         <ReferenceLine y={BAKU_MUTU_LIMITS.COD} stroke="#f43f5e" strokeDasharray="3 3" label={{ value: 'Batas COD (25)', fill: '#f43f5e', fontSize: 7, position: 'top' }} />
                                     </>
                                 )}
@@ -7285,35 +7449,37 @@ export default function WaterTelemetryPanel({ stationData }: WaterTelemetryPanel
                         </ResponsiveContainer>
                     </div>
 
-                    <div className="flex justify-between items-center text-[8px] text-slate-400 font-bold uppercase tracking-wider">
-                        <span>Garis Merah Putus-putus: Batas Maksimum Baku Mutu</span>
+                    <div className="text-[10px] text-slate-400 font-normal leading-none pt-1 select-none">
+                        Garis merah putus-putus: batas maksimum baku mutu
                     </div>
                 </div>
 
-                {/* --- SEKSI 4: REGULASI LEGALITAS INFO --- */}
-                <div className="bg-slate-50 p-3 border border-slate-200 text-slate-500 text-[9px] font-bold uppercase tracking-wider leading-relaxed text-justify rounded-none">
-                    <div className="flex items-center gap-1.5 mb-1 border-b pb-1 text-slate-700 font-black">
-                        <Info size={11} />
-                        <span>Keterangan Klasifikasi</span>
+                {/* --- SEKSI 4: REGULASI LEGALITAS INFO (Keterangan Klasifikasi - Seamless) --- */}
+                <div className="py-4 border-b border-slate-100 text-left space-y-2 select-none">
+                    <div className="flex items-center gap-1.5 text-slate-700">
+                        <Info size={12} />
+                        <span className="text-xs font-bold">Keterangan klasifikasi baku mutu</span>
                     </div>
-                    Pengukuran ini diselaraskan dengan Baku Mutu Air Nasional Kelas II (PP 22/2021).
-                    Stasiun yang melanggar parameter secara terus-menerus akan memicu peringatan otomatis (*EWS*) untuk penugasan penindakan industri di sekitarnya.
+                    <p className="text-[11px] font-normal text-slate-500 leading-relaxed text-justify">
+                        Pengukuran ini diselaraskan dengan Baku Mutu Air Nasional Kelas II (PP 22/2021).
+                        Stasiun yang melanggar parameter secara terus-menerus akan memicu peringatan otomatis (EWS) untuk penugasan penindakan industri di sekitarnya [3].
+                    </p>
                 </div>
 
             </div>
 
-            {/* --- ACTION FOOTER (Sticky) --- */}
-            <div className="p-4 border-t border-slate-200 bg-white shrink-0 flex gap-2">
+            {/* --- ACTION FOOTER (Sticky - Flat Look) --- */}
+            <div className="p-4 border-t border-slate-150 bg-white shrink-0 flex gap-2">
                 <Button
                     onClick={handleSecureLogs}
-                    className="flex-1 h-11 bg-slate-900 hover:bg-slate-800 text-white rounded-none font-black text-[10px] uppercase tracking-widest shadow-none gap-1.5 transition-colors"
+                    className="flex-1 h-11 bg-slate-900 hover:bg-slate-800 text-white rounded-none font-normal text-xs transition-colors flex items-center justify-center gap-1.5 border-none outline-none cursor-pointer"
                 >
-                    Amankan Log <ArrowUpRight size={12} />
+                    Amankan log data <ArrowUpRight size={12} />
                 </Button>
                 <Button
                     variant="outline"
                     onClick={() => toast.success("Sertifikat Uji Laboratorium Sungai terunduh.")}
-                    className="h-11 w-11 p-0 border-slate-300 text-slate-600 hover:bg-slate-50 rounded-none shrink-0"
+                    className="h-11 w-11 p-0 border-slate-200 text-slate-505 hover:bg-slate-50 rounded-none shrink-0"
                     title="Unduh Berkas Lab"
                 >
                     <Download size={14} />
@@ -9813,7 +9979,7 @@ function StatusBadge({ status }: { status: string }) {
 --- FILE: src\modules\auth\pages\UserRegisterPage.tsx ---
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Mail, Lock, ArrowRight, Sparkles, ArrowLeft, Loader2 } from "lucide-react";
+import { User, Mail, Lock, ArrowRight, Leaf, ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9922,10 +10088,10 @@ export default function UserRegisterPage() {
           <div className="space-y-6">
             <div className="text-center space-y-2">
               <div className="w-14 h-14 bg-gradient-to-br from-emerald-400 to-emerald-600 text-white rounded-2xl flex items-center justify-center mx-auto shadow-md shadow-emerald-200">
-                <Sparkles size={24} />
+                <Leaf size={24} />
               </div>
-              <h1 className="text-2xl font-black text-slate-800 tracking-tight italic">
-                PANTAU <span className="text-emerald-600">LIMBAH</span>
+              <h1 className="font-sans font-semibold text-xl tracking-tight text-slate-800">
+                Geo <span className="text-emerald-600">Limbah</span>
               </h1>
               <p className="text-slate-500 text-xs font-semibold uppercase tracking-widest">
                 Registrasi Akun Pengguna Baru
@@ -10032,7 +10198,7 @@ export default function UserRegisterPage() {
           <span className="text-emerald-600 font-semibold cursor-pointer hover:underline">
             Syarat &amp; Ketentuan
           </span>{" "}
-          PANTAU LIMBAH.
+          Geo Limbah.
         </p>
       </div>
     </div>
@@ -10985,7 +11151,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useSijagaStore } from "@/store/useSijagaStore";
 import { useGisUIStore } from "@/store/useGisUIStore";
-import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 // Mengimpor elemen visual chart dari Recharts (Information Expert)
@@ -11007,7 +11172,6 @@ export default function ExecutiveCopilotPanel() {
     const handleSend = async (query: string, label: string) => {
         // Cegah eksekusi jika skala peta melanggar aturan Zoom-Guard [3]
         if (isZoomTooFar) {
-            toast.error("Skala peta terlalu makro. Harap zoom-in terlebih dahulu."); // FIX: Menggunakan metode .error bawaan sonner
             return;
         }
 
@@ -11068,17 +11232,22 @@ export default function ExecutiveCopilotPanel() {
     }, [aiForensicResult]);
 
     return (
-        <div className="flex flex-col h-full bg-white font-sans text-left border-r w-full">
+        <div className="flex flex-col h-full w-full bg-white font-sans text-left border-r">
 
-            {/* Header Konteks (Frameless Header) */}
+            {/* HEADER SPANDUK UTAMA: Dibuat dinamis untuk menghilangkan redundansi definisi [3] */}
             <div className="px-5 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0 select-none">
                 <div className="flex items-center gap-3">
                     <div className="w-8 h-8 bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 rounded-none shadow-inner">
                         <Sparkles size={16} className={isAiLoading ? "animate-spin" : "animate-pulse"} />
                     </div>
                     <div>
-                        <h3 className="text-[11px] font-black uppercase tracking-[0.15em] leading-none">Spatial AI Copilot</h3>
-                        <p className="text-[8px] text-slate-400 mt-1.5 font-bold uppercase tracking-widest leading-none">Forensic Data & Correlation Engine</p>
+                        {/* Menampilkan fokus kueri pencarian aktif di header jika user sudah men-scan */}
+                        <h3 className="text-xs font-normal text-slate-100 leading-none">
+                            {hasSearched ? "Fokus analisis aktif" : "Asisten analisis spasial"}
+                        </h3>
+                        <p className="text-[11px] text-slate-400 mt-1.5 leading-none">
+                            {hasSearched ? `"${activePromptLabel}"` : "Mesin korelasi & data forensik"}
+                        </p>
                     </div>
                 </div>
             </div>
@@ -11087,77 +11256,82 @@ export default function ExecutiveCopilotPanel() {
             <div className="flex-1 overflow-y-auto custom-scrollbar bg-white">
 
                 {/* =====================================================================
-                    STATE 1: STANDBY / IDLE STATE (Menampilkan Menu Sugesti)
+                    STATE 1: STANDBY / IDLE STATE (Menampilkan Menu Sugesti - GFW Edge-to-Edge)
                 ====================================================================== */}
                 {!hasSearched && !isAiLoading && (
-                    <div className="p-5 space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
                         {isZoomTooFar ? (
                             /* BANNER PERINGATAN REAKTIF (Mencegah Kebocoran Token) [3] */
-                            <div className="p-3.5 bg-amber-50/50 border border-amber-200 rounded-none text-left space-y-2.5 select-none">
-                                <div className="flex items-center gap-2">
-                                    <AlertTriangle className="text-amber-600 animate-pulse" size={14} />
-                                    <h4 className="text-[9px] font-black uppercase tracking-widest leading-none text-amber-900">Skala Peta Terlalu Makro</h4>
+                            <div className="p-4 bg-amber-50/40 border-b border-amber-200 text-left space-y-2 select-none">
+                                <div className="flex items-center gap-2 text-amber-700">
+                                    <AlertTriangle className="animate-pulse" size={14} />
+                                    <span className="text-xs font-normal">Skala peta terlalu makro</span>
                                 </div>
-                                <p className="text-[9px] font-semibold leading-relaxed text-amber-700">
-                                    Analisis AI memerlukan presisi wilayah yang ketat. Silakan **Perbesar Peta (Zoom In)** mendekati skala kecamatan untuk mengaktifkan kembali scan forensik AI.
+                                <p className="text-[11px] font-normal leading-relaxed text-amber-600">
+                                    Analisis asisten memerlukan presisi wilayah yang ketat. Silakan perbesar peta mendekati skala kecamatan untuk mengaktifkan kembali pemindaian forensik.
                                 </p>
                             </div>
                         ) : (
-                            /* DASHBOARD RADAR PRESET SUGESTI - TAMPILAN PENUH LEGA */
-                            <div className="space-y-4">
-                                <div className="border-b pb-2 flex items-center justify-between select-none">
-                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Fokus Radar Analitis AI</span>
-                                    <Badge className="bg-slate-900 text-emerald-400 font-mono text-[8px] rounded-none border-none py-0.5">READY</Badge>
+                            /* DASHBOARD RADAR PRESET SUGESTI - TAMPILAN SEAMLESS TANPA MARGIN SAMPING */
+                            <div className="flex flex-col">
+                                {/* Header fokus */}
+                                <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between select-none bg-slate-50/50">
+                                    <span className="text-xs font-normal text-slate-500">Fokus radar analisis asisten</span>
+                                    <span className="text-[10px] font-normal text-emerald-600 bg-emerald-50 px-2 py-0.5 border border-emerald-100">Siap</span>
                                 </div>
 
-                                <div className="space-y-5">
+                                <div className="flex flex-col">
                                     {/* Kategori 1: Atmosfer */}
-                                    <div className="space-y-2">
-                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5 select-none">
-                                            <Wind size={12} className="text-blue-500" /> 1. Analisis Atmosfer & Udara
+                                    <div className="py-3.5 border-b border-slate-100">
+                                        <span className="px-5 text-xs font-normal text-slate-400 flex items-center gap-2 mb-2 select-none">
+                                            <Wind size={13} className="text-blue-500" />
+                                            <span>1. Analisis atmosfer & udara</span>
                                         </span>
-                                        <div className="grid grid-cols-1 gap-2">
+
+                                        <div className="flex flex-col">
                                             <button
                                                 type="button"
                                                 onClick={() => handleSend(
                                                     "Analisis korelasi arah datangnya angin saat ini dengan potensi paparan emisi cerobong dari kandidat pabrik terdekat.",
-                                                    "Analisis potensi paparan cerobong asap"
+                                                    "Analisis potensi paparan asap"
                                                 )}
-                                                className="w-full text-left p-3.5 bg-slate-50 border border-slate-200 hover:border-emerald-600 hover:bg-emerald-50/15 text-xs font-bold text-slate-700 transition-all uppercase tracking-tight flex justify-between items-center group rounded-none outline-none shadow-sm"
+                                                className="w-full text-left py-3 px-5 hover:bg-slate-50/80 transition-colors text-xs font-normal text-slate-700 flex justify-between items-center group outline-none"
                                             >
-                                                <span>Potensi Paparan Cerobong Asap</span>
-                                                <ArrowRight size={12} className="text-slate-300 group-hover:text-emerald-600 group-hover:translate-x-0.5 transition-all" />
+                                                <span>Potensi paparan cerobong asap</span>
+                                                <ArrowRight size={13} className="text-slate-300 group-hover:text-emerald-600 group-hover:translate-x-0.5 transition-all" />
                                             </button>
                                             <button
                                                 type="button"
                                                 onClick={() => handleSend(
                                                     "Deteksi klaster industri terdekat yang melepaskan partikel emisi debu halus PM2.5 abnormal.",
-                                                    "Deteksi klaster emisi PM2.5 abnormal"
+                                                    "Deteksi klaster emisi pm2.5"
                                                 )}
-                                                className="w-full text-left p-3.5 bg-slate-50 border border-slate-200 hover:border-emerald-600 hover:bg-emerald-50/15 text-xs font-bold text-slate-700 transition-all uppercase tracking-tight flex justify-between items-center group rounded-none outline-none shadow-sm"
+                                                className="w-full text-left py-3 px-5 hover:bg-slate-50/80 transition-colors border-t border-slate-50 text-xs font-normal text-slate-700 flex justify-between items-center group outline-none"
                                             >
-                                                <span>Klaster Emisi Debu Halus PM2.5</span>
-                                                <ArrowRight size={12} className="text-slate-300 group-hover:text-emerald-600 group-hover:translate-x-0.5 transition-all" />
+                                                <span>Klaster emisi debu halus pm2.5</span>
+                                                <ArrowRight size={13} className="text-slate-300 group-hover:text-emerald-600 group-hover:translate-x-0.5 transition-all" />
                                             </button>
                                         </div>
                                     </div>
 
                                     {/* Kategori 2: Hidrosfer */}
-                                    <div className="space-y-2">
-                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5 select-none">
-                                            <Droplets size={12} className="text-blue-500" /> 2. Analisis Air & Sungai
+                                    <div className="py-3.5 border-b border-slate-100">
+                                        <span className="px-5 text-xs font-normal text-slate-400 flex items-center gap-2 mb-2 select-none">
+                                            <Droplets size={13} className="text-cyan-500" />
+                                            <span>2. Analisis air & sungai</span>
                                         </span>
-                                        <div className="grid grid-cols-1 gap-2">
+
+                                        <div className="flex flex-col">
                                             <button
                                                 type="button"
                                                 onClick={() => handleSend(
                                                     "Identifikasi potensi pencemaran air aliran Sungai Cileungsi dari logbook limbah cair industri terdekat.",
                                                     "Identifikasi pencemaran Sungai Cileungsi"
                                                 )}
-                                                className="w-full text-left p-3.5 bg-slate-50 border border-slate-200 hover:border-emerald-600 hover:bg-emerald-50/15 text-xs font-bold text-slate-700 transition-all uppercase tracking-tight flex justify-between items-center group rounded-none outline-none shadow-sm"
+                                                className="w-full text-left py-3 px-5 hover:bg-slate-50/80 transition-colors text-xs font-normal text-slate-700 flex justify-between items-center group outline-none"
                                             >
-                                                <span>Deteksi Pencemaran Sungai</span>
-                                                <ArrowRight size={12} className="text-slate-300 group-hover:text-emerald-600 group-hover:translate-x-0.5 transition-all" />
+                                                <span>Deteksi pencemaran sungai</span>
+                                                <ArrowRight size={13} className="text-slate-300 group-hover:text-emerald-600 group-hover:translate-x-0.5 transition-all" />
                                             </button>
                                             <button
                                                 type="button"
@@ -11165,30 +11339,32 @@ export default function ExecutiveCopilotPanel() {
                                                     "Korelasikan penurunan drastis pencatatan volume logbook limbah cair dengan potensi pembuangan liar ke badan air.",
                                                     "Korelasi anomali logbook limbah cair"
                                                 )}
-                                                className="w-full text-left p-3.5 bg-slate-50 border border-slate-200 hover:border-emerald-600 hover:bg-emerald-50/15 text-xs font-bold text-slate-700 transition-all uppercase tracking-tight flex justify-between items-center group rounded-none outline-none shadow-sm"
+                                                className="w-full text-left py-3 px-5 hover:bg-slate-50/80 transition-colors border-t border-slate-50 text-xs font-normal text-slate-700 flex justify-between items-center group outline-none"
                                             >
-                                                <span>Korelasi Anomali Logbook Cair</span>
-                                                <ArrowRight size={12} className="text-slate-300 group-hover:text-emerald-600 group-hover:translate-x-0.5 transition-all" />
+                                                <span>Korelasi anomali logbook cair</span>
+                                                <ArrowRight size={13} className="text-slate-300 group-hover:text-emerald-600 group-hover:translate-x-0.5 transition-all" />
                                             </button>
                                         </div>
                                     </div>
 
                                     {/* Kategori 3: Sektoral */}
-                                    <div className="space-y-2">
-                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5 select-none">
-                                            <ShieldAlert size={12} className="text-blue-500" /> 3. Evaluasi ESG & Sidak Lapangan
+                                    <div className="py-3.5 border-b border-slate-100">
+                                        <span className="px-5 text-xs font-normal text-slate-400 flex items-center gap-2 mb-2 select-none">
+                                            <ShieldAlert size={13} className="text-amber-500" />
+                                            <span>3. Evaluasi esg & sidak lapangan</span>
                                         </span>
-                                        <div className="grid grid-cols-1 gap-2">
+
+                                        <div className="flex flex-col">
                                             <button
                                                 type="button"
                                                 onClick={() => handleSend(
                                                     "Evaluasi pabrik dengan skor kepatuhan ESG kritis di bawah 60 yang searah dengan datangnya angin dominan.",
                                                     "Evaluasi pabrik skor kritis <60"
                                                 )}
-                                                className="w-full text-left p-3.5 bg-slate-50 border border-slate-200 hover:border-emerald-600 hover:bg-emerald-50/15 text-xs font-bold text-slate-700 transition-all uppercase tracking-tight flex justify-between items-center group rounded-none outline-none shadow-sm"
+                                                className="w-full text-left py-3 px-5 hover:bg-slate-50/80 transition-colors text-xs font-normal text-slate-700 flex justify-between items-center group outline-none"
                                             >
-                                                <span>Evaluasi Industri Skor Kritis</span>
-                                                <ArrowRight size={12} className="text-slate-300 group-hover:text-emerald-600 group-hover:translate-x-0.5 transition-all" />
+                                                <span>Evaluasi industri skor kritis</span>
+                                                <ArrowRight size={13} className="text-slate-300 group-hover:text-emerald-600 group-hover:translate-x-0.5 transition-all" />
                                             </button>
                                             <button
                                                 type="button"
@@ -11196,10 +11372,10 @@ export default function ExecutiveCopilotPanel() {
                                                     "Rangkum tingkat kepatuhan ESG wilayah dan buat rekomendasi prioritas sidak lapangan terpadu untuk dinas.",
                                                     "Rekomendasi prioritas sidak lapangan"
                                                 )}
-                                                className="w-full text-left p-3.5 bg-slate-50 border border-slate-200 hover:border-emerald-600 hover:bg-emerald-50/15 text-xs font-bold text-slate-700 transition-all uppercase tracking-tight flex justify-between items-center group rounded-none outline-none shadow-sm"
+                                                className="w-full text-left py-3 px-5 hover:bg-slate-50/80 transition-colors border-t border-slate-50 text-xs font-normal text-slate-700 flex justify-between items-center group outline-none"
                                             >
-                                                <span>Rekomendasi Prioritas Sidak</span>
-                                                <ArrowRight size={12} className="text-slate-300 group-hover:text-emerald-600 group-hover:translate-x-0.5 transition-all" />
+                                                <span>Rekomendasi prioritas sidak</span>
+                                                <ArrowRight size={13} className="text-slate-300 group-hover:text-emerald-600 group-hover:translate-x-0.5 transition-all" />
                                             </button>
                                         </div>
                                     </div>
@@ -11223,119 +11399,111 @@ export default function ExecutiveCopilotPanel() {
                 )}
 
                 {/* =====================================================================
-                    STATE 3: RESULT / ANALYSIS STATE (Menampilkan Hasil Visual Penuh)
+                    STATE 3: RESULT / ANALYSIS STATE (Menampilkan Hasil Visual Penuh - GFW Flat Style)
                 ====================================================================== */}
                 {!isAiLoading && aiForensicResult && hasSearched && (
-                    <div className="p-5 space-y-5 animate-in fade-in duration-300">
+                    <div className="flex flex-col animate-in fade-in duration-300">
 
-                        {/* WIDGET 0: AKTIF PROMPT RUNNING */}
-                        <div className="p-3 bg-slate-50 border text-slate-700">
-                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">Radar Atas</p>
-                            <p className="text-[10px] font-bold mt-1.5 leading-relaxed text-slate-800 uppercase italic">
-                                "{activePromptLabel}"
-                            </p>
-                        </div>
-
-                        {/* WIDGET 1: IDENTIFIKASI TERSANGKA (FLAT STYLE) [3] */}
-                        <div className="border-b border-slate-200/60 pb-4 text-left">
-                            <div className="flex justify-between items-center mb-3">
-                                <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-1.5">
-                                    <Target size={12} className="text-emerald-600 animate-pulse" /> HASIL IDENTIFIKASI FORENSIK
+                        {/* WIDGET 1: IDENTIFIKASI TERSANGKA (Hasil Identifikasi - Flat & Seamless) */}
+                        <div className="px-5 py-3.5 border-b border-slate-100 text-left space-y-2.5">
+                            <div className="flex justify-between items-center">
+                                <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                    <Target size={13} className="text-emerald-600 animate-pulse" /> Hasil identifikasi forensik
                                 </span>
-                                <Badge className={cn("rounded-none border text-[8px] font-black tracking-widest uppercase px-2 py-0.5 shadow-none", getConfidenceColor(aiForensicResult.confidenceScore))}>
-                                    AKURASI: {aiForensicResult.confidenceScore}%
+                                <Badge className={cn("rounded-none border text-[9px] font-normal px-2 py-0.5 shadow-none", getConfidenceColor(aiForensicResult.confidenceScore))}>
+                                    Akurasi: {aiForensicResult.confidenceScore}%
                                 </Badge>
                             </div>
-                            <div className="space-y-1.5">
-                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Tersangka Utama</span>
-                                <h3 className="text-base font-black text-slate-900 leading-tight uppercase tracking-tight">
+                            <div className="space-y-1">
+                                <span className="text-[13px] font-normal text-slate-900 block">Tersangka utama</span>
+                                <h3 className="text-[12px] font-normal text-slate-800 leading-tight">
                                     {aiForensicResult.culpritName}
                                 </h3>
-                                <p className="text-[9px] font-mono font-bold text-slate-400 leading-none">
-                                    ID: {aiForensicResult.culpritId}
+                                <p className="text-[10px] font-mono text-slate-450 leading-none">
+                                    Identitas: {aiForensicResult.culpritId}
                                 </p>
                             </div>
                         </div>
 
-                        {/* WIDGET 2: VISUALISASI DUAL BAR CHART COMPARISON (RECHARTS INTEGRATION) [3] - MENIKMATI LAYAR LEGA */}
+                        {/* WIDGET 2: VISUALISASI DUAL BAR CHART COMPARISON (Flat & Rata Kanan Kiri) */}
                         {chartData && chartData.length > 0 && (
-                            <div className="border-b border-slate-200/60 pb-4 text-left space-y-3">
-                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                                    <BarChart3 size={12} className="text-slate-500" /> Perbandingan Risiko & Kepatuhan Sektoral
+                            <div className="px-5 py-3.5 border-b border-slate-100 text-left space-y-3">
+                                <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                    <BarChart3 size={13} className="text-slate-800" /> Perbandingan risiko & kepatuhan Sektoral
                                 </span>
-                                <div className="h-[185px] w-full bg-slate-50 border p-2 font-mono text-[9px] rounded-none">
+                                <div className="h-[160px] w-full font-sans text-[10px]">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <BarChart data={chartData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
-                                            <XAxis dataKey="name" stroke="#94a3b8" fontSize={7} tickLine={false} />
-                                            <YAxis stroke="#94a3b8" fontSize={7} tickLine={false} />
+                                            <XAxis dataKey="name" stroke="#94a3b8" fontSize={8} tickLine={false} />
+                                            <YAxis stroke="#94a3b8" fontSize={8} tickLine={false} />
                                             <ChartTooltip
                                                 content={({ active, payload }) => {
                                                     if (active && payload && payload.length) {
                                                         const data = payload[0].payload;
                                                         return (
-                                                            <div className="bg-slate-900 text-white p-2.5 border border-slate-700 text-[8px] space-y-1 text-left rounded-none max-w-[200px] whitespace-normal">
-                                                                <p className="font-black uppercase border-b border-white/10 pb-1 mb-1">{data.fullName}</p>
-                                                                <p className="text-rose-400 font-bold font-mono">Kecurigaan AI: {data.Probabilitas}%</p>
-                                                                <p className="text-emerald-400 font-bold font-mono">Skor ESG Usaha: {data.Kepatuhan}/100</p>
+                                                            <div className="bg-slate-900 text-white p-2.5 border border-slate-800 text-[9px] space-y-1 text-left rounded-none max-w-[200px] whitespace-normal">
+                                                                <p className="border-b border-white/10 pb-1 mb-1 font-normal">{data.fullName}</p>
+                                                                <p className="text-rose-400 font-normal">Kecurigaan asisten: {data.Probabilitas}%</p>
+                                                                <p className="text-emerald-400 font-normal">Skor ESG usaha: {data.Kepatuhan}/100</p>
                                                             </div>
                                                         );
                                                     }
                                                     return null;
                                                 }}
                                             />
-                                            <Bar dataKey="Probabilitas" fill="#f43f5e" barSize={12} radius={[0, 0, 0, 0]} />
-                                            <Bar dataKey="Kepatuhan" fill="#10b981" barSize={12} radius={[0, 0, 0, 0]} />
+                                            <Bar dataKey="Probabilitas" fill="#f43f5e" barSize={10} radius={[0, 0, 0, 0]} />
+                                            <Bar dataKey="Kepatuhan" fill="#10b981" barSize={10} radius={[0, 0, 0, 0]} />
                                         </BarChart>
                                     </ResponsiveContainer>
                                 </div>
-                                <div className="flex justify-center gap-4 text-[8px] font-black uppercase tracking-widest text-slate-400 select-none">
+                                <div className="flex justify-center gap-4 text-xs font-normal text-slate-500 select-none">
                                     <span className="flex items-center gap-1.5">
-                                        <span className="w-2.5 h-2.5 bg-rose-500 inline-block border" /> Probabilitas AI (%)
+                                        <span className="w-2.5 h-2.5 bg-rose-500 inline-block border border-slate-100" /> Probabilitas asisten (%)
                                     </span>
                                     <span className="flex items-center gap-1.5">
-                                        <span className="w-2.5 h-2.5 bg-emerald-500 inline-block border" /> Kepatuhan ESG
+                                        <span className="w-2.5 h-2.5 bg-emerald-500 inline-block border border-slate-100" /> Kepatuhan ESG
                                     </span>
                                 </div>
                             </div>
                         )}
 
-                        {/* WIDGET 3: BUKTI & OPINI ANALISIS (FLAT STYLE) [3] */}
-                        <div className="border-b border-slate-200/60 pb-4 text-left space-y-2.5">
-                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Opini & Analisa Spasial</span>
-                            <p className="text-xs font-semibold text-slate-600 leading-relaxed text-justify bg-slate-50 p-3 border border-slate-100">
+                        {/* WIDGET 3: BUKTI & OPINI ANALISIS (Flat, Tanpa Box, Rata Kiri) */}
+                        <div className="px-5 py-3.5 border-b border-slate-100 text-left space-y-2">
+                            <span className="text-xs font-bold text-slate-800 block">Opini & analisis spasial</span>
+                            <p className="text-xs font-normal text-slate-600 leading-relaxed text-left">
                                 {aiForensicResult.analysis}
                             </p>
                         </div>
 
-                        {/* WIDGET 4: JEJAK DIGITAL BUKTI (FLAT STYLE) [3] */}
-                        <div className="border-b border-slate-200/60 pb-4 text-left space-y-2.5">
-                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Jejak Digital Ditemukan</span>
-                            <div className="flex flex-col gap-1.5">
+                        {/* WIDGET 4: JEJAK DIGITAL BUKTI (Flat & Seamless) */}
+                        <div className="px-5 py-3.5 border-b border-slate-100 text-left space-y-2">
+                            <span className="text-xs font-bold text-slate-800 block">Jejak digital ditemukan</span>
+                            <div className="flex flex-col gap-2">
                                 {aiForensicResult.evidencePoints.map((point, idx) => (
-                                    <div key={idx} className="flex items-start gap-2 text-[10px] font-bold text-slate-600 bg-white p-2.5 border border-slate-150">
-                                        <CheckCircle2 size={13} className="text-emerald-500 shrink-0 mt-0.5" />
-                                        <span className="leading-snug">{point}</span>
+                                    <div key={idx} className="flex items-start gap-2 text-xs font-normal text-slate-600">
+                                        <CheckCircle2 size={12} className="text-emerald-500 shrink-0 mt-0.5" />
+                                        <span className="leading-relaxed">{point}</span>
                                     </div>
                                 ))}
                             </div>
                         </div>
 
-                        {/* WIDGET 5: REKOMENDASI TINDAKAN (ACTIONABLE BUTTON) [3] */}
-                        <div className="pt-1 text-left">
-                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2">Rekomendasi Tindakan</span>
+                        {/* WIDGET 5: REKOMENDASI TINDAKAN (Actionable Button) */}
+                        <div className="px-5 py-4 text-left space-y-3">
+                            <span className="text-xs font-bold text-slate-800 block">Rekomendasi tindakan</span>
                             {aiForensicResult.recommendedAction === "INSPECTION" && (
-                                <Button className="w-full h-11 bg-rose-600 hover:bg-rose-700 text-white rounded-none font-black text-[9px] uppercase tracking-widest shadow-none gap-1.5">
-                                    <AlertTriangle size={12} /> Terbitkan Surat Tugas Sidak
+                                <Button className="w-full h-11 bg-rose-600 hover:bg-rose-700 text-white rounded-none font-normal text-xs shadow-none gap-1.5 border-none outline-none">
+                                    <AlertTriangle size={13} /> Terbitkan surat tugas sidak
                                 </Button>
                             )}
                             {aiForensicResult.recommendedAction === "WARNING_LETTER" && (
-                                <Button className="w-full h-11 bg-amber-500 hover:bg-amber-600 text-white rounded-none font-black text-[9px] uppercase tracking-widest shadow-none gap-1.5">
-                                    <Factory size={12} /> Kirim Teguran Elektronik
+                                <Button className="w-full h-11 bg-amber-500 hover:bg-amber-600 text-white rounded-none font-normal text-xs shadow-none gap-1.5 border-none outline-none">
+                                    <Factory size={13} /> Kirim teguran elektronik
                                 </Button>
                             )}
                             {(aiForensicResult.recommendedAction === "MONITORING" || aiForensicResult.recommendedAction === "MANUAL_INVESTIGATION") && (
-                                <Button className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white rounded-none font-black text-[9px] uppercase tracking-widest shadow-none gap-1.5">
-                                    <Crosshair size={12} /> Pantau Ketat Area Spasial
+                                <Button className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white rounded-none font-normal text-xs shadow-none gap-1.5 border-none outline-none">
+                                    <Crosshair size={13} /> Pantau ketat area spasial
                                 </Button>
                             )}
                         </div>
@@ -11346,13 +11514,13 @@ export default function ExecutiveCopilotPanel() {
 
             {/* BARIS FOOTER ACTION: TOMBOL RESET UNTUK JALANKAN LAGI */}
             {hasSearched && !isAiLoading && (
-                <div className="p-4 bg-slate-50 border-t border-slate-200 shrink-0">
+                <div className="p-4 bg-slate-50 border-t border-slate-100 shrink-0">
                     <button
                         onClick={handleResetRadar}
-                        className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white rounded-none font-black text-[10px] uppercase tracking-widest shadow-none transition-colors flex items-center justify-center gap-2 border-none outline-none"
+                        className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white rounded-none font-normal text-xs transition-colors flex items-center justify-center gap-2 border-none outline-none cursor-pointer"
                     >
                         <RotateCcw size={12} />
-                        Kembali ke Sugesti Radar
+                        Kembali ke sugesti radar
                     </button>
                 </div>
             )}
@@ -11899,7 +12067,7 @@ export const EnvironmentalRegistration = () => {
               <div className="animate-in fade-in zoom-in-95 duration-500">
                 {/* Header penentu tipe yang lebih mencolok */}
                 <div className="text-center mb-8 bg-brand-50 p-8 rounded-2xl border-2 border-dashed border-brand-200">
-                  <Badge className="mb-2 bg-brand-600">Sistem PANTAU LIMBAH Berhasil Menganalisis</Badge>
+                  <Badge className="mb-2 bg-brand-600">Sistem GEO LIMBAH Berhasil Menganalisis</Badge>
                   <h2 className="text-4xl font-black text-brand-900 tracking-tight">WAJIB {docType}</h2>
                   <p className="text-slate-600 mt-2">Silakan lengkapi rincian teknis pengelolaan lingkungan di bawah ini.</p>
                 </div>
@@ -12342,7 +12510,7 @@ export default function ReportPage() {
                 status: "PENDING",
             });
             localStorage.setItem("sijaga_citizen_reports", JSON.stringify(reportsList));
-            localStorage.setItem("pantau_limbah_report_id", result.trackingId);
+            localStorage.setItem("geo_limbah_report_id", result.trackingId);
             localStorage.removeItem("SIJAGA_CITIZEN_REPORT_DRAFT");
 
             // Simpan ID pelacakan ke state lokal untuk ditampilkan di dialog terima kasih
@@ -12374,8 +12542,8 @@ export default function ReportPage() {
                             <div className="w-10 h-10 bg-emerald-500 rounded-none flex items-center justify-center text-white shadow-md transition-all group-hover:bg-emerald-600">
                                 <ShieldCheck size={22} />
                             </div>
-                            <span className="text-xl font-extrabold italic tracking-tight text-white">
-                                PANTAU <span className="text-emerald-400 font-extrabold">LIMBAH</span>
+                            <span className="font-sans font-semibold text-xl tracking-tight text-white">
+                                Geo <span className="text-emerald-400">Limbah</span>
                             </span>
                         </Link>
 

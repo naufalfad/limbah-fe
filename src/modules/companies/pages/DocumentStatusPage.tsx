@@ -19,6 +19,7 @@ import { apiService } from "@/lib/api";
 
 // Mengimpor Komponen Modular Taktis GFW [3]
 import CompanyHeader from "../components/CompanyHeader";
+import { cn } from "@/lib/utils";
 
 export default function DocumentStatusPage() {
   const { currentUser, companies, selectedCompanyId, downloadCompanyCertificate, invoices, createRetribusiInvoice } = useSijagaStore();
@@ -154,8 +155,12 @@ export default function DocumentStatusPage() {
             <h3 className="font-black text-xs text-slate-800 uppercase tracking-widest">Siklus Validasi Berkas</h3>
           </div>
 
-          {/* Stepper Grid (Sharp Edges & Minimalist) */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
+          {/* 
+            FIXED STEPPER GRID:
+            - Menggunakan md:gap-x-0 untuk merapatkan kolom secara horizontal pada desktop.
+            - Menghilangkan celah fisik (gap) agar garis penghubung antar sel menyambung mulus.
+          */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-y-8 md:gap-x-0 relative max-w-4xl mx-auto py-6">
             <StepItem
               step={1}
               active={currentStep >= 1}
@@ -182,7 +187,7 @@ export default function DocumentStatusPage() {
 
           {/* Status Alert Banner */}
           {company.status === "SUSPENDED" ? (
-            <div className="p-4 bg-rose-50 border border-rose-200 rounded-none flex items-start gap-3">
+            <div className="p-4 bg-rose-50 border border-rose-200 rounded-none flex items-start gap-3 animate-in fade-in duration-300">
               <AlertCircle className="text-rose-600 shrink-0 mt-0.5 animate-bounce" size={16} />
               <div>
                 <h4 className="font-black text-rose-950 text-[10px] uppercase tracking-widest leading-none">Peringatan Keras: Sertifikat Izin Ditangguhkan / Dicabut</h4>
@@ -192,7 +197,7 @@ export default function DocumentStatusPage() {
               </div>
             </div>
           ) : company.status === "APPROVED" && isPaymentPending ? (
-            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-none flex items-start gap-3">
+            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-none flex items-start gap-3 animate-in fade-in duration-300">
               <CheckCircle2 className="text-emerald-600 shrink-0 mt-0.5" size={16} />
               <div>
                 <h4 className="font-black text-emerald-950 text-[10px] uppercase tracking-widest leading-none">Dokumen Wajib Lingkungan Anda Aktif</h4>
@@ -203,7 +208,7 @@ export default function DocumentStatusPage() {
               </div>
             </div>
           ) : company.status === "APPROVED" && !isPaymentPending ? (
-            <div className="p-4 bg-rose-50 border border-rose-200 rounded-none flex flex-col items-start gap-3">
+            <div className="p-4 bg-rose-50 border border-rose-200 rounded-none flex flex-col items-start gap-3 animate-in fade-in duration-300">
               <div className="flex items-start gap-3">
                 <AlertCircle className="text-rose-600 shrink-0 mt-0.5 animate-pulse" size={16} />
                 <div className="w-full">
@@ -225,7 +230,7 @@ export default function DocumentStatusPage() {
               </div>
             </div>
           ) : company.status === "REVIEW" ? (
-            <div className="p-4 bg-amber-50 border border-amber-200 rounded-none flex flex-col items-start gap-3">
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-none flex flex-col items-start gap-3 animate-in fade-in duration-300">
               <div className="flex items-start gap-3">
                 <Clock className="text-amber-600 shrink-0 mt-0.5 animate-pulse" size={16} />
                 <div>
@@ -245,7 +250,7 @@ export default function DocumentStatusPage() {
               </div>
             </div>
           ) : company.status === "REJECTED" ? (
-            <div className="p-4 bg-rose-50 border border-rose-200 rounded-none flex flex-col items-start gap-3">
+            <div className="p-4 bg-rose-50 border border-rose-200 rounded-none flex flex-col items-start gap-3 animate-in fade-in duration-300">
               <div className="flex items-start gap-3">
                 <AlertCircle className="text-rose-600 shrink-0 mt-0.5" size={16} />
                 <div>
@@ -265,7 +270,7 @@ export default function DocumentStatusPage() {
               </div>
             </div>
           ) : (
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-none flex items-start gap-3">
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-none flex items-start gap-3 animate-in fade-in duration-300">
               <Clock className="text-slate-400 shrink-0 mt-0.5 animate-pulse" size={16} />
               <div>
                 <h4 className="font-black text-slate-800 text-[10px] uppercase tracking-widest leading-none">Sedang Ditinjau Petugas Dinas</h4>
@@ -324,24 +329,44 @@ export default function DocumentStatusPage() {
   );
 }
 
-// --- SUB-COMPONENTS ---
+// --- SUB-COMPONENTS (Symmetrical, High-Density Stepper) ---
 function StepItem({ step, active, label, desc, icon, isLast }: { step: number, active: boolean, label: string, desc: string, icon: any, isLast?: boolean }) {
   return (
-    <div className="flex flex-col items-start text-left relative space-y-3 flex-1">
-      {/* Connector line */}
+    <div className="flex flex-col items-center text-center relative flex-1">
+      {/* 
+        PRESTINE & SEAMLESS CONNECTOR:
+        - Menggunakan standard Tailwind utilities 'left-1/2' dan 'w-full' yang aman di semua parser.
+        - Menyeberang tanpa celah karena gap horizontal grid telah dinonaktifkan di parent container.
+      */}
       {!isLast && (
-        <div className={`hidden md:block absolute top-5 left-10 right-[-20px] h-[1px] z-0 transition-colors duration-500 ${active ? "bg-emerald-500" : "bg-slate-200"}`} />
+        <div className={cn(
+          "hidden md:block absolute top-5 h-[2px] z-0 transition-all duration-500",
+          "left-1/2 w-full",
+          active ? "bg-emerald-500" : "bg-slate-200"
+        )} />
       )}
 
-      <div className={`w-10 h-10 rounded-none flex items-center justify-center z-10 transition-all duration-500 border ${active ? "bg-emerald-600 text-white border-emerald-600" : "bg-slate-100 border-slate-200 text-slate-400"}`}>
+      {/* Siku kaku, flat, dengan solid bg-white untuk meng-masking garis di belakangnya tanpa sisa celah */}
+      <div className={cn(
+        "w-10 h-10 rounded-none flex items-center justify-center z-10 transition-all duration-500 border-2 bg-white",
+        active
+          ? "border-emerald-600 text-emerald-600 font-bold shadow-[0_0_0_4px_rgba(16,185,129,0.1)]"
+          : "border-slate-200 text-slate-400"
+      )}>
         {icon}
       </div>
 
-      <div className="space-y-1">
-        <h4 className={`text-[10px] font-black uppercase tracking-wider leading-none ${active ? "text-slate-800" : "text-slate-400"}`}>
+      {/* Pembatas lebar (max-w-[220px]) agar teks di setiap kolom konsisten simetris */}
+      <div className="space-y-1 mt-3 max-w-[220px]">
+        <h4 className={cn(
+          "text-[10px] font-black uppercase tracking-wider leading-snug",
+          active ? "text-slate-800" : "text-slate-400"
+        )}>
           Langkah {step}: {label}
         </h4>
-        <p className="text-[10px] font-semibold text-slate-500 leading-normal">{desc}</p>
+        <p className="text-[10px] font-semibold text-slate-500 leading-normal">
+          {desc}
+        </p>
       </div>
     </div>
   );

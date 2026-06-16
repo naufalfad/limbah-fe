@@ -82,8 +82,8 @@ export default function GisNavbar() {
                         <Leaf size={18} />
                     </div>
                     <div className="flex flex-col leading-none">
-                        <span className="text-sm font-black text-slate-800 tracking-tighter uppercase">
-                            PANTAU <span className="text-emerald-600">LIMBAH</span>
+                        <span className="font-sans font-semibold text-xl tracking-tight text-slate-800">
+                            Geo <span className="text-emerald-600">Limbah</span>
                         </span>
                         <span className="text-[8px] text-slate-400 font-bold tracking-[0.2em] uppercase mt-0.5">
                             Geospasial Kepatuhan

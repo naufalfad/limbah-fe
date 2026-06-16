@@ -1,6 +1,6 @@
 // src/modules/admin/components/gis/MapHUD.tsx
 import React, { useMemo } from "react";
-import { Plus, Minus, Maximize, Map as MapIcon } from "lucide-react";
+import { Plus, Minus, Maximize, Map as MapIcon, BellRing } from "lucide-react";
 import { useGisUIStore } from "@/store/useGisUIStore";
 import { useSijagaStore } from "@/store/useSijagaStore";
 import { cn } from "@/lib/utils";
@@ -23,8 +23,14 @@ export default function MapHUD() {
         label: string;
         color: string;
         shape: 'square' | 'circle' | 'pulsing' | 'line';
+        layerId?: string; // Menyimpan ID layer rujukan untuk pencocokan status aktif
+        isGlobalAlarm?: boolean; // Penanda khusus untuk alarm kepatuhan lintas-layer
     };
 
+    // ======================================================================
+    // STATIC COMPREHENSIVE LEDGER MEMOIZATION
+    // Mengamankan daftar legenda lengkap secara konstan untuk kemudahan navigasi
+    // ======================================================================
     const legendItems = useMemo<LegendItem[]>(() => {
         if (isOfficer) {
             return [
@@ -33,24 +39,45 @@ export default function MapHUD() {
             ];
         }
 
-        const items: LegendItem[] = [];
-
-        if (activeLayers.includes("layer-amdal")) {
-            items.push({ label: "Wajib AMDAL (Risiko Tinggi)", color: "bg-red-500", shape: 'square' });
-        }
-        if (activeLayers.includes("layer-uklupl")) {
-            items.push({ label: "Wajib UKL-UPL (Menengah)", color: "bg-amber-500", shape: 'square' });
-        }
-        if (activeLayers.includes("layer-sppl")) {
-            items.push({ label: "Wajib SPPL (Risiko Rendah)", color: "bg-emerald-500", shape: 'square' });
-        }
-        if (activeLayers.includes("layer-water-stations") && !isRiverActive) {
-            items.push({ label: "Stasiun Air: Memenuhi Syarat", color: "bg-cyan-500", shape: 'circle' });
-            items.push({ label: "Stasiun Air: Tercemar / Kritis", color: "bg-rose-600", shape: 'pulsing' });
-        }
-
-        return items;
-    }, [activeLayers, isOfficer, isRiverActive]);
+        return [
+            {
+                label: "Wajib AMDAL (Risiko Tinggi)",
+                color: "bg-red-500",
+                shape: 'circle', // GFW FIX: Diubah menjadi lingkaran agar seirama dengan marker peta
+                layerId: "layer-amdal"
+            },
+            {
+                label: "Wajib UKL-UPL (Menengah)",
+                color: "bg-amber-500",
+                shape: 'circle', // GFW FIX: Diubah menjadi lingkaran agar seirama dengan marker peta
+                layerId: "layer-uklupl"
+            },
+            {
+                label: "Wajib SPPL (Risiko Rendah)",
+                color: "bg-emerald-500",
+                shape: 'circle', // GFW FIX: Diubah menjadi lingkaran agar seirama dengan marker peta
+                layerId: "layer-sppl"
+            },
+            {
+                label: "Stasiun Air: Memenuhi Syarat",
+                color: "bg-cyan-500",
+                shape: 'circle',
+                layerId: "layer-water-stations"
+            },
+            {
+                label: "Stasiun Air: Tercemar / Kritis",
+                color: "bg-rose-600",
+                shape: 'pulsing',
+                layerId: "layer-water-stations"
+            },
+            {
+                label: "Alarm Kepatuhan Kritis (EWS)",
+                color: "bg-red-500",
+                shape: 'pulsing',
+                isGlobalAlarm: true // Aktif jika ada salah satu layer industri yang aktif
+            }
+        ];
+    }, [isOfficer]);
 
     // ======================================================================
     // UX FOCUS MODE: 
@@ -66,35 +93,73 @@ export default function MapHUD() {
     return (
         <div className="absolute bottom-8 right-8 z-30 pointer-events-auto flex flex-row items-end gap-4 select-none">
             {hasLegends && (
-                <div className="bg-white/90 backdrop-blur border border-slate-300 shadow-sm rounded-none w-56 animate-in fade-in slide-in-from-bottom-4 flex flex-col max-h-[75vh] overflow-y-auto custom-scrollbar">
+                <div className="bg-white/90 backdrop-blur border border-slate-300 shadow-sm rounded-none w-60 animate-in fade-in slide-in-from-bottom-4 flex flex-col max-h-[75vh] overflow-y-auto custom-scrollbar">
+
+                    {/* Header Legenda */}
                     <div className="flex items-center gap-2 px-3 py-2 bg-slate-50/90 border-b border-slate-200 sticky top-0 z-10 text-left">
                         <MapIcon size={12} className="text-emerald-700" />
                         <h4 className="text-[9px] font-black text-slate-700 uppercase tracking-widest">
                             {isOfficer ? "Legenda Sasaran Tugas" : "Legenda Kepatuhan"}
                         </h4>
                     </div>
+
+                    {/* Daftar Item Legenda */}
                     <div className="flex flex-col">
-                        {legendItems.map((item, idx) => (
-                            <div key={idx} className="flex items-center gap-3 px-3 py-2 border-b border-slate-100 last:border-0 hover:bg-slate-50/40 transition-colors">
-                                <div className="relative w-3 h-3 shrink-0 flex items-center justify-center">
-                                    {item.shape === 'pulsing' && (
-                                        <span className={cn("absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping", item.color.replace('600', '400'))} />
+                        {legendItems.map((item, idx) => {
+                            // Evaluasi status aktif-tidaknya item legenda berdasarkan toggle menu samping
+                            let isLayerActive = false;
+
+                            if (item.isGlobalAlarm) {
+                                // Alarm Global EWS aktif jika minimal salah satu dari 3 layer industri dihidupkan
+                                isLayerActive = activeLayers.includes("layer-amdal") ||
+                                    activeLayers.includes("layer-uklupl") ||
+                                    activeLayers.includes("layer-sppl");
+                            } else {
+                                isLayerActive = !item.layerId || activeLayers.includes(item.layerId);
+                            }
+
+                            return (
+                                <div
+                                    key={idx}
+                                    // Menerapkan transisi pudar (opacity-45) secara interaktif jika layer sedang dimatikan
+                                    className={cn(
+                                        "flex items-center gap-3 px-3 py-2 border-b border-slate-100 last:border-0 hover:bg-slate-50/40 transition-all duration-300",
+                                        isLayerActive ? "opacity-100" : "opacity-45"
                                     )}
-                                    {item.shape === 'line' ? (
-                                        <div className={cn("w-full h-1 rounded-none", item.color)} />
-                                    ) : (
-                                        <div className={cn("relative w-full h-full shadow-sm", item.shape === 'square' ? "rounded-none border border-slate-200" : "rounded-full border border-white", item.color)} />
-                                    )}
+                                >
+                                    <div className="relative w-3 h-3 shrink-0 flex items-center justify-center">
+                                        {/* Titik berdenyut (Radar riak) dinonaktifkan sementara jika layer sedang mati */}
+                                        {item.shape === 'pulsing' && (
+                                            <span className={cn(
+                                                "absolute inline-flex h-full w-full rounded-full opacity-75",
+                                                isLayerActive && "animate-ping",
+                                                item.color.replace('600', '400')
+                                            )} />
+                                        )}
+                                        {item.shape === 'line' ? (
+                                            <div className={cn("w-full h-1 rounded-none", item.color)} />
+                                        ) : (
+                                            <div className={cn(
+                                                "relative w-full h-full shadow-sm border border-white",
+                                                item.shape === 'square' ? "rounded-none" : "rounded-full",
+                                                item.color
+                                            )} />
+                                        )}
+                                    </div>
+                                    <span className={cn(
+                                        "text-[10px] font-bold tracking-tight leading-none text-left transition-colors",
+                                        isLayerActive ? "text-slate-700" : "text-slate-450"
+                                    )}>
+                                        {item.label}
+                                    </span>
                                 </div>
-                                <span className="text-[10px] font-bold text-slate-650 tracking-tight leading-none text-left">
-                                    {item.label}
-                                </span>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
             )}
 
+            {/* Navigasi Tombol Zoom & Reset */}
             <div className="flex flex-col bg-white/90 backdrop-blur border border-slate-300 shadow-none rounded-none overflow-hidden divide-y divide-slate-200 shrink-0">
                 <button onClick={triggerZoomIn} className="w-10 h-10 flex items-center justify-center text-slate-600 hover:bg-slate-100 hover:text-emerald-700 transition-colors active:bg-slate-200 rounded-none outline-none">
                     <Plus size={18} strokeWidth={2.5} />

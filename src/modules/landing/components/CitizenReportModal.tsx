@@ -86,7 +86,7 @@ export default function CitizenReportModal({ isOpen, onClose, onSuccess }: Modal
 
         if (result.success && result.trackingId) {
             // Silent Tracking: Simpan ID ke perangkat warga
-            localStorage.setItem('pantau_limbah_report_id', result.trackingId);
+            localStorage.setItem('geo_limbah_report_id', result.trackingId);
 
             // Reset Form
             setStep(1);

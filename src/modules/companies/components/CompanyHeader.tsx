@@ -2,8 +2,7 @@
 import React, { useMemo } from "react";
 import { useSijagaStore } from "@/store/useSijagaStore";
 import { useNavigate } from "react-router-dom";
-import { Building2, MapPin, Shield, Plus, Factory } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Building2, MapPin, Plus, Factory, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function CompanyHeader() {
@@ -41,25 +40,34 @@ export default function CompanyHeader() {
     };
 
     return (
-        <div className="bg-white border border-slate-200 rounded-none p-4 md:p-6 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 select-none">
+        <div className="bg-white border border-slate-200 rounded-none p-4 md:p-6 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 select-none text-left">
 
-            {/* SISI KIRI: Dropdown Selector & Lokasi */}
+            {/* SISI KIRI: Nama Perusahaan Prominen & Pengontrol Selektor */}
             <div className="flex items-start gap-4 flex-1 w-full min-w-0">
                 <div className="w-12 h-12 bg-slate-900 border border-slate-800 text-emerald-500 rounded-none flex items-center justify-center shrink-0 shadow-inner">
                     <Building2 size={24} />
                 </div>
 
-                <div className="space-y-1.5 flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none">
-                            PROFILE ENTITY SELECTOR
+                <div className="space-y-2 flex-1 min-w-0">
+                    <div className="space-y-1">
+                        <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none block">
+                            ACTIVE COMPANY ENTITY
                         </span>
+                        {/* Nama Perusahaan Utama: Bebas melipat rapi jika panjang, tebal, dan tegas */}
+                        <h1
+                            className="text-base md:text-lg font-black tracking-tight text-slate-900 leading-snug uppercase max-w-xl whitespace-normal break-words"
+                            title={activeCompany.companyName}
+                        >
+                            {activeCompany.companyName}
+                        </h1>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full max-w-md">
-                        <div className="relative inline-block flex-1">
+                    {/* Baris Kontrol: Dropdown Selektor Kompak & Tombol Tambah */}
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full max-w-md pt-1">
+                        <div className="relative inline-block flex-1 min-w-[180px] max-w-[260px]">
                             <select
                                 value={selectedCompanyId || ""}
+                                title="Klik untuk beralih entitas badan usaha"
                                 onChange={(e) => {
                                     if (e.target.value === "ADD_NEW") {
                                         navigate("/company/register");
@@ -67,10 +75,10 @@ export default function CompanyHeader() {
                                         setSelectedCompanyId(e.target.value || null);
                                     }
                                 }}
-                                className="w-full bg-slate-50 border border-slate-300 rounded-none text-xs font-black uppercase tracking-wider text-slate-700 px-3 py-1.5 pr-8 focus:outline-none focus:border-emerald-600 focus:ring-0 cursor-pointer appearance-none"
+                                className="w-full h-8 bg-slate-50 border border-slate-300 rounded-none text-[10px] font-black uppercase tracking-wider text-slate-700 pl-3 pr-8 focus:outline-none focus:border-emerald-600 focus:ring-0 cursor-pointer appearance-none truncate"
                             >
                                 {companies.map((c) => (
-                                    <option key={c.id} value={c.id}>
+                                    <option key={c.id} value={c.id} className="font-bold">
                                         {c.companyName}
                                     </option>
                                 ))}
@@ -78,23 +86,24 @@ export default function CompanyHeader() {
                                     + REGISTRASI BADAN USAHA BARU
                                 </option>
                             </select>
-                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-500 border-l border-slate-300">
-                                <span className="text-[8px]">▼</span>
+                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500 border-l border-slate-300 bg-slate-100">
+                                <ChevronDown size={12} />
                             </div>
                         </div>
+
                         <Button
                             onClick={() => navigate("/company/register")}
                             size="sm"
                             className="bg-slate-900 hover:bg-emerald-600 text-white font-black text-[9px] h-8 rounded-none shadow-none uppercase tracking-widest shrink-0 gap-1"
                         >
-                            <Plus size={12} /> Tambah Perusahaan
+                            <Plus size={11} /> Tambah Baru
                         </Button>
                     </div>
 
-
-                    <div className="flex items-center gap-1.5 text-slate-500 text-[10px] font-bold uppercase tracking-wider truncate">
+                    {/* Lokasi Alamat Perusahaan */}
+                    <div className="flex items-center gap-1.5 text-slate-500 text-[10px] font-bold uppercase tracking-wider pt-1">
                         <MapPin size={11} className="text-slate-400 shrink-0" />
-                        <span className="truncate">{activeCompany.address}</span>
+                        <span className="truncate max-w-md" title={activeCompany.address}>{activeCompany.address}</span>
                     </div>
                 </div>
             </div>

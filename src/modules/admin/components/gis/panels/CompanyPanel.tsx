@@ -11,7 +11,13 @@ import kecData from "@/assets/geojson/bogor-kecamatan.json";
 
 export default function CompanyPanel() {
     const { companies, currentUser } = useSijagaStore();
-    const { openPanel, closePanelsToTheRight, setSelectedCompanyId, selectedCompanyId } = useGisUIStore();
+    const {
+        openPanel,
+        closePanelsToTheRight,
+        setSelectedCompanyId,
+        selectedCompanyId,
+        activeLayers // INJEKSI: Mengambil state layer aktif untuk orkestrasi laci konteks
+    } = useGisUIStore();
 
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedDocType, setSelectedDocType] = useState<string>("ALL");
@@ -108,10 +114,21 @@ export default function CompanyPanel() {
         return { kritis, peringatan, patuh, belum };
     }, [approvedCompanies]);
 
+    // 2. Click Handler (Trigger Laci Konteks GFW)
     const handleCompanyClick = (company: any) => {
         setSelectedCompanyId(company.id);
-        closePanelsToTheRight(-1); // Bersihkan panel melayang sebelumnya
+
+        // Memutus rantai laci melayang sebelumnya (Zero-Gap Stack Policy)
+        closePanelsToTheRight(-1);
+
+        // Selalu buka laci data dasar administrasi
         openPanel("detil-perusahaan", `Detail Industri`, company);
+
+        // [CONTEXT-AWARE PANEL ORCHESTRATION]:
+        // Hanya buka laci telemetri udara jika layer kualitas udara (layer-aqi) sedang aktif dicentang!
+        if (activeLayers.includes("layer-aqi")) {
+            openPanel("telemetri-lingkungan", `Telemetri Spasial`, company);
+        }
 
         const lat = parseFloat(company.lat);
         const lng = parseFloat(company.lng);

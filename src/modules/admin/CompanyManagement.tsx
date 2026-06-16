@@ -15,7 +15,7 @@ import {
 import {
   Search, Filter, RefreshCw, FileText, Phone, User, Award, ShieldAlert,
   Calendar, CheckCircle, XCircle, AlertOctagon, Download, Eye, Building2,
-  Lock, Unlock, ArrowUpRight, Scale, Info, MapPin
+  Lock, Unlock, ArrowUpRight, Scale, Info
 } from "lucide-react";
 import { useSijagaStore } from "@/store/useSijagaStore";
 import { cn } from "@/lib/utils";
@@ -83,8 +83,6 @@ export default function CompanyManagement() {
   // States for Action Confirmation Dialog
   const [actionTarget, setActionTarget] = useState<{ company: Company; nextStatus: "SUSPENDED" | "APPROVED" } | null>(null);
   const [isActionOpen, setIsActionOpen] = useState(false);
-
-  // RESOLUSI KONFLIK: Sesuai kode rekan Anda, State isAmdalOpen, amdalForm, dan handlernya dihapus sepenuhnya [3]
 
   useEffect(() => {
     fetchCompanies();
@@ -226,7 +224,6 @@ export default function CompanyManagement() {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* RESOLUSI KONFLIK: Tombol mengarahkan ke halaman rute baru sesuai kode rekan Anda */}
             <Button
               onClick={() => navigate("/admin/companies/add-amdal")}
               className="bg-rose-600 hover:bg-rose-700 text-white flex items-center gap-2 font-black rounded-none h-9 px-4 text-[10px] uppercase tracking-widest shadow-sm"
@@ -245,9 +242,8 @@ export default function CompanyManagement() {
           </div>
         </div>
 
-        {/* --- METRICS CARDS (Curated Aesthetics) --- */}
+        {/* --- METRICS CARDS --- */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-
           <Card className="rounded-none border border-slate-200 shadow-none bg-white relative overflow-hidden">
             <CardContent className="p-4 flex justify-between items-center">
               <div className="space-y-1">
@@ -299,7 +295,6 @@ export default function CompanyManagement() {
             </CardContent>
             <div className="absolute bottom-0 left-0 w-full h-1 bg-amber-500" />
           </Card>
-
         </div>
 
         {/* --- TABS SYSTEM --- */}
@@ -310,9 +305,7 @@ export default function CompanyManagement() {
               onClick={() => setStatusFilter(tab.key)}
               className={cn(
                 "flex items-center gap-2 px-3.5 py-1.5 rounded-none text-[9px] font-black uppercase tracking-wider transition-all border outline-none",
-                statusFilter === tab.key
-                  ? tab.active
-                  : "bg-white " + tab.color
+                statusFilter === tab.key ? tab.active : "bg-white " + tab.color
               )}
             >
               {tab.icon}
@@ -330,8 +323,6 @@ export default function CompanyManagement() {
         {/* --- SEARCH & QUICK FILTER BAR --- */}
         <Card className="rounded-none border border-slate-200 shadow-none p-3 bg-white">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-
-            {/* Search */}
             <div className="relative md:col-span-2">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
               <Input
@@ -342,7 +333,6 @@ export default function CompanyManagement() {
               />
             </div>
 
-            {/* Doc Type Filter */}
             <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 h-9">
               <Filter size={12} className="text-slate-400 shrink-0" />
               <select
@@ -357,34 +347,30 @@ export default function CompanyManagement() {
               </select>
             </div>
 
-            {/* Total Indicator */}
             <div className="flex items-center justify-end pr-2 text-right">
               <span className="text-[10px] font-mono font-black text-slate-400 uppercase tracking-widest">
                 Hasil: <span className="text-slate-800">{filteredCompanies.length}</span> Perusahaan
               </span>
             </div>
-
           </div>
         </Card>
 
-        {/* --- DENSE DATA TABLE --- */}
+        {/* --- DENSE COMPACT DATA TABLE --- */}
         <div className="bg-white rounded-none border border-slate-200 shadow-none overflow-hidden">
           <Table>
             <TableHeader className="bg-slate-50">
               <TableRow className="border-b border-slate-200 h-9">
-                <TableHead className="w-[120px] font-black text-slate-500 uppercase text-[9px] tracking-widest pl-4">No. Registrasi</TableHead>
-                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest">Perusahaan & Alamat</TableHead>
-                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest">Kontak PIC</TableHead>
-                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest">NIB & NPWP</TableHead>
-                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest">Masa Berlaku Izin</TableHead>
-                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest text-center">Status Izin</TableHead>
-                <TableHead className="text-right pr-4 font-black text-slate-500 uppercase text-[9px] tracking-widest w-[280px]">Aksi Pengawasan</TableHead>
+                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest pl-4 w-[280px]">Perusahaan & Alamat</TableHead>
+                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest w-[160px]">Kontak PIC</TableHead>
+                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest w-[150px]">Masa Berlaku Izin</TableHead>
+                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest text-center w-[120px]">Status Izin</TableHead>
+                <TableHead className="text-right pr-4 font-black text-slate-500 uppercase text-[9px] tracking-widest w-[140px]">Aksi Pengawasan</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredCompanies.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-16">
+                  <TableCell colSpan={5} className="text-center py-16">
                     <div className="flex flex-col items-center gap-2 text-slate-400">
                       <ShieldAlert size={24} className="opacity-40" />
                       <p className="font-black text-[10px] uppercase tracking-widest">Tidak ada data perusahaan ditemukan</p>
@@ -401,62 +387,49 @@ export default function CompanyManagement() {
                   return (
                     <TableRow key={c.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors h-14 group">
 
-                      {/* Registration ID */}
-                      <TableCell className="font-mono font-bold text-slate-500 pl-4 text-xs">
-                        {c.id.substring(0, 8)}...
-                      </TableCell>
-
-                      {/* Name & Address */}
-                      <TableCell>
+                      {/* Name & Address (Constrained, Wraps directly to new line) */}
+                      <TableCell className="pl-4 max-w-[280px] whitespace-normal break-words py-2.5">
                         <div className="flex flex-col text-left">
-                          <span className="font-bold text-slate-900 text-xs group-hover:text-emerald-700 transition-colors">{c.companyName}</span>
-                          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1 line-clamp-1">{c.address}</span>
+                          <span className="font-black text-slate-900 text-xs leading-tight group-hover:text-emerald-700 transition-colors">
+                            {c.companyName}
+                          </span>
+                          <span className="text-[9px] text-slate-450 font-bold uppercase tracking-wider mt-1.5 leading-snug">
+                            {c.address}
+                          </span>
                         </div>
                       </TableCell>
 
                       {/* PIC Contact */}
-                      <TableCell>
+                      <TableCell className="w-[160px] whitespace-normal">
                         <div className="flex flex-col text-left text-xs font-semibold text-slate-600">
-                          <span className="flex items-center gap-1"><User size={10} className="text-slate-400" /> {c.picName || "-"}</span>
-                          <a href={`tel:${c.picPhone}`} className="flex items-center gap-1 text-[10px] text-emerald-600 hover:underline mt-1 font-bold">
-                            <Phone size={10} /> {c.picPhone || "-"}
+                          <span className="flex items-center gap-1 leading-tight text-slate-700 font-bold">
+                            <User size={10} className="text-slate-400 shrink-0" /> {c.picName || "-"}
+                          </span>
+                          <a href={`tel:${c.picPhone}`} className="flex items-center gap-1 text-[10px] text-emerald-600 hover:underline mt-1 font-black tracking-tight leading-none shrink-0">
+                            <Phone size={10} className="shrink-0" /> {c.picPhone || "-"}
                           </a>
                         </div>
                       </TableCell>
 
-                      {/* NIB & NPWP */}
-                      <TableCell>
-                        <div className="flex flex-col text-left font-mono text-[10px] text-slate-500">
-                          <span className="font-bold">NIB: {c.nib}</span>
-                          <span className="mt-0.5">NPWP: {c.npwp || "-"}</span>
-                        </div>
-                      </TableCell>
-
-                      {/* Expiration date countdown */}
-                      <TableCell>
+                      {/* Expiration Date Countdown */}
+                      <TableCell className="w-[150px] whitespace-normal">
                         {isApproved && c.certificateActiveUntil ? (
                           <div className="flex flex-col text-left">
                             <span className="text-xs font-bold text-slate-800 flex items-center gap-1">
-                              <Calendar size={11} className="text-slate-400" /> {c.certificateActiveUntil}
+                              <Calendar size={11} className="text-slate-400 shrink-0" /> {c.certificateActiveUntil}
                             </span>
                             {daysRemaining !== null && (
                               <span className={cn(
                                 "text-[9px] font-black uppercase tracking-wider mt-1",
-                                daysRemaining < 0
-                                  ? "text-rose-600"
-                                  : daysRemaining <= 30
-                                    ? "text-amber-500"
-                                    : "text-emerald-600"
+                                daysRemaining < 0 ? "text-rose-600" : daysRemaining <= 30 ? "text-amber-500" : "text-emerald-600"
                               )}>
-                                {daysRemaining < 0
-                                  ? `Kadaluarsa ${Math.abs(daysRemaining)} hari`
-                                  : `Sisa ${daysRemaining} hari`}
+                                {daysRemaining < 0 ? `Kadaluarsa ${Math.abs(daysRemaining)} hari` : `Sisa ${daysRemaining} hari`}
                               </span>
                             )}
                           </div>
                         ) : isSuspended ? (
                           <span className="text-[10px] font-black text-rose-500 uppercase tracking-wider flex items-center gap-1">
-                            <Lock size={10} /> IZIN DITANGGUHKAN
+                            <Lock size={10} className="shrink-0" /> DITANGGUHKAN
                           </span>
                         ) : (
                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
@@ -466,65 +439,67 @@ export default function CompanyManagement() {
                       </TableCell>
 
                       {/* Status Badge */}
-                      <TableCell className="text-center">
+                      <TableCell className="text-center w-[120px]">
                         <StatusIndicator state={certState} docType={c.docType} />
                       </TableCell>
 
-                      {/* Tactical Actions */}
-                      <TableCell className="text-right pr-4">
+                      {/* Tactical Icon Actions (Compact Tooltip Style) */}
+                      <TableCell className="text-right pr-4 w-[140px]">
                         <div className="flex items-center justify-end gap-1.5">
 
-                          {/* Inspect Detail */}
+                          {/* Detail Button */}
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
-                            title="Detail Informasi"
-                            className="text-slate-600 font-bold hover:bg-slate-100 rounded-none h-8 w-8 p-0"
+                            title="Detail Informasi Perusahaan"
+                            className="text-slate-600 hover:text-emerald-600 hover:bg-slate-100 rounded-none h-8 w-8 p-0 border-slate-200"
                             onClick={() => handleOpenDetail(c)}
                           >
                             <Eye size={13} />
                           </Button>
 
-                          {/* Download Certificate */}
+                          {/* Download Certificate Button */}
                           <Button
                             variant="outline"
                             size="sm"
-                            title="Unduh Sertifikat Izin"
+                            title={!isApproved || (daysRemaining !== null && daysRemaining < 0) ? "Sertifikat Belum Terbit / Kadaluarsa" : "Unduh Sertifikat Izin"}
                             disabled={!isApproved || (daysRemaining !== null && daysRemaining < 0)}
-                            className="text-slate-700 hover:text-emerald-600 font-bold hover:bg-emerald-50/50 rounded-none h-8 text-[10px] tracking-widest gap-1 border-slate-300 disabled:opacity-40"
+                            className="text-slate-700 hover:text-emerald-600 hover:bg-emerald-50/50 rounded-none h-8 w-8 p-0 border-slate-200 disabled:opacity-40"
                             onClick={() => handleDownloadCertificate(c)}
                           >
-                            <Download size={11} /> UNDUH
+                            <Download size={13} />
                           </Button>
 
-                          {/* Suspend or Restore Actions */}
+                          {/* Suspend Action */}
                           {isApproved && (
                             <Button
                               variant="outline"
                               size="sm"
-                              title="Tangguhkan Izin Usaha"
-                              className="text-rose-600 hover:text-white hover:bg-rose-600 font-black rounded-none h-8 text-[10px] tracking-widest border-rose-200"
+                              title="Tangguhkan Izin Usaha (Suspend)"
+                              className="text-rose-600 hover:text-white hover:bg-rose-600 rounded-none h-8 w-8 p-0 border-rose-200"
                               onClick={() => handleTriggerAction(c, "SUSPENDED")}
                             >
-                              <Lock size={11} className="mr-1" /> SUSPEND
+                              <Lock size={13} />
                             </Button>
                           )}
 
+                          {/* Activate Action */}
                           {isSuspended && (
                             <Button
                               variant="outline"
                               size="sm"
-                              title="Pulihkan Izin Usaha"
-                              className="text-emerald-600 hover:text-white hover:bg-emerald-600 font-black rounded-none h-8 text-[10px] tracking-widest border-emerald-200"
+                              title="Pulihkan / Aktifkan Kembali Izin Usaha"
+                              className="text-emerald-600 hover:text-white hover:bg-emerald-600 rounded-none h-8 w-8 p-0 border-emerald-200"
                               onClick={() => handleTriggerAction(c, "APPROVED")}
                             >
-                              <Unlock size={11} className="mr-1" /> AKTIFKAN
+                              <Unlock size={13} />
                             </Button>
                           )}
 
+                          {/* Pending Review Placeholder */}
                           {!isApproved && !isSuspended && (
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-2.5 py-1">
-                              Menunggu Verifikasi
+                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none" title="Menunggu verifikasi administrasi / lapangan">
+                              PENDING
                             </span>
                           )}
 
@@ -590,9 +565,7 @@ export default function CompanyManagement() {
               onClick={handleConfirmAction}
               className={cn(
                 "rounded-none font-black text-xs h-9 uppercase tracking-wider",
-                actionTarget?.nextStatus === "SUSPENDED"
-                  ? "bg-rose-600 hover:bg-rose-700 text-white"
-                  : "bg-emerald-600 hover:bg-emerald-700 text-white"
+                actionTarget?.nextStatus === "SUSPENDED" ? "bg-rose-600 hover:bg-rose-700 text-white" : "bg-emerald-600 hover:bg-emerald-700 text-white"
               )}
             >
               YA, KONFIRMASI
@@ -779,7 +752,6 @@ export default function CompanyManagement() {
 
 function StatusIndicator({ state, docType }: { state: StatusFilter; docType: string }) {
   const normalizedDoc = docType === "UKL_UPL" ? "UKL-UPL" : docType;
-
   const isAmdal = normalizedDoc === "AMDAL";
 
   const configs: Record<StatusFilter, { label: string; style: string }> = {
