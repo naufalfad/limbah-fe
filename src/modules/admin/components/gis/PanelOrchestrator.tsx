@@ -22,6 +22,7 @@ import ActiveFleetPanel from "@/modules/transport/components/gis/panels/ActiveFl
 
 // [NEW MODULE] Mengimpor laci asisten AI Forensik untuk Pimpinan/Admin
 import ExecutiveCopilotPanel from "@/modules/dashboard/components/auditor/ExecutiveCopilotPanel";
+import AboutPanel from "./panels/AboutPanel";
 
 // =========================================================================
 // MAPPER BAHASA INDONESIA: Menerjemahkan Tipe Panel Teknis ke Label Kategori
@@ -117,124 +118,124 @@ export default function PanelOrchestrator() {
     return (
         <div className="absolute top-16 md:bottom-0 bottom-16 left-0 md:left-16 right-0 md:right-auto z-[100] md:z-30 pointer-events-none md:pointer-events-auto flex items-start">
             <AnimatePresence>
-            {activePanels.map((panel, index) => {
-                // 1. EVALUASI TIPOLOGI PANEL SECARA DINAMIS
-                const isFloating =
-                    panel.type === "detil-perusahaan" ||
-                    panel.type === "detail-tugas" ||
-                    panel.type === "telemetri-lingkungan";
+                {activePanels.map((panel, index) => {
+                    // 1. EVALUASI TIPOLOGI PANEL SECARA DINAMIS
+                    const isFloating =
+                        panel.type === "detil-perusahaan" ||
+                        panel.type === "detail-tugas" ||
+                        panel.type === "telemetri-lingkungan";
 
-                const currentWidth = getPanelWidth(panel.type);
+                    const currentWidth = getPanelWidth(panel.type);
 
-                // 2. DYNAMIC OFFSET CALCULATION (Menghitung sumbu X tanpa hardcoded multiplier) [3]
+                    // 2. DYNAMIC OFFSET CALCULATION (Menghitung sumbu X tanpa hardcoded multiplier) [3]
 
-                // Kalkulasi offset X untuk panel docked sebelah kiri (Flush)
-                let dockedOffset = 0;
-                for (let i = 0; i < index; i++) {
-                    const p = activePanels[i];
-                    const pIsFloating = p.type === "detil-perusahaan" || p.type === "detail-tugas" || p.type === "telemetri-lingkungan";
-                    if (!pIsFloating) {
-                        dockedOffset += getPanelWidth(p.type);
-                    }
-                }
-
-                // Kalkulasi posisi kiri (left) untuk panel melayang (Floating)
-                let floatingLeft = 16;
-                if (!isMobile) {
-                    // A. Jumlahkan total lebar laci docked di kiri layar [3]
-                    let totalDockedWidth = 0;
-                    activePanels.forEach(p => {
-                        const pIsFloating = p.type === "detil-perusahaan" || p.type === "detail-tugas" || p.type === "telemetri-lingkungan";
-                        if (!pIsFloating) {
-                            totalDockedWidth += getPanelWidth(p.type);
-                        }
-                    });
-
-                    // B. Jumlahkan total lebar laci floating sebelum index saat ini [3]
-                    let totalFloatingBefore = 0;
+                    // Kalkulasi offset X untuk panel docked sebelah kiri (Flush)
+                    let dockedOffset = 0;
                     for (let i = 0; i < index; i++) {
                         const p = activePanels[i];
                         const pIsFloating = p.type === "detil-perusahaan" || p.type === "detail-tugas" || p.type === "telemetri-lingkungan";
-                        if (pIsFloating) {
-                            totalFloatingBefore += getPanelWidth(p.type) + 16; // 16px gap antar laci
+                        if (!pIsFloating) {
+                            dockedOffset += getPanelWidth(p.type);
                         }
                     }
 
-                    floatingLeft = totalDockedWidth + totalFloatingBefore + 16;
-                }
+                    // Kalkulasi posisi kiri (left) untuk panel melayang (Floating)
+                    let floatingLeft = 16;
+                    if (!isMobile) {
+                        // A. Jumlahkan total lebar laci docked di kiri layar [3]
+                        let totalDockedWidth = 0;
+                        activePanels.forEach(p => {
+                            const pIsFloating = p.type === "detil-perusahaan" || p.type === "detail-tugas" || p.type === "telemetri-lingkungan";
+                            if (!pIsFloating) {
+                                totalDockedWidth += getPanelWidth(p.type);
+                            }
+                        });
 
-                return (
-                    <motion.div
-                        key={panel.id}
-                        initial={isMobile ? { y: '100%' } : { opacity: 0, x: -20 }}
-                        animate={isMobile ? { y: 0 } : { opacity: 1, x: 0 }}
-                        exit={isMobile ? { y: '100%' } : { opacity: 0, x: -20 }}
-                        transition={{ duration: 0.3, ease: "easeOut" }}
-                        className={`absolute pointer-events-auto bg-white overflow-hidden flex flex-col ${isFloating
-                            ? 'md:shadow-2xl md:border border-slate-200 md:rounded-none'
-                            : 'md:border-r border-slate-200 shadow-[0_-8px_30px_rgba(0,0,0,0.12)] md:shadow-none rounded-t-3xl md:rounded-none'
-                            }`}
-                        style={
-                            isFloating
-                                ? {
-                                    left: isMobile ? 0 : `${floatingLeft}px`,
-                                    top: isMobile ? '10vh' : '16px',
-                                    bottom: isMobile ? 0 : '16px',
-                                    width: isMobile ? '100%' : `${currentWidth}px`, // Menggunakan lebar dinamis [3]
-                                    maxWidth: isMobile ? '100%' : 'calc(100vw - 80px)',
-                                    zIndex: isMobile ? 100 + index : 50,
-                                }
-                                : {
-                                    left: 0,
-                                    top: isMobile ? '25vh' : 0,
-                                    bottom: 0,
-                                    width: isMobile ? '100%' : `${currentWidth}px`, // Menggunakan lebar dinamis [3]
-                                    transform: isMobile ? 'none' : `translateX(${dockedOffset}px)`, // Menggunakan offset dinamis [3]
-                                    zIndex: isMobile ? 100 + index : 40 - index,
-                                }
+                        // B. Jumlahkan total lebar laci floating sebelum index saat ini [3]
+                        let totalFloatingBefore = 0;
+                        for (let i = 0; i < index; i++) {
+                            const p = activePanels[i];
+                            const pIsFloating = p.type === "detil-perusahaan" || p.type === "detail-tugas" || p.type === "telemetri-lingkungan";
+                            if (pIsFloating) {
+                                totalFloatingBefore += getPanelWidth(p.type) + 16; // 16px gap antar laci
+                            }
                         }
-                    >
-                        {/* DRAG HANDLE FOR MOBILE (Google Maps Style) */}
-                        {isMobile && (
-                            <div className="w-full flex justify-center py-2 bg-white shrink-0 cursor-pointer active:bg-slate-50 transition-colors group" onClick={() => closePanel(panel.id)}>
-                                <div className="w-12 h-1.5 bg-slate-200 group-hover:bg-slate-300 transition-colors rounded-full"></div>
-                            </div>
-                        )}
 
-                        {/* HEADER PANEL (Penyelarasan Hirarki Visual, Tanpa Bold/Capslock) */}
-                        <div className="px-4 py-3 border-b border-slate-200 flex justify-between items-center bg-slate-50 shrink-0 select-none text-left">
-                            <div className="flex flex-col">
-                                {/* Kategori Atas: Diperbesar ke text-sm, warna emerald, tidak tebal, tidak capslock */}
-                                <span className="text-sm font-normal text-emerald-600 leading-none">
-                                    {getPanelCategoryLabel(panel.type)}
-                                </span>
-                                {/* Judul/Nama Entitas Bawah: Hanya dirender jika string dinamis tidak kosong */}
-                                {getPanelDynamicTitle(panel) && (
-                                    <h3 className="text-xs font-normal text-slate-505 truncate max-w-[280px] tracking-tight mt-1.5 leading-none">
-                                        {getPanelDynamicTitle(panel)}
-                                    </h3>
-                                )}
-                            </div>
+                        floatingLeft = totalDockedWidth + totalFloatingBefore + 16;
+                    }
 
-                            <button
-                                onClick={() => closePanel(panel.id)}
-                                className="p-1 rounded-none bg-transparent hover:bg-slate-200 text-slate-400 hover:text-rose-500 transition-colors active:scale-95 outline-none"
-                                title="Tutup Panel"
-                            >
-                                <X size={16} strokeWidth={2.5} />
-                            </button>
-                        </div>
-
-                        {/* BODY PANEL */}
-                        <div
-                            className="flex-1 overflow-y-auto custom-scrollbar"
-                            onClick={() => !isFloating && closePanelsToTheRight(index)}
+                    return (
+                        <motion.div
+                            key={panel.id}
+                            initial={isMobile ? { y: '100%' } : { opacity: 0, x: -20 }}
+                            animate={isMobile ? { y: 0 } : { opacity: 1, x: 0 }}
+                            exit={isMobile ? { y: '100%' } : { opacity: 0, x: -20 }}
+                            transition={{ duration: 0.3, ease: "easeOut" }}
+                            className={`absolute pointer-events-auto bg-white overflow-hidden flex flex-col ${isFloating
+                                ? 'md:shadow-2xl md:border border-slate-200 md:rounded-none'
+                                : 'md:border-r border-slate-200 shadow-[0_-8px_30px_rgba(0,0,0,0.12)] md:shadow-none rounded-t-3xl md:rounded-none'
+                                }`}
+                            style={
+                                isFloating
+                                    ? {
+                                        left: isMobile ? 0 : `${floatingLeft}px`,
+                                        top: isMobile ? '10vh' : '16px',
+                                        bottom: isMobile ? 0 : '16px',
+                                        width: isMobile ? '100%' : `${currentWidth}px`, // Menggunakan lebar dinamis [3]
+                                        maxWidth: isMobile ? '100%' : 'calc(100vw - 80px)',
+                                        zIndex: isMobile ? 100 + index : 50,
+                                    }
+                                    : {
+                                        left: 0,
+                                        top: isMobile ? '25vh' : 0,
+                                        bottom: 0,
+                                        width: isMobile ? '100%' : `${currentWidth}px`, // Menggunakan lebar dinamis [3]
+                                        transform: isMobile ? 'none' : `translateX(${dockedOffset}px)`, // Menggunakan offset dinamis [3]
+                                        zIndex: isMobile ? 100 + index : 40 - index,
+                                    }
+                            }
                         >
-                            {renderPanelContent(panel.type, panel.data)}
-                        </div>
-                    </motion.div>
-                );
-            })}
+                            {/* DRAG HANDLE FOR MOBILE (Google Maps Style) */}
+                            {isMobile && (
+                                <div className="w-full flex justify-center py-2 bg-white shrink-0 cursor-pointer active:bg-slate-50 transition-colors group" onClick={() => closePanel(panel.id)}>
+                                    <div className="w-12 h-1.5 bg-slate-200 group-hover:bg-slate-300 transition-colors rounded-full"></div>
+                                </div>
+                            )}
+
+                            {/* HEADER PANEL (Penyelarasan Hirarki Visual, Tanpa Bold/Capslock) */}
+                            <div className="px-4 py-3 border-b border-slate-200 flex justify-between items-center bg-slate-50 shrink-0 select-none text-left">
+                                <div className="flex flex-col">
+                                    {/* Kategori Atas: Diperbesar ke text-sm, warna emerald, tidak tebal, tidak capslock */}
+                                    <span className="text-sm font-normal text-emerald-600 leading-none">
+                                        {getPanelCategoryLabel(panel.type)}
+                                    </span>
+                                    {/* Judul/Nama Entitas Bawah: Hanya dirender jika string dinamis tidak kosong */}
+                                    {getPanelDynamicTitle(panel) && (
+                                        <h3 className="text-xs font-normal text-slate-505 truncate max-w-[280px] tracking-tight mt-1.5 leading-none">
+                                            {getPanelDynamicTitle(panel)}
+                                        </h3>
+                                    )}
+                                </div>
+
+                                <button
+                                    onClick={() => closePanel(panel.id)}
+                                    className="p-1 rounded-none bg-transparent hover:bg-slate-200 text-slate-400 hover:text-rose-500 transition-colors active:scale-95 outline-none"
+                                    title="Tutup Panel"
+                                >
+                                    <X size={16} strokeWidth={2.5} />
+                                </button>
+                            </div>
+
+                            {/* BODY PANEL */}
+                            <div
+                                className="flex-1 overflow-y-auto custom-scrollbar"
+                                onClick={() => !isFloating && closePanelsToTheRight(index)}
+                            >
+                                {renderPanelContent(panel.type, panel.data)}
+                            </div>
+                        </motion.div>
+                    );
+                })}
             </AnimatePresence>
         </div>
     );
@@ -270,15 +271,7 @@ function renderPanelContent(type: GisPanelType, data: any) {
         case "ai-copilot": // <-- REGISTRASI RENDERER AI FORENSIK
             return <ExecutiveCopilotPanel />;
         case "tentang":
-            return (
-                <div className="p-6 text-center space-y-3 text-slate-500 font-sans">
-                    <MapIcon size={32} className="mx-auto text-emerald-600/40 animate-pulse" />
-                    <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-600 leading-none">GEO LIMBAH GIS</p>
-                        <p className="text-[11px] mt-2 font-medium leading-relaxed text-justify">Sistem Pemetaan Geospasial Kepatuhan Lingkungan v1.0</p>
-                    </div>
-                </div>
-            );
+            return <AboutPanel />;
         default:
             return <div className="p-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-left">Modul sedang dikonstruksi...</div>;
     }

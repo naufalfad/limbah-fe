@@ -101,7 +101,7 @@ export default function MapHUD() {
     const hasLegends = legendItems.length > 0;
 
     return (
-        <div className="absolute bottom-20 md:bottom-8 right-4 md:right-8 z-40 pointer-events-auto flex flex-row md:flex-col items-end gap-2 md:gap-4 select-none">
+        <div className="absolute bottom-20 md:bottom-8 right-4 md:right-8 z-40 pointer-events-auto flex flex-col md:flex-row items-end gap-2 md:gap-4 select-none">
             {hasLegends && (
                 <div className="flex flex-col items-end gap-2">
                     {isLegendExpanded ? (
