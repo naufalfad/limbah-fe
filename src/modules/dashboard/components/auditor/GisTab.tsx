@@ -19,14 +19,14 @@ let DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// PUSAT PETA DIKUNCI DI KOTA SAMPIT (KOTAWARINGIN TIMUR)
+// PUSAT PETA DIKUNCI DI KOTA SAMPIT (KABUPATEN KOTAWARINGIN TIMUR) [3]
 const DEFAULT_CENTER: [number, number] = [-2.5337, 112.9515];
 
 export default function GisTab() {
     // MODIFIKASI ARSITEKTURAL: Menghapus fetchAdminReports & adminReports demi isolasi data [3]
     const { companies } = useSijagaStore();
 
-    // Menghitung statistik kepatuhan industri aktif (APPROVED)
+    // Menghitung statistik kepatuhan industri aktif (APPROVED) di wilayah Kotim
     const stats = useMemo(() => {
         const approved = companies.filter(c => c.status === "APPROVED");
         const sangatPatuh = approved.filter(c => c.score !== undefined && c.score !== null && c.score >= 80).length;

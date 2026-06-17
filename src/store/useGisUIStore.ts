@@ -13,22 +13,22 @@ interface GisUIState {
     // ==========================================
     activeLayers: string[];           // Menyimpan ID layer yang aktif merender
     mapOpacity: number;               // 0 - 100 (Transparansi Poligon & Heatmap AQI)
-    maskOpacity: number;              // 0 - 100 (Transparansi Inverted Polygon Masking area luar Bogor)
+    maskOpacity: number;              // 0 - 100 (Transparansi Inverted Polygon Masking area luar Kotim)
     activeBaseMap: string;            // 'dark', 'satellite', 'street', 'esri', 'osm'
     selectedCompanyId: string | null; // ID perusahaan yang sedang di-klik/difokuskan
 
-    // [NEW STATE] Melacak ID stasiun pemantauan air sungai yang sedang aktif dipilih
+    // Melacak ID stasiun pemantauan air sungai yang sedang aktif dipilih
     selectedWaterStationId: string | null;
 
     // FASE 4 INJEKSI: Koordinat & Zoom Global Berbasis Sumber Kebenaran Tunggal
-    mapCenter: [number, number]; // Koordinat pusat peta saat ini
+    mapCenter: [number, number]; // Koordinat pusat peta saat ini (Sampit, Kotim)
     mapZoom: number;             // Skala zoom peta saat ini (Sumber data untuk Scale-Guard AI) [3]
 
-    // FASE 3 INJEKSI: State untuk Advanced Spatial Analytics (Kabupaten Bogor)
+    // FASE 3 INJEKSI: State untuk Advanced Spatial Analytics (Kabupaten Kotawaringin Timur)
     activeAdminBoundary: 'none' | 'kecamatan' | 'desa';
     showImpactRadius: boolean;
 
-    // [NEW STATE] Cache spasial sementara di sisi klien untuk menghemat memori
+    // Cache spasial sementara di sisi klien untuk menghemat memori
     aqiCache: Record<string, any>; // Key format: "roundedLat_roundedLng" -> Value: AqiData
 
     // ==========================================
@@ -48,7 +48,7 @@ interface GisUIState {
     setActiveBaseMap: (baseMapId: string) => void;
     setSelectedCompanyId: (id: string | null) => void;
 
-    // [NEW ACTION] Mengubah stasiun air terpilih
+    // Mengubah stasiun air terpilih
     setSelectedWaterStationId: (id: string | null) => void;
 
     // Aksi Pengubah Koordinat & Zoom Peta secara Global
@@ -69,19 +69,19 @@ export const useGisUIStore = create<GisUIState>((set) => ({
     // Inisialisasi State Default
     activePanels: [],
 
-    // FASE 1 DECOPULING: Memulai aplikasi dengan mode 'AMDAL' sebagai state tunggal aktif [3]
+    // FASE 1 DECOUPLING: Memulai aplikasi dengan mode 'AMDAL' sebagai state tunggal aktif [3]
     activeLayers: ['layer-amdal'],
     mapOpacity: 80,
-    maskOpacity: 60, // Default 60% redup untuk area di luar Kabupaten Bogor
+    maskOpacity: 60, // Default 60% redup untuk area di luar Kabupaten Kotawaringin Timur
     activeBaseMap: 'dark', // Default ke 'dark'
     selectedCompanyId: null,
 
     // Inisialisasi awal ID stasiun air kosong
     selectedWaterStationId: null,
 
-    // Fokus otomatis dikunci ke wilayah Cibinong, Kabupaten Bogor
-    mapCenter: [-6.4816, 106.8560],
-    mapZoom: 11, // Zoom awal default disesuaikan untuk wilayah Bogor
+    // SINKRONISASI BOGOR KE KOTIM: Fokus otomatis dikunci ke wilayah Sampit, Kotawaringin Timur [3]
+    mapCenter: [-2.5337, 112.9515],
+    mapZoom: 10, // Tingkat zoom default 10 agar pas menyajikan bentang alam hilir Sungai Mentaya
 
     // Inisialisasi State Spasial Lanjutan
     activeAdminBoundary: 'none',
@@ -218,11 +218,9 @@ export const useGisUIStore = create<GisUIState>((set) => ({
                 const waterGroup = ['layer-river', 'layer-water-stations']; // Kelompok Air/Sungai [3]
 
                 if (singleExclusiveLayers.includes(layerId)) {
-                    // Jika menyalakan kelompok Single Mode (AMDAL, UKL-UPL, SPPL, atau AQI):
                     // Sifat: Mutually Exclusive Mutlak. Reset array dan jadikan ia satu-satunya yang aktif.
                     nextLayers = [layerId];
                 } else if (waterGroup.includes(layerId)) {
-                    // Jika menyalakan bagian dari Kelompok Air/Sungai:
                     // Sifat: Matikan semua kelompok Single Mode, namun izinkan sesama elemen kelompok air bersanding
                     nextLayers = nextLayers.filter(id => !singleExclusiveLayers.includes(id));
                     nextLayers.push(layerId);
@@ -269,8 +267,8 @@ export const useGisUIStore = create<GisUIState>((set) => ({
             mapOpacity: 80,
             maskOpacity: 60,
             activeBaseMap: 'dark',
-            mapCenter: [-6.4816, 106.8560], // Reset kembali ke pusat Bogor (Cibinong)
-            mapZoom: 11, // Reset kembali ke skala default Bogor [3]
+            mapCenter: [-2.5337, 112.9515], // Reset kembali ke pusat Sampit, Kotim
+            mapZoom: 10, // Reset kembali ke skala default Kotim [3]
             aqiCache: {},
         }),
 }));

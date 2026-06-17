@@ -4,19 +4,19 @@ import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { spatialMath, WindNode } from '@/lib/spatialMath';
 
-// Impor GeoJSON Wilayah Kabupaten Bogor untuk pembuatan Path Clipping (Information Expert)
-import kecData from '@/assets/geojson/bogor-kecamatan.json';
+// Impor GeoJSON Wilayah Kabupaten Kotawaringin Timur untuk pembuatan Path Clipping (Information Expert) [3]
+import kecData from '@/assets/geojson/kotim-kecamatan.json';
 
 interface WindFlowLayerProps {
     companies: any[];
 }
 
-// Bounding Box Kabupaten Bogor (Disamakan persis dengan AqiSurfaceLayer)
-const BOGOR_BOUNDS = {
-    latMin: -6.80,  // Batas Selatan (Area Megamendung / Cisarua)
-    latMax: -6.25,  // Batas Utara (Area Gunung Putri / Cileungsi)
-    lngMin: 106.35, // Batas Barat (Area Jasinga)
-    lngMax: 107.25  // Batas Timur (Area Jonggol)
+// Bounding Box Kabupaten Kotawaringin Timur (Disamakan persis dengan AqiSurfaceLayer) [3]
+const KWT_BOUNDS = {
+    latMin: -3.35,  // Batas Selatan (Muara Mentaya Hilir Selatan / Laut Jawa)
+    latMax: -1.15,  // Batas Utara (Kawasan Bukit Santuai)
+    lngMin: 111.90, // Batas Barat (Perbatasan Seruyan)
+    lngMax: 113.35  // Batas Timur (Perbatasan Katingan)
 };
 
 // ============================================================================
@@ -33,14 +33,14 @@ const FADE_RATE = 0.04;          // Kecepatan Pudar Ekor Komet (Semakin kecil = 
  * WIND FLOW LAYER (CUSTOM CANVAS PARTICLE ENGINE - CLIPPED)
  * ============================================================================
  * Menciptakan ilusi Fluid Dynamics (seperti IQAir) menggunakan HTML5 Canvas.
- * Seluruh pergerakan partikel angin dikunci rapi di dalam poligon Kabupaten Bogor.
+ * Seluruh pergerakan partikel angin dikunci rapi di dalam poligon Kabupaten Kotawaringin Timur.
  */
 export default function WindFlowLayer({ companies }: WindFlowLayerProps) {
     const map = useMap();
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const animationRef = useRef<number | null>(null);
 
-    // Cache Memori untuk menahan bentuk koordinat piksel Kabupaten Bogor (Mencegah Lag 60FPS)
+    // Cache Memori untuk menahan bentuk koordinat piksel Kabupaten Kotim (Mencegah Lag 60FPS)
     const clipPathRef = useRef<Path2D | null>(null);
 
     // 1. Ekstrak Data Sensor Angin
@@ -62,7 +62,7 @@ export default function WindFlowLayer({ companies }: WindFlowLayerProps) {
     // 2. PRE-COMPUTE VECTOR FIELD (O(1) Lookup untuk Animasi)
     const vectorField = useMemo(() => {
         if (windSensors.length === 0) return [];
-        const grid = spatialMath.generateCanvasGrid(BOGOR_BOUNDS, RESOLUTION, RESOLUTION);
+        const grid = spatialMath.generateCanvasGrid(KWT_BOUNDS, RESOLUTION, RESOLUTION);
 
         return grid.map(pt => {
             const wind = spatialMath.interpolateWind(pt.lat, pt.lng, windSensors);
@@ -109,7 +109,7 @@ export default function WindFlowLayer({ companies }: WindFlowLayerProps) {
             L.DomUtil.setPosition(canvas, topLeft);
 
             // ====================================================================
-            // OPTIMASI KRITIS: GENERATE BOGOR PATH2D SAAT ZOOM / PAN (BUKAN DI RENDERING LOOP)
+            // OPTIMASI KRITIS: GENERATE KOTIM PATH2D SAAT ZOOM / PAN (BUKAN DI RENDERING LOOP)
             // ====================================================================
             const path = new Path2D();
             const kecGeoJson = kecData as any;
@@ -196,7 +196,7 @@ export default function WindFlowLayer({ companies }: WindFlowLayerProps) {
             // CLIPPING MASK EXECUTION (Akselerasi GPU Browser Tanpa Hambatan)
             // ====================================================================
             if (clipPathRef.current) {
-                ctx.clip(clipPathRef.current); // Kunci rendering hanya di dalam poligon Bogor
+                ctx.clip(clipPathRef.current); // Kunci rendering hanya di dalam poligon Kotim [3]
             }
 
             // Fading Tails menggunakan nilai FADE_RATE yang lebih rendah untuk jejak komet yang mulus
@@ -220,8 +220,8 @@ export default function WindFlowLayer({ companies }: WindFlowLayerProps) {
 
                 const pLatLng = map.containerPointToLatLng([p.x, p.y]);
 
-                const gridX = Math.floor(((pLatLng.lng - BOGOR_BOUNDS.lngMin) / (BOGOR_BOUNDS.lngMax - BOGOR_BOUNDS.lngMin)) * RESOLUTION);
-                const gridY = Math.floor(((BOGOR_BOUNDS.latMax - pLatLng.lat) / (BOGOR_BOUNDS.latMax - BOGOR_BOUNDS.latMin)) * RESOLUTION);
+                const gridX = Math.floor(((pLatLng.lng - KWT_BOUNDS.lngMin) / (KWT_BOUNDS.lngMax - KWT_BOUNDS.lngMin)) * RESOLUTION);
+                const gridY = Math.floor(((KWT_BOUNDS.latMax - pLatLng.lat) / (KWT_BOUNDS.latMax - KWT_BOUNDS.latMin)) * RESOLUTION);
 
                 if (gridX < 0 || gridX >= RESOLUTION || gridY < 0 || gridY >= RESOLUTION) {
                     p.age = PARTICLE_LIFESPAN + 1;
@@ -236,7 +236,6 @@ export default function WindFlowLayer({ companies }: WindFlowLayerProps) {
                 ctx.moveTo(p.x, p.y);
 
                 // Bergerak secara dinamis mengikuti arah (u,v) dengan kecepatan unik dari area tersebut
-                // Noise dikurangi agar tidak terlalu bergetar saat kecepatan pelan
                 p.x += vector.u + (Math.random() - 0.5) * 0.2;
                 p.y += vector.v + (Math.random() - 0.5) * 0.2;
                 p.age++;
@@ -246,7 +245,7 @@ export default function WindFlowLayer({ companies }: WindFlowLayerProps) {
 
             ctx.stroke();
 
-            ctx.restore(); // 2. Kembalikan state grafis semula untuk iterasi render berikutnya
+            ctx.restore(); // 2. Kembalikan state grafis semula untuk urutan render berikutnya
 
             // Loop ke frame berikutnya
             animationRef.current = requestAnimationFrame(render);

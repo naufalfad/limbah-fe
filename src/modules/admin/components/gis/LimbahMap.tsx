@@ -17,10 +17,10 @@ import 'leaflet/dist/leaflet.css';
 import { useSijagaStore } from '@/store/useSijagaStore';
 import { useGisUIStore } from '@/store/useGisUIStore';
 
-// Modul Analitik & GeoJSON Wilayah (Penyelarasan ke Kabupaten Bogor)
+// Modul Analitik & GeoJSON Wilayah (Penyelarasan ke Kabupaten Kotawaringin Timur) [3]
 import { calculateCompaniesPerKecamatan } from '@/lib/spatialAnalytics';
-import kecData from '@/assets/geojson/bogor-kecamatan.json';
-import desaData from '@/assets/geojson/bogor-desa.json';
+import kecData from '@/assets/geojson/kotim-kecamatan.json';
+import desaData from '@/assets/geojson/kotim-desa.json';
 
 // Engine Matematika Spasial (Gradient Color)
 import { spatialMath } from '@/lib/spatialMath';
@@ -49,8 +49,8 @@ let DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// PUSAT PETA DIKUNCI DI CIBINONG (KABUPATEN BOGOR)
-const DEFAULT_CENTER: [number, number] = [-6.4816, 106.8560];
+// PUSAT PETA DIKUNCI DI SAMPIT (KABUPATEN KOTAWARINGIN TIMUR) [3]
+const DEFAULT_CENTER: [number, number] = [-2.5337, 112.9515];
 
 // ============================================================================
 // HELPERS & ICONS GENERATORS
@@ -156,7 +156,7 @@ function ExternalMapController() {
     useEffect(() => {
         const handleZoomIn = () => map.zoomIn();
         const handleZoomOut = () => map.zoomOut();
-        const handleResetView = () => map.setView(DEFAULT_CENTER, 11, { animate: true });
+        const handleResetView = () => map.setView(DEFAULT_CENTER, 10, { animate: true }); // Reset ke zoom level default KWT
 
         const handleFlyToCoords = (e: Event) => {
             const customEvent = e as CustomEvent<{ lat: number; lng: number }>;
@@ -180,25 +180,25 @@ function ExternalMapController() {
 }
 
 /**
- * MapZoomListener (Modified)
+ * MapZoomListener
  * Menangkap event zoomend Leaflet dan men-sinkronkannya langsung ke Zustand Store [3]
  */
 function MapZoomListener({ onChange }: { onChange: (zoom: number) => void }) {
     const map = useMap();
-    const { setMapZoom } = useGisUIStore(); // INJEKSI: Mengambil fungsi setMapZoom global
+    const { setMapZoom } = useGisUIStore();
 
     useMapEvents({
         zoomend: () => {
             const zoomLevel = map.getZoom();
             onChange(zoomLevel);
-            setMapZoom(zoomLevel); // Sinkronisasi reaktif setiap kali user melakukan zoom-in/out [3]
+            setMapZoom(zoomLevel);
         }
     });
 
     useEffect(() => {
         const initialZoom = map.getZoom();
         onChange(initialZoom);
-        setMapZoom(initialZoom); // Sinkronisasi saat inisialisasi awal render peta [3]
+        setMapZoom(initialZoom);
     }, [map, onChange, setMapZoom]);
 
     return null;
@@ -214,7 +214,7 @@ function MapEventsHandler() {
         },
         moveend: (e) => {
             const center = e.target.getCenter();
-            setMapCenter([center.lat, center.lng]); // Sinkronisasi koordinat global untuk AI [3]
+            setMapCenter([center.lat, center.lng]);
         }
     });
     return null;
@@ -240,12 +240,12 @@ export default function LimbahMap() {
         activeAdminBoundary, showImpactRadius, activePanels
     } = useGisUIStore();
 
-    const [currentZoom, setCurrentZoom] = useState(11); // Zoom default diubah menjadi 11
+    const [currentZoom, setCurrentZoom] = useState(10); // Default zoom level Kotim disetel ke 10
 
     // SINKRONISASI BATCH DATA AQI & DATA STASIUN AIR SAAT AWAL LOAD PETA (Information Expert)
     useEffect(() => {
         fetchBatchAqiData();
-        fetchWaterStations(); // Ambil data stasiun kualitas air sungai
+        fetchWaterStations();
     }, [fetchBatchAqiData, fetchWaterStations]);
 
     const isOfficer = currentUser?.role === "PETUGAS_LAPANGAN";
@@ -263,12 +263,11 @@ export default function LimbahMap() {
         }
     };
 
-    const invertedBogorMask = useMemo(() => {
+    const invertedKotimMask = useMemo(() => {
         const kecGeoJson = kecData as any;
         if (!kecGeoJson || !kecGeoJson.features) return null;
 
-        // FASE 4: Pembetulan Geometris Winding Order Masking [3]
-        // Poligon luar dunia disusun searah jarum jam (Clockwise) untuk memicu Leaflet Subtract
+        // FASE 4: Pembetulan Geometris Winding Order Masking (Kotim) [3]
         const worldOuterBounds: [number, number][] = [
             [-90, -180],
             [90, -180],
@@ -403,7 +402,7 @@ export default function LimbahMap() {
 
             <MapContainer
                 center={DEFAULT_CENTER}
-                zoom={11}
+                zoom={10}
                 zoomControl={false}
                 style={{ height: '100%', width: '100%' }}
                 maxZoom={18}
@@ -414,13 +413,13 @@ export default function LimbahMap() {
 
                 <TileLayer url={getTileUrl()} />
 
-                {invertedBogorMask && (
+                {invertedKotimMask && (
                     <Polygon
-                        positions={invertedBogorMask}
+                        positions={invertedKotimMask}
                         pathOptions={{
                             color: "#0f172a",
                             fillColor: "#0f172a",
-                            fillOpacity: maskOpacity / 100, // Kontrol opacity meredupkan luar perbatasan secara dinamis [3]
+                            fillOpacity: maskOpacity / 100,
                             weight: 1,
                             opacity: 0.2,
                             interactive: false
@@ -473,7 +472,6 @@ export default function LimbahMap() {
                         {companies
                             .filter(c => {
                                 // PENGAMAN GEOMETRIS (GRASP): Saring ketat koordinat kosong/NaN [3]
-                                // Menghilangkan bug loop anak bernilai null penyebab crash layar putih
                                 const lat = parseFloat(c.lat);
                                 const lng = parseFloat(c.lng);
                                 return !isNaN(lat) && !isNaN(lng);
@@ -483,7 +481,7 @@ export default function LimbahMap() {
                                 const lng = parseFloat(c.lng);
 
                                 const aqi = getRealClusterAqi(lat, lng, batchAqiData);
-                                const safeAqi = isNaN(aqi) ? 35 : aqi; // Safeguard dari kegagalan matematika [3]
+                                const safeAqi = isNaN(aqi) ? 35 : aqi;
                                 const [r, g, b] = spatialMath.interpolateColorRgb(safeAqi);
                                 const bgColorRgb = `rgb(${r}, ${g}, ${b})`;
 

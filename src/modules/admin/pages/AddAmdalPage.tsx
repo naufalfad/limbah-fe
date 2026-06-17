@@ -49,9 +49,9 @@ function MapPicker({ lat, lng, onChange }: { lat: string; lng: string; onChange:
     },
   });
 
-  // Fallback diubah ke titik pusat Cibinong, Kabupaten Bogor
-  const parsedLat = parseFloat(lat) || -6.4816;
-  const parsedLng = parseFloat(lng) || 106.8560;
+  // Fallback dialihkan ke titik pusat kota Sampit, Kabupaten Kotawaringin Timur [3]
+  const parsedLat = parseFloat(lat) || -2.5337;
+  const parsedLng = parseFloat(lng) || 112.9515;
 
   return <Marker position={[parsedLat, parsedLng]} />;
 }
@@ -70,13 +70,13 @@ export default function AddAmdalPage() {
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1);
 
-  // Form State Default dialihkan ke pusat wilayah Kabupaten Bogor (Cibinong)
+  // Form State Default dialihkan ke pusat wilayah Kabupaten Kotawaringin Timur [3]
   const [form, setForm] = useState({
     companyName: "",
     activityName: "",
     address: "",
-    lat: "-6.9175",
-    lng: "107.6191",
+    lat: "-2.5337", // Diubah secara internal mengikuti koordinat default Sampit
+    lng: "112.9515",
     envApprovalNo: "",
     envApprovalDate: "",
     amdalNo: "",
@@ -294,7 +294,7 @@ export default function AddAmdalPage() {
             <h1 className="text-xl font-black tracking-tight text-slate-900 uppercase leading-none">
               Registrasi Wajib <span className="text-rose-600">AMDAL</span> Baru
             </h1>
-            <p className="text-slate-500 text-[11px] font-semibold mt-1.5">Pendaftaran manual spasial & pemberkasan AMDAL terpadu DLH Kabupaten Bogor.</p>
+            <p className="text-slate-500 text-[11px] font-semibold mt-1.5">Pendaftaran manual spasial & pemberkasan AMDAL terpadu DLH Kabupaten Kotawaringin Timur.</p>
           </div>
         </div>
 
@@ -358,7 +358,7 @@ export default function AddAmdalPage() {
                     name="companyName"
                     value={form.companyName}
                     onChange={handleTextChange}
-                    placeholder="PT. Eco Semen Indonesia"
+                    placeholder="PT. Mentaya Sawit Mas"
                     className="h-10 rounded-none border-slate-200 font-bold text-xs focus:ring-0 focus:border-rose-500"
                   />
                 </div>
@@ -372,7 +372,7 @@ export default function AddAmdalPage() {
                     name="activityName"
                     value={form.activityName}
                     onChange={handleTextChange}
-                    placeholder="Pembangunan Pabrik Semen Terintegrasi"
+                    placeholder="Pembangunan Pabrik Kelapa Sawit Terintegrasi"
                     className="h-10 rounded-none border-slate-200 font-bold text-xs focus:ring-0 focus:border-rose-500"
                   />
                 </div>
@@ -386,7 +386,7 @@ export default function AddAmdalPage() {
                     name="businessSector"
                     value={form.businessSector}
                     onChange={handleTextChange}
-                    placeholder="Industri Semen / Manufaktur"
+                    placeholder="Industri Pengolahan Minyak Kelapa Sawit"
                     className="h-10 rounded-none border-slate-200 font-bold text-xs focus:ring-0 focus:border-rose-500"
                   />
                 </div>
@@ -446,7 +446,7 @@ export default function AddAmdalPage() {
                     name="amdalNo"
                     value={form.amdalNo}
                     onChange={handleTextChange}
-                    placeholder="AMDAL/REG/BDG/0091"
+                    placeholder="AMDAL/REG/KWT/0014"
                     className="h-10 rounded-none border-slate-200 font-bold text-xs focus:ring-0 focus:border-rose-500"
                   />
                 </div>
@@ -530,7 +530,7 @@ export default function AddAmdalPage() {
                       name="address"
                       value={form.address}
                       onChange={handleTextChange}
-                      placeholder="Jl. Mayor Oking No. 1, Citeureup, Kabupaten Bogor"
+                      placeholder="Jl. Tjilik Riwut KM 32, Cempaga, Kabupaten Kotawaringin Timur"
                       className="w-full min-h-[120px] rounded-none border border-slate-200 bg-white p-3 text-xs font-bold text-slate-700 focus:outline-none focus:border-rose-500 transition-all shadow-inner resize-none"
                     />
                   </div>
@@ -543,7 +543,7 @@ export default function AddAmdalPage() {
                         name="lat"
                         value={form.lat}
                         onChange={handleTextChange}
-                        placeholder="-6.4816"
+                        placeholder="-2.5337"
                         className="h-10 rounded-none border-slate-200 font-bold text-xs"
                       />
                     </div>
@@ -554,7 +554,7 @@ export default function AddAmdalPage() {
                         name="lng"
                         value={form.lng}
                         onChange={handleTextChange}
-                        placeholder="106.8560"
+                        placeholder="112.9515"
                         className="h-10 rounded-none border-slate-200 font-bold text-xs"
                       />
                     </div>
@@ -572,7 +572,7 @@ export default function AddAmdalPage() {
 
                   <div className="h-[280px] w-full bg-slate-100 border border-slate-200 rounded-none relative z-10 overflow-hidden shadow-inner">
                     <MapContainer
-                      center={[-6.4816, 106.8560]} // Pusat peta Cibinong
+                      center={[-2.5337, 112.9515]} // Pusat peta Sampit
                       zoom={11}
                       zoomControl={true}
                       style={{ height: "100%", width: "100%" }}
@@ -599,7 +599,7 @@ export default function AddAmdalPage() {
                 </Button>
                 <Button
                   onClick={handleNextStep}
-                  className="bg-slate-900 hover:bg-slate-800 text-white font-black text-xs px-6 h-10 rounded-none tracking-wider uppercase"
+                  className="bg-slate-900 hover:bg-emerald-600 text-white font-black text-xs px-6 h-10 rounded-none tracking-wider uppercase"
                 >
                   Lanjut ke Langkah 3
                 </Button>
@@ -759,6 +759,7 @@ export default function AddAmdalPage() {
 
               <div className="pt-4 flex justify-between border-t border-slate-100">
                 <Button
+                  type="button"
                   variant="outline"
                   onClick={handlePrevStep}
                   className="border-slate-200 hover:bg-slate-100 text-slate-700 font-black text-xs px-5 h-10 rounded-none uppercase tracking-wider"
@@ -766,7 +767,7 @@ export default function AddAmdalPage() {
                   Kembali
                 </Button>
                 <Button
-                  onClick={handleSubmit}
+                  type="submit"
                   disabled={loading}
                   className="bg-rose-600 hover:bg-rose-700 text-white font-black text-xs px-6 h-10 rounded-none shadow-sm tracking-wider flex items-center gap-1.5 uppercase"
                 >

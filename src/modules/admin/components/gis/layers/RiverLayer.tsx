@@ -8,8 +8,8 @@ import { useSijagaStore } from '@/store/useSijagaStore';
 // @ts-ignore - Bypass issue mapping exports Turf.js v6.5 di TypeScript modern (Vite Bundler)
 import * as turf from '@turf/turf';
 
-// @ts-ignore - Hanya mengimpor garis aliran sungai utama Kabupaten Bogor
-import bogorSungaiLine from '@/assets/geojson/bogor-sungai-line.json';
+// @ts-ignore - Hanya mengimpor garis aliran sungai utama Kabupaten Kotawaringin Timur [3]
+import kotimSungaiLine from '@/assets/geojson/kotim-sungai-line.json';
 
 // --- KONTRAK DATA INTERNAL ENGINE ---
 interface RiverSegment {
@@ -36,7 +36,7 @@ const ZOOM_LOD_THRESHOLD = 11; // Batas minimal zoom untuk animasi
 
 /**
  * ============================================================================
- * RIVER LAYER (WEATHER-REACTIVE CANVAS FLUID ENGINE)
+ * RIVER LAYER (WEATHER-REACTIVE CANVAS FLUID ENGINE - KOTIM)
  * ============================================================================
  * Menggunakan prinsip Pemisahan Tanggung Jawab (Separation of Concerns).
  * - Canvas 1 (Statis): Menggambar dasar sungai sesuai warna Zona Polusi (Pemetaan Area).
@@ -57,14 +57,14 @@ export default function RiverLayer() {
     const isRiverActive = activeLayers.includes('layer-river');
 
     // ==========================================================================
-    // 1. SPATIAL JOIN (Turf.js Optimasi O(1)) - Pembagian Zona Kualitas Air
+    // 1. SPATIAL JOIN (Turf.js Optimasi O(1)) - Pembagian Zona Kualitas Air Kotim [3]
     // ==========================================================================
     const processedGeoJson = useMemo(() => {
-        if (!bogorSungaiLine || !waterStations || waterStations.length === 0) {
-            return bogorSungaiLine;
+        if (!kotimSungaiLine || !waterStations || waterStations.length === 0) {
+            return kotimSungaiLine;
         }
 
-        const geojson = JSON.parse(JSON.stringify(bogorSungaiLine));
+        const geojson = JSON.parse(JSON.stringify(kotimSungaiLine));
 
         geojson.features.forEach((feature: any) => {
             const geom = feature.geometry;

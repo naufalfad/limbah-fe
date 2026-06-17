@@ -51,7 +51,7 @@ function ResizeMap() {
   return null;
 }
 
-/// FASE 2: Penyesuaian parameter fallback lat/lng MapPicker ke Cibinong, Kabupaten Bogor [3]
+/// FASE 2: Penyesuaian parameter fallback lat/lng MapPicker ke Sampit, Kotawaringin Timur [3]
 function MapPicker({ lat, lng, onChange }: { lat: string; lng: string; onChange: (lat: string, lng: string) => void }) {
   useMapEvents({
     click(e) {
@@ -59,9 +59,9 @@ function MapPicker({ lat, lng, onChange }: { lat: string; lng: string; onChange:
     },
   });
 
-  // Fallback dialihkan ke pusat koordinat Cibinong, Kabupaten Bogor
-  const parsedLat = parseFloat(lat) || -6.4816;
-  const parsedLng = parseFloat(lng) || 106.8560;
+  // Fallback dialihkan ke pusat koordinat Sampit, Kabupaten Kotawaringin Timur
+  const parsedLat = parseFloat(lat) || -2.5337;
+  const parsedLng = parseFloat(lng) || 112.9515;
 
   return <Marker position={[parsedLat, parsedLng]} />;
 }
@@ -551,10 +551,10 @@ export default function CompanyManagement() {
               return (
                 <div key={c.id} className="bg-transparent py-4 flex flex-col gap-3 relative overflow-hidden">
                   {/* Status Strip at the top */}
-                  <div className={cn("absolute top-0 left-0 w-1 h-full", 
+                  <div className={cn("absolute top-0 left-0 w-1 h-full",
                     certState === "ACTIVE" ? "bg-emerald-500" :
-                    certState === "SUSPENDED" ? "bg-rose-500" :
-                    certState === "EXPIRED" ? "bg-amber-500" : "bg-blue-500"
+                      certState === "SUSPENDED" ? "bg-rose-500" :
+                        certState === "EXPIRED" ? "bg-amber-500" : "bg-blue-500"
                   )} />
 
                   {/* Header: Company Name & Status */}
@@ -604,9 +604,9 @@ export default function CompanyManagement() {
                       <Button variant="outline" size="sm" onClick={() => handleOpenDetail(c)} className="h-8 w-8 p-0 rounded-none border-slate-200">
                         <Eye size={13} />
                       </Button>
-                      <Button 
-                        variant="outline" size="sm" 
-                        disabled={!isApproved || (daysRemaining !== null && daysRemaining < 0)} 
+                      <Button
+                        variant="outline" size="sm"
+                        disabled={!isApproved || (daysRemaining !== null && daysRemaining < 0)}
                         onClick={() => handleDownloadCertificate(c)}
                         className="h-8 w-8 p-0 rounded-none border-slate-200"
                       >

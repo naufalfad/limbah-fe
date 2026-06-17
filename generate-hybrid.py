@@ -1,162 +1,217 @@
+#!/usr/bin/env python3
 # agregator.py
 import os
 import re
+import argparse
 from pathlib import Path
+from typing import Set
 
 # =========================================================================
-# KONFIGURASI CORE (Gunakan r"" jika ingin jalur absolut kaku)
+# CONFIGURATION CLASS (Information Expert)
+# Menyimpan seluruh konfigurasi penapisan secara terpusat
 # =========================================================================
-TARGET_DIRECTORY = r"C:\Users\PC\Documents\Dev\E-LIMBAD\limbah-fe"
-OUTPUT_FILE_NAME = "limbah-fe.txt"
+class AggregatorConfig:
+    DEFAULT_TARGET = r"C:\Users\PC\Documents\Dev\E-LIMBAD\limbah-fe"
+    DEFAULT_OUTPUT = "limbah-fe.txt"
 
-# 1. Folder yang diblokir murni (Default)
-FORBIDDEN_DIRS = {
-    "node_modules", ".git", "dist", "build", "out", "coverage",
-    ".vscode", ".idea", ".next", ".swc", "recovered"
-}
+    # 1. Folder Blacklist (Diabaikan secara mutlak)
+    FORBIDDEN_DIRS = {
+        "node_modules", ".git", "dist", "build", "out", "coverage",
+        ".vscode", ".idea", ".next", ".swc", "recovered"
+    }
 
-# 2. File spesifik yang diblokir murni (Default)
-FORBIDDEN_FILES = {
-    "kotim-desa.json", "kotim-kecamatan.json", "bogor-sungai-line.json",
-    "bogor-sungai-poly.json", 'bogor-desa.json', 'bogor-kecamatan.json',
-    "package-lock.json", "yarn.lock", "pnpm-lock.yaml", 'mock-data.json', 
-    'sample-geojson.json', 'mockData.ts', "limbah-fe.txt"
-}
+    # 2. Berkas Blacklist (Diabaikan secara mutlak)
+    FORBIDDEN_FILES = {
+        "kotim-desa.json", "kotim-kecamatan.json", "bogor-sungai-line.json",
+        "bogor-sungai-poly.json", "bogor-desa.json", "bogor-kecamatan.json",
+        "package-lock.json", "yarn.lock", "pnpm-lock.yaml", "mock-data.json", 
+        "sample-geojson.json", "mockData.ts"
+    }
 
-# 3. Kredensial Sensitif yang Wajib Diblokir demi Keamanan (Security Guard)
-SENSITIVE_PATTERNS = [
-    r"\.env.*", r"key.*\.pem", r".*\.key", r"id_rsa.*", r"credentials.*"
-]
+    # 3. Whitelist Folder Tingkat Root (Hanya turun ke folder di bawah ini jika di root)
+    ALLOWED_DIRS = {"src", "components", "pages", "hooks", "utils", "context", "public"}
 
-# 4. Folder Whitelist (Folder yang diizinkan)
-ALLOWED_DIRS = {"src", "components", "pages", "hooks", "utils", "context", "public"}
+    # 4. Ekstensi Berkas Teks yang Diizinkan
+    INCLUDE_EXTENSIONS = {".ts", ".tsx", ".js", ".jsx", ".json", ".css", ".scss", ".html"}
 
-# 5. Ekstensi file teks yang diperbolehkan masuk agregat
-INCLUDE_EXTENSIONS = {".ts", ".tsx", ".js", ".jsx", ".json", ".css", ".scss", ".html"}
+    # 5. Berkas Konfigurasi Wajib di Tingkat Root
+    ESSENTIAL_ROOT_FILES = {"package.json", "tsconfig.json", "vite.config.ts", "vite.config.js"}
 
-# 6. File konfigurasi penting di root folder yang wajib dibawa
-ESSENTIAL_ROOT_FILES = {"package.json", "tsconfig.json", "vite.config.ts", "vite.config.js"}
+    # 6. Batas Maksimum Ukuran Berkas (1 MB)
+    MAX_FILE_SIZE_BYTES = 1024 * 1024  
 
-# Batas maksimum ukuran file yang dibaca (Default: 1 MB) untuk mencegah token AI membengkak
-MAX_FILE_SIZE_BYTES = 1024 * 1024  
-
-
-def is_binary(file_path: Path) -> bool:
-    """Mendeteksi apakah file berupa binary dengan membaca 1024 byte awal."""
-    try:
-        with open(file_path, 'rb') as f:
-            chunk = f.read(1024)
-            return b'\x00' in chunk
-    except Exception:
-        return True
+    # Pre-compiled Regex untuk Sensor Keamanan (Mencegah Kebocoran Kredensial)
+    SENSITIVE_REGEX = re.compile(
+        r"(\.env.*|key.*\.pem|.*\.key|id_rsa.*|credentials.*)", 
+        re.IGNORECASE
+    )
 
 
-def is_sensitive(file_name: str) -> bool:
-    """Mencegah kebocoran file kredensial / .env."""
-    return any(re.match(pattern, file_name, re.IGNORECASE) for pattern in SENSITIVE_PATTERNS)
+# =========================================================================
+# OPTIMIZER CLASS (Pure Fabrication)
+# Pintu gerbang optimasi konten teks dan deteksi data biner
+# =========================================================================
+class LLMContextOptimizer:
+    @staticmethod
+    def compress_code(content: str) -> str:
+        """Menghapus spasi trailing dan baris kosong ganda secara efisien untuk menghemat token LLM."""
+        lines = content.splitlines()
+        optimized_lines = []
+        previous_empty = False
+        
+        for line in lines:
+            stripped = line.rstrip()
+            is_empty = len(stripped) == 0
+            
+            if is_empty and previous_empty:
+                continue
+                
+            optimized_lines.append(stripped)
+            previous_empty = is_empty
+            
+        return "\n".join(optimized_lines)
 
-
-def parse_gitignore(target_path: Path) -> set:
-    """Membaca file .gitignore jika ada, dan memanfaatkannya sebagai blacklist otomatis."""
-    ignored_items = set()
-    gitignore_path = target_path / ".gitignore"
-    if gitignore_path.exists():
+    @staticmethod
+    def is_binary(file_path: Path) -> bool:
+        """Deteksi biner murah dengan membaca 512 byte pertama."""
         try:
-            for line in gitignore_path.read_text("utf-8").splitlines():
-                line = line.strip()
-                if line and not line.startswith("#"):
-                    # Bersihkan karakter penunjuk folder di gitignore
-                    clean_line = line.replace("/", "").replace("*", "")
-                    if clean_line:
-                        ignored_items.add(clean_line)
-        except Exception as e:
-            print(f"[WARN] Gagal mengurai .gitignore: {e}")
-    return ignored_items
+            with open(file_path, 'rb') as f:
+                return b'\x00' in f.read(512)
+        except Exception:
+            return True
 
 
-def main():
-    # --- AUTO DETECT ROOT PATH (Portabilitas Maksimal) ---
-    target_path = Path(TARGET_DIRECTORY)
-    if not target_path.is_dir():
-        # Fallback cerdas: Gunakan lokasi skrip ini berada jika folder default tidak ditemukan
-        target_path = Path(__file__).parent
-        print(f"[SYSTEM] Jalur kaku tidak ditemukan. Menggunakan mode portabel di: {target_path}")
+# =========================================================================
+# AGGREGATOR CONTROLLER (GRASP Controller)
+# Orkestrator utama penelusuran dan pembangunan bundel berkas teks
+# =========================================================================
+class CodebaseAggregator:
+    def __init__(self, target_dir: str, output_name: str):
+        self.config = AggregatorConfig()
+        self.optimizer = LLMContextOptimizer()
+        
+        # Penyelarasan Portabilitas Jalur Direktori
+        self.target_path = Path(target_dir).resolve()
+        if not self.target_path.is_dir():
+            self.target_path = Path(__file__).parent.resolve()
+            print(f"[SYSTEM] Target direktori tidak ditemukan. Menggunakan fallback portabel di: {self.target_path}")
 
-    # Gabungkan blacklist bawaan dengan gitignore jika ada (Smart Blacklist)
-    git_ignored = parse_gitignore(target_path)
-    forbidden_dirs_union = FORBIDDEN_DIRS.union(git_ignored)
-    forbidden_files_union = FORBIDDEN_FILES.union(git_ignored)
+        self.output_file = self.target_path / output_name
+        self.config.FORBIDDEN_FILES.add(output_name) # Jangan biarkan skrip membaca file output-nya sendiri
 
-    output_path = target_path / OUTPUT_FILE_NAME
-    
-    print("Memproses penelusuran kode reaktif (Streaming Mode)...")
-    file_count = 0
+    def _parse_gitignore(self) -> Set[str]:
+        """Membaca berkas .gitignore sebagai blacklist otomatis tambahan."""
+        ignored_items = set()
+        gitignore_path = self.target_path / ".gitignore"
+        if gitignore_path.exists():
+            try:
+                for line in gitignore_path.read_text("utf-8").splitlines():
+                    line = line.strip()
+                    if line and not line.startswith("#"):
+                        clean_line = line.replace("/", "").replace("*", "")
+                        if clean_line:
+                            ignored_items.add(clean_line)
+            except Exception as e:
+                print(f"[WARN] Gagal mengurai .gitignore: {e}")
+        return ignored_items
 
-    try:
-        # Buka file output dengan mode tulis langsung (Streaming Buffer)
-        with open(output_path, "w", encoding="utf-8") as out_file:
-            out_file.write("=== STRUKTUR & ISI KODE (REACT PROJECT MODE) ===\n\n")
+    def execute(self):
+        print(f"🔍 Memulai penggabungan kode dari target: {self.target_path}")
+        
+        # Menggabungkan blacklist default dengan isi .gitignore
+        git_ignored = self._parse_gitignore()
+        forbidden_dirs_union = self.config.FORBIDDEN_DIRS.union(git_ignored)
+        forbidden_files_union = self.config.FORBIDDEN_FILES.union(git_ignored)
 
-            for root, dirs, files in os.walk(target_path):
-                # Memotong navigasi folder terlarang sedini mungkin (Sangat cepat & hemat CPU)
-                dirs[:] = [d for d in dirs if d not in forbidden_dirs_union]
+        file_count = 0
+        original_total_size = 0
+        compressed_total_size = 0
 
-                root_path = Path(root)
+        try:
+            # Membuka file output dengan mode stream buffer langsung
+            with open(self.output_file, "w", encoding="utf-8") as out_file:
+                out_file.write("=== STRUKTUR & ISI KODE (COMPRESSED PARADIGM) ===\n\n")
 
-                for file_name in files:
-                    # 1. Penyaringan Blacklist File & Kredensial Rahasia
-                    if file_name in forbidden_files_union or is_sensitive(file_name):
-                        continue
+                for root, dirs, files in os.walk(self.target_path):
+                    root_path = Path(root)
+                    relative_root = root_path.relative_to(self.target_path)
+                    is_root_level = len(relative_root.parts) == 0
 
-                    file_path = root_path / file_name
-                    
-                    # Cegah skrip membaca file output-nya sendiri jika diletakkan di folder yang sama
-                    if file_path.resolve() == output_path.resolve():
-                        continue
+                    # 1. OPTIMASI I/O: Pangkas folder terlarang dari antrean os.walk
+                    dirs[:] = [d for d in dirs if d not in forbidden_dirs_union]
 
-                    relative_path = file_path.relative_to(target_path)
+                    # 2. OPTIMASI I/O TINGKAT ROOT: Hanya telusuri folder yang masuk dalam whitelist ALLOWED_DIRS
+                    if is_root_level:
+                        dirs[:] = [d for d in dirs if d in self.config.ALLOWED_DIRS]
 
-                    # 2. Evaluasi apakah file berada di root (package.json, tsconfig.json, dsb)
-                    is_essential_root = (len(relative_path.parts) == 1 and file_name in ESSENTIAL_ROOT_FILES)
-
-                    # 3. Evaluasi apakah berada di folder whitelist (src, public, dsb)
-                    is_in_allowed_dir = any(part in ALLOWED_DIRS for part in relative_path.parts)
-
-                    if not is_essential_root and not is_in_allowed_dir:
-                        continue
-
-                    # 4. Filter ekstensi file
-                    if not is_essential_root and file_path.suffix not in INCLUDE_EXTENSIONS:
-                        continue
-
-                    # 5. Filter file binary (gambar, pdf, font)
-                    if is_binary(file_path):
-                        continue
-
-                    # 6. Batasi ukuran pembacaan file (Guard Limit)
-                    try:
-                        file_size = file_path.stat().st_size
-                        if file_size > MAX_FILE_SIZE_BYTES:
-                            print(f"[SKIP] File terlalu besar ({file_size / 1024:.1f} KB): {relative_path}")
+                    for file_name in files:
+                        # Penapisan A: Sensor Berkas Sensitif & Blacklist
+                        if file_name in forbidden_files_union or self.config.SENSITIVE_REGEX.match(file_name):
                             continue
 
-                        # Tulis langsung ke buffer output file tanpa menahan data di RAM
-                        content = file_path.read_text("utf-8", errors="ignore")
-                        out_file.write(f"\n--- FILE: {relative_path} ---\n")
-                        out_file.write(content)
-                        out_file.write("\n")
-                        
-                        file_count += 1
-                        print(f"-> Menyalin: {relative_path}")
+                        file_path = root_path / file_name
+                        relative_file_path = file_path.relative_to(self.target_path)
+                        is_root_file = len(relative_file_path.parts) == 1
 
-                    except Exception as e:
-                        print(f"-> Gagal menyalin {relative_path}: {e}")
+                        # Penapisan B: Saring Berkas non-esensial di tingkat Root
+                        if is_root_file and file_name not in self.config.ESSENTIAL_ROOT_FILES:
+                            continue
 
-        print(f"\nSelesai! {file_count} File React tersimpan secara efisien di: {output_path}")
+                        # Penapisan C: Saring Ekstensi yang diizinkan (Kecuali berkas konfigurasi penting root)
+                        if not is_root_file and file_path.suffix not in self.config.INCLUDE_EXTENSIONS:
+                            continue
 
-    except Exception as e:
-        print(f"Critical Error: Gagal menulis file output: {e}")
+                        # Penapisan D: Cheap Binary Guard (Cegah membaca berkas gambar, font, pdf, dll.)
+                        if self.optimizer.is_binary(file_path):
+                            continue
+
+                        # Penapisan E: Size Guard
+                        try:
+                            file_size = file_path.stat().st_size
+                            if file_size > self.config.MAX_FILE_SIZE_BYTES:
+                                print(f"[SKIP] Berkas terlalu besar ({file_size / 1024:.1f} KB): {relative_file_path}")
+                                continue
+
+                            content = file_path.read_text("utf-8", errors="ignore")
+                            compressed_content = self.optimizer.compress_code(content)
+
+                            # Tulis langsung ke stream buffer tanpa menahan seluruh isi memori di RAM
+                            out_file.write(f"\n--- FILE: {relative_file_path} ---\n")
+                            out_file.write(compressed_content)
+                            out_file.write("\n")
+
+                            file_count += 1
+                            original_total_size += file_size
+                            compressed_total_size += len(compressed_content.encode('utf-8'))
+                            print(f"-> Menyalin & mengompresi: {relative_file_path}")
+
+                        except Exception as e:
+                            print(f"-> Gagal memproses {relative_file_path}: {e}")
+
+            print(f"\n✅ Selesai! {file_count} Berkas berhasil disatukan di:\n   {self.output_file}")
+            print(f"📊 Ukuran Asli: {original_total_size / 1024:.2f} KB")
+            print(f"🚀 Ukuran Kompresi (LLM Ready): {compressed_total_size / 1024:.2f} KB")
+            
+            # SINKRONISASI EVALUASI: Perbaikan Typo NameError secara presisi
+            if original_total_size > 0:
+                saving_percent = ((original_total_size - compressed_total_size) / original_total_size) * 100
+                print(f"📉 Penghematan Ruang Konteks: ~{saving_percent:.1f}%")
+
+        except Exception as e:
+            print(f"Critical Error: Gagal menulis file output: {e}")
 
 
+# =========================================================================
+# MAIN EXECUTION ENTRY POINT
+# =========================================================================
 if __name__ == "__main__":
-    main()
+    config_default = AggregatorConfig()
+
+    parser = argparse.ArgumentParser(description="Optimasi Bundel Kode Frontend - GFW Paradigm")
+    parser.add_argument("--dir", type=str, default=config_default.DEFAULT_TARGET, help="Direktori target yang akan dipindai")
+    parser.add_argument("--out", type=str, default=config_default.DEFAULT_OUTPUT, help="Nama berkas keluaran (.txt)")
+    
+    args = parser.parse_args()
+
+    aggregator = CodebaseAggregator(target_dir=args.dir, output_name=args.out)
+    aggregator.execute()

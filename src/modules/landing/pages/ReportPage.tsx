@@ -63,8 +63,8 @@ const DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// FASE 2: PETA DEFAULT DIUBAH SECARA GLOBAL KE CIBINONG (KABUPATEN BOGOR) [3]
-const DEFAULT_CENTER: [number, number] = [-6.4816, 106.8560];
+// FASE 2: PETA DEFAULT DIUBAH SECARA GLOBAL KE SAMPIT (KABUPATEN KOTAWARINGIN TIMUR) [3]
+const DEFAULT_CENTER: [number, number] = [-2.5337, 112.9515];
 
 // SOLUSI ARSITEKTURAL: Kunci referensi array di luar komponen agar terhindar dari re-render loop
 const EXCLUDED_FORM_FIELDS = ["evidencePhotos"];
@@ -277,7 +277,7 @@ export default function ReportPage() {
                                 Lingkungan.
                             </h1>
                             <p className="text-emerald-100/70 text-xs font-normal leading-relaxed text-justify">
-                                Laporkan indikasi pembuangan limbah kimia, asap beracun, atau limbah industri ilegal langsung di daerah Anda. Kami mengamankan penuh privasi pengaduan Anda [3].
+                                Laporkan indikasi pembuangan limbah cair sawit, asap cerobong beracun, atau limbah industri ilegal langsung di daerah Anda. Kami mengamankan penuh privasi pengaduan Anda [3].
                             </p>
                         </div>
                     </div>
@@ -290,7 +290,7 @@ export default function ReportPage() {
                     </div>
 
                     <div className="text-[10px] text-emerald-700 font-bold uppercase tracking-widest leading-none relative z-10">
-                        DINAS LINGKUNGAN HIDUP KABUPATEN BOGOR © 2026
+                        DINAS LINGKUNGAN HIDUP KABUPATEN KOTAWARINGIN TIMUR © 2026
                     </div>
                 </div>
 
@@ -317,7 +317,7 @@ export default function ReportPage() {
                                                 <option value="Pencemaran Air">Pencemaran Air / Aliran Sungai</option>
                                                 <option value="Emisi Asap">Emisi Asap / Polusi Udara</option>
                                                 <option value="Pembuangan B3 Liar">Pembuangan Limbah B3 Liar</option>
-                                                <option value="Bau Menyengat">Polusi Bau / Kebisingan Kritis</option>
+                                                <option value="Bau Menyengat">Polusi Bag/Bau / Kebisingan Kritis</option>
                                             </select>
                                         </div>
 
@@ -416,7 +416,7 @@ export default function ReportPage() {
                                             <Label className="text-[11px] font-bold uppercase text-slate-600 tracking-wider">Cari berdasarkan alamat atau landmark wilayah</Label>
                                             <div className="flex gap-2">
                                                 <Input
-                                                    placeholder="Contoh: Cibinong, Citeureup, Cileungsi, atau Sentul Bogor..."
+                                                    placeholder="Contoh: Baamang, MB Ketapang, Cempaga, atau Pelabuhan Bagendang..."
                                                     value={addressQuery}
                                                     onChange={(e) => setAddressQuery(e.target.value)}
                                                     onKeyDown={(e) => e.key === "Enter" && handleAddressSearch()}
@@ -480,7 +480,7 @@ export default function ReportPage() {
                                                         ? [parseFloat(watch("lat")), parseFloat(watch("lng"))]
                                                         : DEFAULT_CENTER
                                                 }
-                                                zoom={11} // Disesuaikan zoom 11 untuk Kabupaten Bogor
+                                                zoom={10} // Default zoom level Kotim
                                                 style={{ height: "100%", width: "100%" }}
                                             >
                                                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
@@ -644,7 +644,7 @@ export default function ReportPage() {
 
                     <div className="py-4 text-xs space-y-3 leading-relaxed font-sans">
                         <p className="font-bold text-slate-800 text-justify">
-                            Terima kasih atas partisipasi aktif Anda dalam menjaga kelestarian lingkungan hidup daerah Kabupaten Bogor.
+                            Terima kasih atas partisipasi aktif Anda dalam menjaga kelestarian lingkungan hidup daerah Kabupaten Kotawaringin Timur.
                         </p>
                         <p className="text-slate-500 text-justify">
                             Laporan Anda telah tercatat dengan ID Pelacakan resmi: <strong className="font-mono text-slate-800 bg-slate-50 px-1.5 py-0.5 border border-slate-200">{submittedTrackingId}</strong>.
