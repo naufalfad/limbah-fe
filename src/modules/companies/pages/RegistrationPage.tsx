@@ -356,7 +356,7 @@ export default function RegistrationPage() {
                         <FileUploadBox
                           label="Foto Profil Industri / Pabrik (Opsional)"
                           required={false}
-                          accept="image/*"
+                          accept=".pdf,.jpg,.jpeg,.png"
                           file={companyPhotoFile}
                           onFileChange={setCompanyPhotoFile}
                           hint="Format JPG, JPEG, PNG, maks 5 MB"
@@ -566,8 +566,8 @@ export default function RegistrationPage() {
 
                     <div className="h-[280px] w-full bg-slate-100 rounded-none border border-slate-300 overflow-hidden relative z-10">
                       <MapContainer
-                        center={[parseFloat(watch("lat") || "-6.9175"), parseFloat(watch("lng") || "107.6191")]}
-                        zoom={13}
+                        center={[parseFloat(watch("lat") || "-6.4816"), parseFloat(watch("lng") || "106.8560")]}
+                        zoom={11}
                         zoomControl={true}
                         style={{ height: "100%", width: "100%" }}
                       >
@@ -578,8 +578,8 @@ export default function RegistrationPage() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormGroup label="Latitude" name="lat" placeholder="-6.9147" />
-                      <FormGroup label="Longitude" name="lng" placeholder="107.6098" />
+                      <FormGroup label="Latitude" name="lat" placeholder="-6.4816" />
+                      <FormGroup label="Longitude" name="lng" placeholder="106.8560" />
                     </div>
 
                     <div className="space-y-1.5">
@@ -587,7 +587,7 @@ export default function RegistrationPage() {
                       <textarea
                         {...methods.register("address")}
                         className="w-full min-h-[70px] rounded-none border border-slate-300 p-2.5 text-xs font-bold focus:outline-none focus:border-emerald-600 focus:ring-0 bg-white"
-                        placeholder="Contoh: Jl. Cisitu Indah No. 2A, Bandung"
+                        placeholder="Contoh: Jl. Mayor Oking No. 1, Citeureup, Kabupaten Bogor"
                       />
                     </div>
 
