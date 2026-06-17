@@ -435,8 +435,8 @@ export default function LandingPage() {
           </div>
 
           <div className="space-y-4">
-            <h4 className="font-black uppercase tracking-widest text-[10px] text-emerald-500">Tautan Regulasi</h4>
-            <ul className="space-y-2 text-slate-400 font-bold uppercase text-[9px] tracking-wider">
+            <h4 className="font-black uppercase tracking-widest text-[12px] text-emerald-500">Tautan Regulasi</h4>
+            <ul className="space-y-2 text-slate-400 font-bold text-[11px] tracking-wider">
               <li><a href="#" className="hover:text-white transition-colors">Panduan Sistem Registrasi</a></li>
               <li><a href="#" className="hover:text-white transition-colors">Daftar Kode KBLI Berisiko</a></li>
               <li><a href="#" className="hover:text-white transition-colors">Undang-Undang Cipta Kerja</a></li>
@@ -444,9 +444,9 @@ export default function LandingPage() {
           </div>
 
           <div className="space-y-4">
-            <h4 className="font-black uppercase tracking-widest text-[10px] text-emerald-500">Kontak Pengaduan</h4>
-            <ul className="space-y-2 text-slate-400 font-bold text-[9px] tracking-wider uppercase">
-              <li className="underline text-emerald-400 hover:text-emerald-300"><a href="mailto:support@sijaga-lingkungan.id">support@sijaga-lingkungan.id</a></li>
+            <h4 className="font-black uppercase tracking-widest text-[12px] text-emerald-500">Kontak Pengaduan</h4>
+            <ul className="space-y-2 text-slate-400 font-bold text-[11px] tracking-wider">
+              <li className="underline text-emerald-400 hover:text-emerald-300"><a href="mailto:support@geolimbah.id">support@geolimbah.id</a></li>
               <li>Sekretariat DLH Bidang Tata Lingkungan</li>
             </ul>
           </div>

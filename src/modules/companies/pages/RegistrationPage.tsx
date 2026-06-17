@@ -566,7 +566,7 @@ export default function RegistrationPage() {
 
                     <div className="h-[280px] w-full bg-slate-100 rounded-none border border-slate-300 overflow-hidden relative z-10">
                       <MapContainer
-                        center={[parseFloat(watch("lat") || "-6.9175"), parseFloat(watch("lng") || "107.6191")]}
+                        center={[parseFloat(watch("lat") || "-2.5337"), parseFloat(watch("lng") || "112.9515")]}
                         zoom={13}
                         zoomControl={true}
                         style={{ height: "100%", width: "100%" }}
@@ -578,8 +578,8 @@ export default function RegistrationPage() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormGroup label="Latitude" name="lat" placeholder="-6.9147" />
-                      <FormGroup label="Longitude" name="lng" placeholder="107.6098" />
+                      <FormGroup label="Latitude" name="lat" placeholder="-2.5337" />
+                      <FormGroup label="Longitude" name="lng" placeholder="112.9515" />
                     </div>
 
                     <div className="space-y-1.5">
@@ -781,8 +781,8 @@ function FileStatusRow({ label, file, required, existingUrl }: { label: string; 
 
 function InteractiveMap() {
   const { setValue, watch } = useFormContext();
-  const lat = parseFloat(watch("lat") || "-6.9175");
-  const lng = parseFloat(watch("lng") || "107.6191");
+  const lat = parseFloat(watch("lat") || "-2.5337");
+  const lng = parseFloat(watch("lng") || "112.9515");
 
   useMapEvents({
     click(e) {
