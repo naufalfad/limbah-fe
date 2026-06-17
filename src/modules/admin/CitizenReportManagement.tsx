@@ -19,6 +19,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 
 // --- Fix Leaflet Default Marker Icons (Vite Bundler Safety) ---
 import icon from "leaflet/dist/images/marker-icon.png";
@@ -59,6 +60,8 @@ export default function CitizenReportManagement() {
     const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
     const [searchQuery, setSearchQuery] = useState("");
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 10;
 
     // States Detail Modal
     const [selectedReport, setSelectedReport] = useState<any | null>(null);
@@ -105,15 +108,27 @@ export default function CitizenReportManagement() {
         });
     }, [adminReports, statusFilter, searchQuery]);
 
+    // Reset pagination on filter
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery, statusFilter]);
+
+    const totalItems = filteredReports.length;
+    const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+    const paginatedReports = filteredReports.slice(
+        (currentPage - 1) * ITEMS_PER_PAGE,
+        currentPage * ITEMS_PER_PAGE
+    );
+
     const getStatusStyle = (status: string) => {
         const styles: Record<string, string> = {
-            PENDING: "bg-blue-50 text-blue-700 border-blue-200",
-            VERIFIED: "bg-emerald-50 text-emerald-700 border-emerald-200",
-            INVESTIGATING: "bg-indigo-50 text-indigo-700 border-indigo-200",
-            RESOLVED: "bg-teal-50 text-teal-700 border-teal-200",
-            REJECTED: "bg-rose-50 text-rose-700 border-rose-200"
+            PENDING: "text-blue-600",
+            VERIFIED: "text-emerald-600",
+            INVESTIGATING: "text-indigo-600",
+            RESOLVED: "text-teal-600",
+            REJECTED: "text-rose-600"
         };
-        return styles[status] || "bg-slate-50 text-slate-500 border-slate-200";
+        return styles[status] || "text-slate-500";
     };
 
     return (
@@ -142,23 +157,23 @@ export default function CitizenReportManagement() {
                     </Button>
                 </div>
 
-                {/* --- TABS SYSTEM --- */}
-                <div className="flex flex-wrap gap-1 bg-slate-100 p-1 border border-slate-200 w-max max-w-full">
+                {/* --- TABS SYSTEM (BORDERLESS UNDERLINE) --- */}
+                <div className="flex flex-wrap gap-6 border-b border-slate-200 w-full mb-4">
                     {(["ALL", "PENDING", "VERIFIED", "INVESTIGATING", "RESOLVED", "REJECTED"] as StatusFilter[]).map((tab) => (
                         <button
                             key={tab}
                             onClick={() => setStatusFilter(tab)}
                             className={cn(
-                                "px-3.5 py-1.5 rounded-none text-[9px] font-black uppercase tracking-wider transition-all border outline-none",
+                                "flex items-center gap-2 pb-3 text-[10px] font-black uppercase tracking-wider transition-all outline-none border-b-2",
                                 statusFilter === tab
-                                    ? "bg-slate-950 border-slate-950 text-white"
-                                    : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                                    ? "border-emerald-600 text-emerald-600"
+                                    : "border-transparent text-slate-500 hover:text-slate-800"
                             )}
                         >
-                            {tab === "ALL" ? "Semua Aduan" : tab}
+                            <span>{tab === "ALL" ? "Semua Aduan" : tab}</span>
                             <span className={cn(
-                                "inline-flex items-center justify-center px-1.5 h-4 text-[8px] font-black font-mono ml-1.5",
-                                statusFilter === tab ? "bg-white/25 text-white" : "bg-slate-100 text-slate-600"
+                                "inline-flex items-center justify-center px-1.5 py-0.5 text-[9px] font-black font-mono rounded-full",
+                                statusFilter === tab ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"
                             )}>
                                 {tab === "ALL" ? adminReports.length : adminReports.filter(r => r.status === tab).length}
                             </span>
@@ -167,8 +182,8 @@ export default function CitizenReportManagement() {
                 </div>
 
                 {/* --- SEARCH TOOLBAR --- */}
-                <Card className="rounded-none border border-slate-200 shadow-none p-3 bg-white">
-                    <div className="relative">
+                <div className="py-2 border-y border-slate-200 bg-transparent flex flex-col md:flex-row gap-3">
+                    <div className="relative w-full">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                         <Input
                             placeholder="Cari ID Pelacakan, Kategori Masalah, Pelapor..."
@@ -177,26 +192,25 @@ export default function CitizenReportManagement() {
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
-                </Card>
+                </div>
 
-                {/* --- DENSE TABLE --- */}
-                <div className="bg-white rounded-none border border-slate-200 shadow-none overflow-hidden">
+                {/* --- DENSE TABLE (DESKTOP) --- */}
+                <div className="hidden md:block bg-transparent overflow-hidden">
                     <Table>
-                        <TableHeader className="bg-slate-50">
+                        <TableHeader className="bg-slate-50 border-y border-slate-200">
                             <TableRow className="border-b border-slate-200 h-9">
-                                <TableHead className="w-[150px] font-black text-slate-500 uppercase text-[9px] tracking-widest pl-4">ID Pelacakan</TableHead>
-                                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest">Kategori Laporan</TableHead>
-                                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest">Deskripsi Kejadian</TableHead>
-                                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest">Identitas Pelapor</TableHead>
-                                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest">Tgl Masuk</TableHead>
-                                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest text-center">Status</TableHead>
-                                <TableHead className="text-right pr-4 font-black text-slate-500 uppercase text-[9px] tracking-widest w-[140px]">Tindakan</TableHead>
+                                <TableHead className="w-[140px] font-black text-slate-500 uppercase text-[9px] tracking-widest pl-4">ID Pelacakan</TableHead>
+                                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest w-[320px]">Laporan & Deskripsi</TableHead>
+                                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest w-[160px]">Identitas Pelapor</TableHead>
+                                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest w-[100px]">Tgl Masuk</TableHead>
+                                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest text-center w-[120px]">Status</TableHead>
+                                <TableHead className="text-right pr-4 font-black text-slate-500 uppercase text-[9px] tracking-widest w-[80px]">Aksi</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {filteredReports.length === 0 ? (
+                            {paginatedReports.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="text-center py-16">
+                                    <TableCell colSpan={6} className="text-center py-16">
                                         <div className="flex flex-col items-center gap-2 text-slate-400">
                                             <FileText size={24} className="opacity-40" />
                                             <p className="font-black text-[10px] uppercase tracking-widest">Tidak ada pengaduan warga ditemukan</p>
@@ -204,60 +218,70 @@ export default function CitizenReportManagement() {
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                filteredReports.map((r) => {
+                                paginatedReports.map((r) => {
                                     return (
                                         <TableRow key={r.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors h-14 group">
 
                                             {/* Tracking ID */}
-                                            <TableCell className="font-mono font-bold text-slate-500 pl-4 text-xs">
+                                            <TableCell className="font-mono font-bold text-slate-500 pl-4 text-xs w-[140px]">
                                                 {r.trackingId}
                                             </TableCell>
 
-                                            {/* Category */}
-                                            <TableCell className="font-bold text-slate-900 text-xs">
-                                                {r.incidentType}
+                                            {/* Kategori & Deskripsi Kejadian (Auto-wraps, extremely clean, no nested box) */}
+                                            <TableCell className="max-w-[320px] whitespace-normal break-words py-2.5">
+                                                <div className="flex flex-col text-left">
+                                                    <span className="font-black text-slate-900 text-xs leading-tight group-hover:text-emerald-700 transition-colors">
+                                                        {r.incidentType}
+                                                    </span>
+                                                    <span className="text-[10px] text-slate-500 font-semibold leading-relaxed mt-1">
+                                                        {r.description}
+                                                    </span>
+                                                </div>
                                             </TableCell>
 
-                                            {/* Description */}
-                                            <TableCell className="max-w-xs truncate text-xs text-slate-600 font-medium">
-                                                {r.description}
-                                            </TableCell>
-
-                                            {/* Reporter */}
-                                            <TableCell className="text-xs text-slate-600">
+                                            {/* Reporter Contact */}
+                                            <TableCell className="w-[160px] whitespace-normal">
                                                 {r.reporterName ? (
-                                                    <div className="flex flex-col">
-                                                        <span className="font-bold text-slate-800">{r.reporterName}</span>
-                                                        <span className="text-[10px] text-slate-400 font-medium mt-0.5">{r.reporterContact || "-"}</span>
+                                                    <div className="flex flex-col text-left text-xs font-semibold text-slate-600">
+                                                        <span className="flex items-center gap-1 leading-tight text-slate-700 font-bold">
+                                                            <User size={10} className="text-slate-400 shrink-0" /> {r.reporterName}
+                                                        </span>
+                                                        {r.reporterContact && (
+                                                            <a href={`tel:${r.reporterContact}`} className="flex items-center gap-1 text-[10px] text-emerald-600 hover:underline mt-1 font-black tracking-tight leading-none shrink-0">
+                                                                <Phone size={10} className="shrink-0" /> {r.reporterContact}
+                                                            </a>
+                                                        )}
                                                     </div>
                                                 ) : (
-                                                    <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 border border-emerald-100 uppercase tracking-wider">
+                                                    <span className="inline-flex px-1.5 py-0.5 border border-emerald-100 bg-emerald-50 text-emerald-700 text-[8px] font-black uppercase tracking-widest leading-none">
                                                         ANONIM (SECURE)
                                                     </span>
                                                 )}
                                             </TableCell>
 
                                             {/* Submitted Date */}
-                                            <TableCell className="text-slate-500 font-bold text-xs">
+                                            <TableCell className="text-slate-500 font-bold text-xs w-[100px]">
                                                 {new Date(r.createdAt).toLocaleDateString("id-ID")}
                                             </TableCell>
 
-                                            {/* Status */}
-                                            <TableCell className="text-center">
-                                                <Badge className={cn("px-2 py-0.5 rounded-none text-[8px] font-black uppercase tracking-widest border shadow-none", getStatusStyle(r.status))}>
-                                                    {r.status}
-                                                </Badge>
+                                            {/* Status Badge */}
+                                            <TableCell className="text-center w-[120px]">
+                                                <div className={cn("flex justify-center items-center gap-1.5 font-black text-[9px] uppercase tracking-widest leading-none", getStatusStyle(r.status))}>
+                                                    <span className="w-1.5 h-1.5 rounded-full currentColor bg-current shrink-0" />
+                                                    <span>{r.status}</span>
+                                                </div>
                                             </TableCell>
 
-                                            {/* Action */}
-                                            <TableCell className="text-right pr-4">
+                                            {/* Compact Icon Action Button */}
+                                            <TableCell className="text-right pr-4 w-[80px]">
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
-                                                    onClick={() => handleCompanyClick(r)}
-                                                    className="text-emerald-600 font-black hover:bg-emerald-50 rounded-none h-8 text-[10px] tracking-widest gap-1.5"
+                                                    title="Detail Pengaduan"
+                                                    className="font-black text-[9px] text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 tracking-widest h-8 w-8 p-0 rounded-none outline-none"
+                                                    onClick={() => handleOpenDetail(r)}
                                                 >
-                                                    <Eye size={12} /> PERIKSA
+                                                    <Eye size={14} />
                                                 </Button>
                                             </TableCell>
 
@@ -268,6 +292,79 @@ export default function CitizenReportManagement() {
                         </TableBody>
                     </Table>
                 </div>
+
+                {/* --- LIST VIEW (MOBILE) --- */}
+                <div className="md:hidden flex flex-col divide-y divide-slate-100 border-y border-slate-200">
+                    {paginatedReports.length === 0 ? (
+                        <div className="text-center py-10 bg-transparent">
+                            <div className="flex flex-col items-center gap-2 text-slate-400">
+                                <FileText size={24} className="opacity-40" />
+                                <p className="font-black text-[10px] uppercase tracking-widest">Tidak ada pengaduan warga ditemukan</p>
+                            </div>
+                        </div>
+                    ) : (
+                        paginatedReports.map((r) => {
+                            return (
+                                <div key={r.id} className="bg-transparent py-4 flex flex-col gap-3 relative overflow-hidden">
+                                    <div className={cn("absolute top-0 left-0 w-1 h-full", 
+                                        r.status === "PENDING" ? "bg-blue-500" :
+                                        r.status === "VERIFIED" ? "bg-emerald-500" :
+                                        r.status === "INVESTIGATING" ? "bg-indigo-500" :
+                                        r.status === "RESOLVED" ? "bg-teal-500" : "bg-rose-500"
+                                    )} />
+
+                                    <div className="flex justify-between items-start gap-2 pt-0 pl-3 text-left">
+                                        <div className="flex flex-col">
+                                            <span className="font-black text-slate-900 text-xs leading-tight">{r.incidentType}</span>
+                                            <span className="font-mono text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1">{r.trackingId}</span>
+                                        </div>
+                                        <div className="shrink-0">
+                                            <div className={cn("flex items-center gap-1.5 font-black text-[9px] uppercase tracking-widest", getStatusStyle(r.status))}>
+                                                <span className="w-1.5 h-1.5 rounded-full currentColor bg-current" />
+                                                {r.status}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-2 text-xs pt-1 pl-3 text-left">
+                                        <div className="flex flex-col">
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Pelapor</span>
+                                            <span className="font-bold text-slate-700 mt-0.5 line-clamp-1">{r.reporterName || "ANONIM"}</span>
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Tgl Masuk</span>
+                                            <span className="font-bold text-slate-700 mt-0.5">{new Date(r.createdAt).toLocaleDateString("id-ID")}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex justify-between items-center border-t border-slate-100 pt-3 mt-1 pl-3">
+                                        <div className="flex-1 text-left">
+                                            <span className="text-[9px] text-slate-500 line-clamp-1 italic">"{r.description}"</span>
+                                        </div>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            title="Detail Pengaduan"
+                                            className="text-slate-600 hover:text-emerald-600 hover:bg-slate-100 rounded-none h-8 w-8 p-0 border-slate-200 shrink-0 ml-2 flex items-center justify-center"
+                                            onClick={() => handleOpenDetail(r)}
+                                        >
+                                            <Eye size={13} />
+                                        </Button>
+                                    </div>
+                                </div>
+                            )
+                        })
+                    )}
+                </div>
+
+                {/* --- PAGINATION CONTROLS --- */}
+                <PaginationControls
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    totalItems={totalItems}
+                    itemsPerPage={ITEMS_PER_PAGE}
+                    onPageChange={setCurrentPage}
+                />
 
             </div>
 
@@ -285,7 +382,7 @@ export default function CitizenReportManagement() {
                                     Pengaduan Warga: {selectedReport?.trackingId}
                                 </DialogTitle>
                                 <p className="text-[9px] text-slate-400 font-bold uppercase mt-1 tracking-wider leading-none">
-                                    Kategori Insiden: {selectedReport?.incidentType}
+                                    Kategori Instiden: {selectedReport?.incidentType}
                                 </p>
                             </div>
                         </div>

@@ -4,7 +4,7 @@ import { User, Mail, Lock, ArrowRight, Leaf, ArrowLeft, Loader2 } from "lucide-r
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card } from "@/components/ui/card";
+
 import { toast } from "sonner";
 // Import apiService dari folder lib
 import { apiService } from "@/lib/api";
@@ -105,10 +105,10 @@ export default function UserRegisterPage() {
           Kembali ke Beranda
         </button>
 
-        <Card className="border border-slate-100 shadow-lg shadow-slate-200/60 bg-white rounded-3xl p-8 md:p-10">
+        <div className="border border-slate-200 shadow-sm bg-white p-8 md:p-10">
           <div className="space-y-6">
             <div className="text-center space-y-2">
-              <div className="w-14 h-14 bg-gradient-to-br from-emerald-400 to-emerald-600 text-white rounded-2xl flex items-center justify-center mx-auto shadow-md shadow-emerald-200">
+              <div className="w-14 h-14 bg-emerald-600 text-white flex items-center justify-center mx-auto shadow-none">
                 <Leaf size={24} />
               </div>
               <h1 className="font-sans font-semibold text-xl tracking-tight text-slate-800">
@@ -131,7 +131,7 @@ export default function UserRegisterPage() {
                     value={formData.name}
                     onChange={handleChange}
                     disabled={loading}
-                    className="h-12 pl-11 rounded-xl border-slate-200 bg-slate-50/80 focus-visible:ring-emerald-400"
+                    className="h-12 pl-11 rounded-none border-slate-200 bg-slate-50 focus-visible:ring-emerald-400 font-bold text-xs"
                   />
                 </div>
               </div>
@@ -148,7 +148,7 @@ export default function UserRegisterPage() {
                     value={formData.email}
                     onChange={handleChange}
                     disabled={loading}
-                    className="h-12 pl-11 rounded-xl border-slate-200 bg-slate-50/80 focus-visible:ring-emerald-400"
+                    className="h-12 pl-11 rounded-none border-slate-200 bg-slate-50 focus-visible:ring-emerald-400 font-bold text-xs"
                   />
                 </div>
               </div>
@@ -165,7 +165,7 @@ export default function UserRegisterPage() {
                     value={formData.password}
                     onChange={handleChange}
                     disabled={loading}
-                    className="h-12 pl-11 rounded-xl border-slate-200 bg-slate-50/80 focus-visible:ring-emerald-400"
+                    className="h-12 pl-11 rounded-none border-slate-200 bg-slate-50 focus-visible:ring-emerald-400 font-bold text-xs"
                   />
                 </div>
               </div>
@@ -182,7 +182,7 @@ export default function UserRegisterPage() {
                     value={formData.confirmPassword}
                     onChange={handleChange}
                     disabled={loading}
-                    className="h-12 pl-11 rounded-xl border-slate-200 bg-slate-50/80 focus-visible:ring-emerald-400"
+                    className="h-12 pl-11 rounded-none border-slate-200 bg-slate-50 focus-visible:ring-emerald-400 font-bold text-xs"
                   />
                 </div>
               </div>
@@ -190,7 +190,7 @@ export default function UserRegisterPage() {
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-all shadow-md flex items-center justify-center gap-2 mt-2"
+                className="w-full h-12 bg-slate-900 hover:bg-emerald-600 text-white rounded-none font-black text-xs uppercase tracking-widest transition-colors shadow-none mt-2 outline-none border-none cursor-pointer flex items-center justify-center gap-1.5"
               >
                 {loading ? (
                   <>
@@ -212,7 +212,7 @@ export default function UserRegisterPage() {
               </a>
             </div>
           </div>
-        </Card>
+        </div>
 
         <p className="text-center text-xs text-slate-400 leading-relaxed">
           Dengan mendaftar, Anda menyetujui{" "}

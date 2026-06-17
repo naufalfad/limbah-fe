@@ -11,6 +11,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 import { Truck, Eye, ShieldCheck } from "lucide-react";
 
 export default function PickupRequestTable() {
@@ -24,6 +25,15 @@ export default function PickupRequestTable() {
     const companyPickups = useMemo(() => {
         return pickupRequests.filter((p) => p.companyId === selectedCompanyId);
     }, [pickupRequests, selectedCompanyId]);
+
+    // PAGINATION
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 5;
+    const totalPages = Math.ceil(companyPickups.length / ITEMS_PER_PAGE);
+    const paginatedPickups = companyPickups.slice(
+        (currentPage - 1) * ITEMS_PER_PAGE,
+        currentPage * ITEMS_PER_PAGE
+    );
 
     const getStatusBadge = (status: string) => {
         const styles: any = {
@@ -53,7 +63,7 @@ export default function PickupRequestTable() {
         <div className="font-sans text-left">
 
             {/* TABLE CONTENT */}
-            <div className="border border-slate-200 bg-white rounded-none overflow-hidden">
+            <div className="hidden md:block border border-slate-200 bg-white overflow-hidden">
                 <Table>
                     <TableHeader className="bg-slate-50">
                         <TableRow className="border-b border-slate-200 h-9">
@@ -67,23 +77,23 @@ export default function PickupRequestTable() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {companyPickups.length === 0 ? (
+                        {paginatedPickups.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={7} className="text-center py-10 text-slate-400 font-bold text-xs uppercase tracking-widest">
                                     Belum ada penugasan armada pengangkutan.
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            companyPickups.map((pick) => (
-                                <TableRow key={pick.id} className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors h-14">
+                            paginatedPickups.map((pick) => (
+                                <TableRow key={pick.id} className="hover:bg-slate-50/50 border-b border-slate-100 transition-colors h-10">
 
                                     {/* ID Manifest */}
-                                    <TableCell className="pl-4 font-black text-slate-800 text-xs">
+                                    <TableCell className="pl-4 font-black text-slate-800 text-xs py-1.5">
                                         {pick.id}
                                     </TableCell>
 
                                     {/* Jenis Limbah & Volume */}
-                                    <TableCell>
+                                    <TableCell className="py-1.5">
                                         <div className="flex flex-col text-left">
                                             <span className="font-bold text-slate-800 text-xs leading-none">{pick.wasteType}</span>
                                             <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1">{pick.volume}</span>
@@ -91,7 +101,7 @@ export default function PickupRequestTable() {
                                     </TableCell>
 
                                     {/* Armada / Driver */}
-                                    <TableCell>
+                                    <TableCell className="py-1.5">
                                         {pick.driverName ? (
                                             <div className="flex flex-col text-left">
                                                 <span className="font-bold text-slate-700 text-xs leading-none">{pick.driverName}</span>
@@ -105,22 +115,22 @@ export default function PickupRequestTable() {
                                     </TableCell>
 
                                     {/* Tanggal Rencana Jemput */}
-                                    <TableCell className="text-center font-bold text-slate-500 text-xs">
+                                    <TableCell className="text-center font-bold text-slate-500 text-xs py-1.5">
                                         {pick.date}
                                     </TableCell>
 
                                     {/* Tarif Jasa */}
-                                    <TableCell className="text-center font-black text-slate-900 italic text-xs tracking-tight">
+                                    <TableCell className="text-center font-black text-slate-900 italic text-xs tracking-tight py-1.5">
                                         {pick.cost ? `Rp ${pick.cost.toLocaleString()}` : "-"}
                                     </TableCell>
 
                                     {/* Status Badges */}
-                                    <TableCell className="text-center">
+                                    <TableCell className="text-center py-1.5">
                                         {getStatusBadge(pick.status)}
                                     </TableCell>
 
                                     {/* Tindakan (Conditional Action based on status) [3] */}
-                                    <TableCell className="text-right pr-4">
+                                    <TableCell className="text-right pr-4 py-1.5">
                                         {pick.status === "PRICED" ? (
                                             <Button
                                                 onClick={() => navigate("/company/payments")}
@@ -152,6 +162,94 @@ export default function PickupRequestTable() {
                         )}
                     </TableBody>
                 </Table>
+                <PaginationControls
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    totalItems={companyPickups.length}
+                    itemsPerPage={ITEMS_PER_PAGE}
+                    onPageChange={setCurrentPage}
+                />
+            </div>
+
+            {/* Mobile List View */}
+            <div className="md:hidden flex flex-col divide-y divide-slate-100 border border-slate-200 bg-white">
+                {paginatedPickups.length === 0 ? (
+                    <div className="p-4 text-center text-slate-400 font-bold text-[10px] uppercase tracking-widest">
+                        Belum ada penugasan armada pengangkutan.
+                    </div>
+                ) : (
+                    paginatedPickups.map((pick) => (
+                        <div key={pick.id} className="p-3 flex flex-col gap-2">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <span className="font-black text-slate-800 text-xs">{pick.id}</span>
+                                    <div className="mt-0.5">
+                                        <span className="font-bold text-slate-800 text-[11px] leading-none">{pick.wasteType}</span>
+                                    </div>
+                                    <div className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1">{pick.volume}</div>
+                                </div>
+                                <div className="text-right">
+                                    <div className="font-black text-slate-900 italic text-xs tracking-tight">
+                                        {pick.cost ? `Rp ${pick.cost.toLocaleString()}` : "-"}
+                                    </div>
+                                    <div className="text-[9px] font-bold text-slate-500 mt-1">{pick.date}</div>
+                                </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-2 mt-1">
+                                {pick.driverName ? (
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-bold text-slate-700 text-[10px]">{pick.driverName}</span>
+                                        <span className="text-[8px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 border border-emerald-100 mt-1">
+                                            {pick.plateNo}
+                                        </span>
+                                    </div>
+                                ) : (
+                                    <span className="text-[9px] text-slate-400 italic font-bold uppercase tracking-wider">Mencari Driver...</span>
+                                )}
+                            </div>
+
+                            <div className="flex justify-between items-center mt-1 pt-2 border-t border-slate-50">
+                                <div>{getStatusBadge(pick.status)}</div>
+                                <div>
+                                    {pick.status === "PRICED" ? (
+                                        <Button
+                                            onClick={() => navigate("/company/payments")}
+                                            className="bg-amber-500 hover:bg-amber-600 text-white rounded-none h-7 px-2 text-[8px] font-black tracking-widest uppercase shadow-none"
+                                        >
+                                            BAYAR
+                                        </Button>
+                                    ) : pick.status === "PAID" ? (
+                                        <span className="text-[8px] font-black text-emerald-600 bg-emerald-50/50 border border-emerald-200 px-2 py-1 uppercase tracking-widest">
+                                            Lunas
+                                        </span>
+                                    ) : pick.status === "COMPLETED" && pick.evidencePhoto ? (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setSelectedPick(pick)}
+                                            className="text-emerald-600 hover:text-emerald-700 font-black text-[9px] tracking-widest uppercase rounded-none h-7 px-2"
+                                        >
+                                            <Eye size={12} className="mr-1 inline-block" /> Bukti
+                                        </Button>
+                                    ) : (
+                                        <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">-</span>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    ))
+                )}
+                {companyPickups.length > 0 && (
+                    <PaginationControls
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        totalItems={companyPickups.length}
+                        itemsPerPage={ITEMS_PER_PAGE}
+                        onPageChange={setCurrentPage}
+                        className="bg-slate-50 border-t border-slate-200"
+                    />
+                )}
             </div>
 
             {/* DIALOG POPUP PREVIEW BUKTI SERAH TERIMA MANIFEST */}

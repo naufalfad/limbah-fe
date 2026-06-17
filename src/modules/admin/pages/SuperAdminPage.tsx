@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { MapContainer, TileLayer, Circle, FeatureGroup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { cn } from "@/lib/utils";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 
 // Map size invalidator helper (GFW Paradigm Map Fix)
 function ResizeMap() {
@@ -79,6 +80,11 @@ export default function SuperAdminPage() {
   const [newUserOfficerId, setNewUserOfficerId] = useState("");
   const [newUserCompanyId, setNewUserCompanyId] = useState("");
   const [isSubmittingUser, setIsSubmittingUser] = useState(false);
+
+  // PAGINATION
+  const [currentPageUsers, setCurrentPageUsers] = useState(1);
+  const [currentPageLogs, setCurrentPageLogs] = useState(1);
+  const ITEMS_PER_PAGE = 5;
 
   // FASE 3: Fetch Data dari Backend saat pertama kali render
   useEffect(() => {
@@ -181,6 +187,9 @@ export default function SuperAdminPage() {
     log.role.toLowerCase().includes(searchLogQuery.toLowerCase())
   );
 
+  const paginatedUsers = users.slice((currentPageUsers - 1) * ITEMS_PER_PAGE, currentPageUsers * ITEMS_PER_PAGE);
+  const paginatedLogs = filteredLogs.slice((currentPageLogs - 1) * ITEMS_PER_PAGE, currentPageLogs * ITEMS_PER_PAGE);
+
   if (isDataLoading) {
     return (
       <DashboardLayout role="SUPER_ADMIN">
@@ -199,7 +208,7 @@ export default function SuperAdminPage() {
       <div className="space-y-4 text-left">
 
         {/* Header (DIET CARD) */}
-        <div className="bg-white p-4 rounded-none border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="py-2 border-y border-slate-200 bg-transparent flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-none uppercase">Super Admin Console</h1>
             <p className="text-slate-500 text-xs font-medium mt-1">Pusat kendali konfigurasi sistem, kelola role pengguna, aktivasi GIS layer, dan audit trail.</p>
@@ -235,7 +244,7 @@ export default function SuperAdminPage() {
 
             {/* Quick Summary Panels */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <Card className="rounded-none border border-slate-200 shadow-sm bg-white">
+              <div className="border border-slate-200 bg-white">
                 <div className="p-4 border-b border-slate-200 bg-slate-50">
                   <h3 className="font-bold text-sm tracking-tight text-slate-800 uppercase flex items-center gap-2">
                     <Database className="text-emerald-600" size={16} /> System Health & Parameters
@@ -247,9 +256,9 @@ export default function SuperAdminPage() {
                   <HealthItem label="Zustand App Store Cache" status="OPTIMAL" />
                   <HealthItem label="Daily Database Auto-Backup" status="02:00 AM" />
                 </div>
-              </Card>
+              </div>
 
-              <Card className="rounded-none border border-slate-200 shadow-sm bg-white flex flex-col">
+              <div className="border border-slate-200 bg-white flex flex-col">
                 <div className="p-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
                   <h3 className="font-bold text-sm tracking-tight text-slate-800 uppercase">Log Aktivitas Terbaru</h3>
                   <Button variant="ghost" size="sm" className="text-emerald-600 font-bold text-[9px] rounded-none h-7 px-2" onClick={() => navigate("/super-admin/logs")}>LIHAT SEMUA</Button>
@@ -269,14 +278,14 @@ export default function SuperAdminPage() {
                     ))
                   )}
                 </div>
-              </Card>
+              </div>
             </div>
           </div>
         )}
 
         {/* 2. USERS TAB (LIVE DATA DARI API) */}
         {activeTab === "users" && (
-          <Card className="rounded-none p-6 border border-slate-200 shadow-sm bg-white animate-in fade-in duration-300">
+          <div className="p-6 border border-slate-200 bg-white animate-in fade-in duration-300">
             <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
                 <h3 className="font-bold text-sm tracking-tight text-slate-800 uppercase flex items-center gap-2">
@@ -304,19 +313,19 @@ export default function SuperAdminPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {users.length === 0 ? (
+                  {paginatedUsers.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={5} className="text-center py-6 text-slate-400 font-bold text-xs">
                         Tidak ada data pengguna terdaftar.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    users.map((u) => (
-                      <TableRow key={u.id} className="hover:bg-slate-50 transition-colors border-b last:border-b-0 h-12">
-                        <TableCell className="font-bold text-slate-500 text-xs pl-4">{u.id.substring(0, 8)}...</TableCell>
-                        <TableCell className="font-bold text-slate-800 text-xs">{u.name}</TableCell>
-                        <TableCell className="font-medium text-slate-500 text-xs">{u.email}</TableCell>
-                        <TableCell>
+                    paginatedUsers.map((u) => (
+                      <TableRow key={u.id} className="hover:bg-slate-50 transition-colors border-b last:border-b-0 h-10">
+                        <TableCell className="font-bold text-slate-500 text-xs pl-4 py-1.5">{u.id.substring(0, 8)}...</TableCell>
+                        <TableCell className="font-bold text-slate-800 text-xs py-1.5">{u.name}</TableCell>
+                        <TableCell className="font-medium text-slate-500 text-xs py-1.5">{u.email}</TableCell>
+                        <TableCell className="py-1.5">
                           <select
                             value={u.role}
                             onChange={(e) => handleRoleChange(u.id, e.target.value)}
@@ -330,7 +339,7 @@ export default function SuperAdminPage() {
                             <option value="AUDITOR">AUDITOR</option>
                           </select>
                         </TableCell>
-                        <TableCell className="text-right pr-4">
+                        <TableCell className="text-right pr-4 py-1.5">
                           <Button variant="ghost" size="icon-xs" className="text-slate-400 hover:text-slate-600 rounded-none" title="Ubah Password (Akan Datang)">
                             <Lock size={12} />
                           </Button>
@@ -340,8 +349,15 @@ export default function SuperAdminPage() {
                   )}
                 </TableBody>
               </Table>
+              <PaginationControls
+                currentPage={currentPageUsers}
+                totalPages={Math.ceil(users.length / ITEMS_PER_PAGE)}
+                totalItems={users.length}
+                itemsPerPage={ITEMS_PER_PAGE}
+                onPageChange={setCurrentPageUsers}
+              />
             </div>
-          </Card>
+          </div>
         )}
 
         {/* 3. GATEWAY TAB */}
@@ -412,7 +428,7 @@ export default function SuperAdminPage() {
         {activeTab === "layers" && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 animate-in fade-in duration-300">
             {/* Layers Switch Control */}
-            <Card className="rounded-none p-4 border border-slate-200 shadow-sm bg-white space-y-4">
+            <div className="p-4 border border-slate-200 bg-white space-y-4">
               <h3 className="font-bold text-sm tracking-tight text-slate-800 uppercase flex items-center gap-2">
                 <MapIcon className="text-blue-600" size={16} /> GIS Layers Control
               </h3>
@@ -432,10 +448,10 @@ export default function SuperAdminPage() {
                   <Switch checked={industrialLayer} onCheckedChange={handleSetIndustrialLayer} />
                 </div>
               </div>
-            </Card>
+            </div>
 
             {/* Interactive Layers Map Preview */}
-            <Card className="rounded-none border border-slate-200 shadow-sm overflow-hidden bg-white lg:col-span-2">
+            <div className="border border-slate-200 overflow-hidden bg-white lg:col-span-2">
               <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
                 <h3 className="font-bold text-sm tracking-tight text-slate-800 uppercase">GIS Layer Sandbox Preview</h3>
               </div>
@@ -464,13 +480,13 @@ export default function SuperAdminPage() {
                   <ResizeMap />
                 </MapContainer>
               </div>
-            </Card>
+            </div>
           </div>
         )}
 
         {/* 5. AUDIT LOGS TAB (LIVE DATA DARI API) */}
         {activeTab === "logs" && (
-          <Card className="rounded-none p-4 border border-slate-200 shadow-sm bg-white animate-in fade-in duration-300">
+          <div className="p-4 border border-slate-200 bg-white animate-in fade-in duration-300">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4">
               <div>
                 <h3 className="font-bold text-sm tracking-tight text-slate-800 uppercase">Security Audit Trail</h3>
@@ -504,29 +520,36 @@ export default function SuperAdminPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredLogs.length === 0 ? (
+                  {paginatedLogs.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={5} className="text-center py-6 text-slate-400 font-bold text-xs">
                         Tidak ada log yang ditemukan.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredLogs.map((log) => (
-                      <TableRow key={log.id} className="hover:bg-slate-50 transition-colors border-b last:border-b-0 h-12">
-                        <TableCell className="text-slate-400 font-bold text-xs pl-4">{new Date(log.timestamp).toLocaleString('id-ID')}</TableCell>
-                        <TableCell className="font-bold text-slate-500 text-xs">{log.id.substring(0, 10)}</TableCell>
-                        <TableCell className="font-bold text-slate-800 text-xs">{log.user}</TableCell>
-                        <TableCell>
+                    paginatedLogs.map((log) => (
+                      <TableRow key={log.id} className="hover:bg-slate-50 transition-colors border-b last:border-b-0 h-10">
+                        <TableCell className="text-slate-400 font-bold text-xs pl-4 py-1.5">{new Date(log.timestamp).toLocaleString('id-ID')}</TableCell>
+                        <TableCell className="font-bold text-slate-500 text-xs py-1.5">{log.id.substring(0, 10)}</TableCell>
+                        <TableCell className="font-bold text-slate-800 text-xs py-1.5">{log.user}</TableCell>
+                        <TableCell className="py-1.5">
                           <Badge className="bg-slate-900 text-white font-bold text-[8px] tracking-wider uppercase rounded-none border-none">{log.role}</Badge>
                         </TableCell>
-                        <TableCell className="font-bold text-slate-700 text-xs leading-normal">{log.action}</TableCell>
+                        <TableCell className="font-bold text-slate-700 text-xs leading-normal py-1.5">{log.action}</TableCell>
                       </TableRow>
                     ))
                   )}
                 </TableBody>
               </Table>
+              <PaginationControls
+                currentPage={currentPageLogs}
+                totalPages={Math.ceil(filteredLogs.length / ITEMS_PER_PAGE)}
+                totalItems={filteredLogs.length}
+                itemsPerPage={ITEMS_PER_PAGE}
+                onPageChange={setCurrentPageLogs}
+              />
             </div>
-          </Card>
+          </div>
         )}
 
         {/* Dialog Tambah Pengguna Baru */}

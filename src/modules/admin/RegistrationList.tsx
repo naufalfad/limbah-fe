@@ -16,6 +16,7 @@ import { useSijagaStore } from '@/store/useSijagaStore';
 import { DetailDrawer } from "./components/DetailDrawer";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 
 type StatusFilter = "ALL" | "PENDING" | "REVIEW" | "APPROVED" | "REJECTED";
 
@@ -26,6 +27,8 @@ export default function RegistrationList() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   useEffect(() => {
     fetchCompanies();
@@ -112,12 +115,24 @@ export default function RegistrationList() {
     });
   }, [companies, statusFilter, searchQuery]);
 
+  // Reset pagination on filter
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter]);
+
+  const totalItems = filteredCompanies.length;
+  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+  const paginatedCompanies = filteredCompanies.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
   return (
     <DashboardLayout role="ADMIN_DLH">
-      <div className="space-y-4 text-left"> {/* DIET: space-y-6 -> space-y-4 */}
+      <div className="space-y-4 text-left">
 
-        {/* --- HEADER UTAMA --- */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        {/* --- FILTER & TABS (COMPACT) --- */}
+        <div className="py-2 border-y border-slate-200 bg-transparent flex flex-col md:flex-row justify-between gap-3">
           <div>
             <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase leading-none">
               Validasi <span className="text-emerald-600">Registrasi</span>
@@ -134,28 +149,27 @@ export default function RegistrationList() {
             className="flex items-center gap-2 font-black border-slate-300 rounded-none h-9 px-4 text-[10px] uppercase tracking-widest hover:bg-slate-50"
           >
             <RefreshCw size={12} className={cn(isRefreshing && "animate-spin")} />
-            {isRefreshing ? "MEMUAT..." : "SYNC DATABASE"}
           </Button>
         </div>
 
-        {/* --- STATUS TAB FILTERS (GFW SHARP BUTTONS) --- */}
-        <div className="flex flex-wrap gap-1 bg-slate-100 p-1 border border-slate-200 w-max max-w-full">
+        {/* --- STATUS TAB FILTERS (BORDERLESS UNDERLINE) --- */}
+        <div className="flex flex-wrap gap-6 border-b border-slate-200 w-full mb-4">
           {tabs.map(tab => (
             <button
               key={tab.key}
               onClick={() => setStatusFilter(tab.key)}
               className={cn(
-                "flex items-center gap-2 px-3.5 py-1.5 rounded-none text-[9px] font-black uppercase tracking-wider transition-all border outline-none",
+                "flex items-center gap-2 pb-3 text-[10px] font-black uppercase tracking-wider transition-all outline-none border-b-2",
                 statusFilter === tab.key
-                  ? tab.active
-                  : "bg-white " + tab.color
+                  ? "border-emerald-600 text-emerald-600"
+                  : "border-transparent text-slate-500 hover:text-slate-800"
               )}
             >
               {tab.icon}
               <span>{tab.label}</span>
               <span className={cn(
-                "inline-flex items-center justify-center px-1.5 h-4 text-[8px] font-black font-mono",
-                statusFilter === tab.key ? "bg-white/25 text-white" : "bg-slate-100 text-slate-600"
+                "inline-flex items-center justify-center px-1.5 py-0.5 text-[9px] font-black font-mono rounded-full ml-1",
+                statusFilter === tab.key ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"
               )}>
                 {tab.count}
               </span>
@@ -164,99 +178,64 @@ export default function RegistrationList() {
         </div>
 
         {/* --- SEARCH TOOLBAR (GFW DENSE) --- */}
-        <Card className="rounded-none border border-slate-200 shadow-none p-3 bg-white">
+        <div className="py-1 border-b border-slate-200 bg-transparent">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
             <Input
-              placeholder="Cari Nama Perusahaan / NIB / No. Registrasi..."
-              className="pl-9 h-9 bg-slate-50 border-slate-200 rounded-none font-bold text-xs"
+              placeholder="Cari..."
+              className="pl-9 h-8 bg-slate-50 border-slate-200 rounded-none font-bold text-xs"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-        </Card>
+        </div>
 
         {/* --- STATUS FILTER LABEL INDICATOR --- */}
         {(searchQuery || statusFilter !== "ALL") && (
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest -mt-2">
             Hasil: <span className="text-slate-800">{filteredCompanies.length}</span> Berkas Ditemukan
-            {statusFilter !== "ALL" && <> · Filter: <span className="text-emerald-600">{statusFilter}</span></>}
-            {searchQuery && <> · Kata Kunci: "<span className="text-emerald-600">{searchQuery}</span>"</>}
           </p>
         )}
 
-        {/* --- HIGH DENSITY TABLE --- */}
-        <div className="bg-white rounded-none border border-slate-200 shadow-none overflow-hidden">
+        {/* --- HIGH DENSITY COMPACT TABLE (DESKTOP) --- */}
+        <div className="hidden md:block bg-transparent overflow-hidden">
           <Table>
-            <TableHeader className="bg-slate-50">
+            <TableHeader className="bg-slate-50 border-y border-slate-200">
               <TableRow className="border-b border-slate-200 h-9">
-                <TableHead className="w-[150px] font-black text-slate-500 uppercase text-[9px] tracking-widest pl-4">No. Registrasi</TableHead>
-                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest">Perusahaan</TableHead>
-                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest">Jenis Dokumen</TableHead>
-                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest">KBLI Usaha</TableHead>
-                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest">Lampiran</TableHead>
-                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest text-center">Status</TableHead>
-                <TableHead className="text-right pr-4 font-black text-slate-500 uppercase text-[9px] tracking-widest">Aksi</TableHead>
+                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest pl-4 w-[280px]">Perusahaan</TableHead>
+                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest w-[140px]">Dokumen</TableHead>
+                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest w-[120px]">KBLI</TableHead>
+                <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest w-[140px]">Status</TableHead>
+                <TableHead className="text-right pr-4 font-black text-slate-500 uppercase text-[9px] tracking-widest w-[100px]">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredCompanies.length === 0 ? (
+              {paginatedCompanies.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-16">
+                  <TableCell colSpan={5} className="text-center py-16">
                     <div className="flex flex-col items-center gap-2 text-slate-400">
                       <FileText size={24} className="opacity-40" />
-                      <p className="font-black text-[10px] uppercase tracking-widest">Tidak ada berkas registrasi ditemukan</p>
+                      <p className="font-black text-[10px] uppercase tracking-widest">Tidak ada berkas ditemukan</p>
                     </div>
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredCompanies.map((c) => {
-                  // Validasi kelengkapan berkas fisik untuk indikator kelengkapan [3]
-                  const hasAllDocs = !!(c as any).docNibUrl && !!(c as any).docNpwpUrl;
+                paginatedCompanies.map((c) => {
                   return (
-                    <TableRow key={c.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors h-14 group">
-                      <TableCell className="font-mono font-bold text-slate-500 pl-4 text-xs">
-                        {c.id.substring(0, 8)}...
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col text-left">
-                          <span className="font-bold text-slate-900 text-xs group-hover:text-emerald-700 transition-colors">{c.companyName}</span>
-                          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1">{c.address}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={cn(
-                          "border-none font-black text-[9px] tracking-widest rounded-none shadow-none",
-                          (c.docType === "UKL-UPL" || c.docType === "UKL_UPL")
-                            ? "bg-indigo-50 text-indigo-700"
-                            : "bg-emerald-50 text-emerald-700"
-                        )}>
-                          {(c.docType === "UKL_UPL") ? "UKL-UPL" : c.docType}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-slate-500 font-bold text-xs">{c.kbli || "-"}</TableCell>
-                      <TableCell>
-                        {hasAllDocs ? (
-                          <span className="flex items-center gap-1 text-[9px] font-black text-emerald-600 uppercase tracking-wider">
-                            <CheckCircle2 size={11} /> Lengkap
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-1 text-[9px] font-black text-amber-500 uppercase tracking-wider">
-                            <AlertTriangle size={11} /> Tidak Lengkap
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <StatusBadge status={c.status} />
-                      </TableCell>
-                      <TableCell className="text-right pr-4">
+                    <TableRow key={c.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors h-12">
+                      <TableCell className="pl-4 text-xs font-bold text-slate-900">{c.companyName}</TableCell>
+                      <TableCell className="text-[10px] font-bold text-slate-600">{(c.docType === "UKL_UPL") ? "UKL-UPL" : c.docType}</TableCell>
+                      <TableCell className="text-[10px] text-slate-500">{c.kbli || "-"}</TableCell>
+                      <TableCell><StatusBadge status={c.status} /></TableCell>
+                      <TableCell className="text-right pr-4 w-[100px]">
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-emerald-600 font-black hover:bg-emerald-50 rounded-none h-8 text-[10px] tracking-widest gap-1.5"
+                          title="Periksa & Validasi Berkas"
+                          className="font-black text-[9px] text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 tracking-widest h-8 w-8 p-0 rounded-none outline-none"
                           onClick={() => handleOpenDetail(c)}
                         >
-                          <Eye size={12} /> PERIKSA
+                          <CheckCircle2 size={14} />
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -266,6 +245,89 @@ export default function RegistrationList() {
             </TableBody>
           </Table>
         </div>
+
+        {/* --- LIST VIEW (MOBILE) --- */}
+        <div className="md:hidden flex flex-col divide-y divide-slate-100 border-y border-slate-200">
+          {paginatedCompanies.length === 0 ? (
+            <div className="text-center py-10 bg-transparent">
+              <div className="flex flex-col items-center gap-2 text-slate-400">
+                <FileText size={24} className="opacity-40" />
+                <p className="font-black text-[10px] uppercase tracking-widest">Tidak ada berkas ditemukan</p>
+              </div>
+            </div>
+          ) : (
+            paginatedCompanies.map((c) => {
+              const hasAllDocs = !!(c as any).docNibUrl && !!(c as any).docNpwpUrl;
+              return (
+                <div key={c.id} className="bg-transparent py-4 flex flex-col gap-3 relative overflow-hidden">
+                  <div className={cn("absolute top-0 left-0 w-1 h-full", 
+                    c.status === "PENDING" ? "bg-blue-500" :
+                    c.status === "REVIEW" ? "bg-amber-500" :
+                    c.status === "APPROVED" ? "bg-emerald-500" : "bg-rose-500"
+                  )} />
+
+                  <div className="flex justify-between items-start gap-2 pt-0 pl-3 text-left">
+                    <div className="flex flex-col">
+                      <span className="font-black text-slate-900 text-xs leading-tight">{c.companyName}</span>
+                      <span className="font-mono text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1">{c.id}</span>
+                    </div>
+                    <div className="shrink-0"><StatusBadge status={c.status} /></div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs pt-1 pl-3 text-left">
+                    <div className="flex flex-col">
+                      <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Jenis Dokumen</span>
+                      <span className={cn(
+                        "mt-0.5 font-black text-[10px] tracking-widest uppercase leading-none w-fit",
+                        (c.docType === "UKL-UPL" || c.docType === "UKL_UPL")
+                          ? "text-indigo-600"
+                          : "text-emerald-600"
+                      )}>
+                        {(c.docType === "UKL_UPL") ? "UKL-UPL" : c.docType}
+                      </span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Berkas Pendukung</span>
+                      {hasAllDocs ? (
+                        <span className="mt-0.5 flex items-center gap-1.5 text-[9px] font-black text-emerald-600 uppercase tracking-widest leading-none">
+                          <CheckCircle2 size={11} className="shrink-0" /> Lengkap
+                        </span>
+                      ) : (
+                        <span className="mt-0.5 flex items-center gap-1.5 text-[9px] font-black text-amber-500 uppercase tracking-widest leading-none">
+                          <AlertTriangle size={11} className="shrink-0" /> Tdk Lengkap
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center border-t border-slate-100 pt-3 mt-1 pl-3">
+                    <div className="flex-1 text-left">
+                      <span className="text-[9px] text-slate-500 line-clamp-1 italic">{c.address}</span>
+                    </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleOpenDetail(c)}
+                        className="font-black text-[9px] text-emerald-600 hover:bg-emerald-50 tracking-widest h-8 w-8 p-0 rounded-none outline-none shrink-0 border-slate-200 ml-2"
+                      >
+                        <Eye size={14} />
+                      </Button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* --- PAGINATION CONTROLS --- */}
+        <PaginationControls
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          itemsPerPage={ITEMS_PER_PAGE}
+          onPageChange={setCurrentPage}
+        />
+
       </div>
 
       {/* Drawer Detail Berkas (GRASP Information Expert) [3] */}
@@ -278,17 +340,19 @@ export default function RegistrationList() {
   );
 }
 
-// --- Sub Component: Badge Status (GFW Sharp Look) ---
+// --- Sub Component: Badge Status (Borderless Dot) ---
 function StatusBadge({ status }: { status: string }) {
   const configs: Record<string, string> = {
-    PENDING: "bg-blue-50 text-blue-700 border-blue-100",
-    REVIEW: "bg-amber-50 text-amber-700 border-amber-100",
-    APPROVED: "bg-emerald-50 text-emerald-700 border-emerald-100",
-    REJECTED: "bg-rose-50 text-rose-700 border-rose-100",
+    PENDING: "text-blue-600",
+    REVIEW: "text-amber-600",
+    APPROVED: "text-emerald-600",
+    REJECTED: "text-rose-600",
   };
+  const config = configs[status] || "text-slate-500";
   return (
-    <Badge className={cn(configs[status] || "bg-slate-50 text-slate-500 border-slate-100", "px-2.5 py-0.5 rounded-none text-[8px] font-black uppercase tracking-widest border shadow-none")}>
+    <div className={cn("flex items-center gap-1.5 font-black text-[9px] uppercase tracking-widest", config)}>
+      <span className="w-1.5 h-1.5 rounded-full currentColor bg-current" />
       {status}
-    </Badge>
+    </div>
   );
 }

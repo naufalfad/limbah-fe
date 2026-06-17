@@ -75,7 +75,7 @@ export default function WasteLogbookPage() {
         <CompanyHeader />
 
         {/* 2. PAGE ACTION BAR (DENSE TOOLBAR - GFW STYLE) */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 border border-slate-200 rounded-none shadow-none">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 py-2 border-y border-slate-200 bg-transparent">
           <div className="space-y-1">
             <h1 className="text-xl font-black text-slate-900 tracking-tight leading-none uppercase">
               Logbook Limbah Berkala
@@ -104,8 +104,8 @@ export default function WasteLogbookPage() {
         </div>
 
         {/* 3. MODULAR HIGH DENSITY TABLES */}
-        <div className="space-y-2">
-          <div className="bg-slate-50 border border-slate-200 px-4 py-2 flex justify-between items-center rounded-none">
+        <div className="space-y-3">
+          <div className="border-b border-slate-200 pb-3 flex justify-between items-end">
             <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
               <ClipboardList size={12} className="text-emerald-700" /> Database Logbook Historis
             </span>

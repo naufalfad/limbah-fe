@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 
 export default function WasteMonitoring() {
   const {
@@ -29,6 +30,8 @@ export default function WasteMonitoring() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [scheduledAnomalies, setScheduledAnomalies] = useState<string[]>([]);
   const [warnedAnomalies, setWarnedAnomalies] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   // Selected Log for detail and verification [3]
   const [selectedLog, setSelectedLog] = useState<any>(null);
@@ -100,6 +103,18 @@ export default function WasteMonitoring() {
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
+  // Reset pagination on filter
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, categoryFilter, statusFilter]);
+
+  const totalItems = filteredLogs.length;
+  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+  const paginatedLogs = filteredLogs.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
   return (
     <DashboardLayout role="ADMIN_DLH">
       <div className="space-y-4 text-left animate-in fade-in duration-300"> {/* DIET: space-y-8 -> space-y-4 */}
@@ -130,7 +145,8 @@ export default function WasteMonitoring() {
         </div>
 
         {/* --- AI ANOMALY DETECTION WIDGET --- */}
-        <Card className="rounded-none border border-slate-800 bg-slate-900 text-white relative shadow-none">
+        <div className="bg-slate-900 text-white relative">
+          <div className="p-4 flex flex-col gap-3 relative z-10">
           <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none" />
 
           <div className="p-4 border-b border-white/10 relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -199,10 +215,10 @@ export default function WasteMonitoring() {
               </div>
             )}
           </div>
-        </Card>
+        </div>
 
-        {/* --- FILTER & SEARCH (DIET PADDING) --- */}
-        <Card className="rounded-none border border-slate-200 shadow-sm p-3 bg-white">
+        {/* --- FILTER & SEARCH (COMPACT) --- */}
+        <div className="py-2 border-y border-slate-200 bg-transparent">
           <div className="flex flex-col lg:flex-row gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
@@ -218,12 +234,12 @@ export default function WasteMonitoring() {
               <SelectFilter placeholder="Status EWS" value={statusFilter} onChange={setStatusFilter} options={[{ label: "Semua", value: "ALL" }, { label: "Danger", value: "DANGER" }, { label: "Warning", value: "WARNING" }, { label: "Safe", value: "SAFE" }]} />
             </div>
           </div>
-        </Card>
+        </div>
 
-        {/* --- MONITORING TABLE (GFW DENSE) --- */}
-        <div className="bg-white rounded-none border border-slate-200 shadow-sm overflow-hidden text-left">
+        {/* --- MONITORING TABLE (GFW DENSE - DESKTOP) --- */}
+        <div className="hidden md:block bg-transparent overflow-hidden text-left">
           <Table>
-            <TableHeader className="bg-slate-50">
+            <TableHeader className="bg-slate-50 border-y border-slate-200">
               <TableRow className="border-b border-slate-200 h-10">
                 <TableHead className="pl-4 font-black text-slate-500 uppercase text-[9px] tracking-widest">Perusahaan</TableHead>
                 <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest">Kategori Limbah</TableHead>
@@ -235,12 +251,12 @@ export default function WasteMonitoring() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredLogs.length === 0 ? (
+              {paginatedLogs.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 font-bold text-slate-400 text-xs uppercase tracking-widest">Tidak ada data log limbah.</TableCell>
                 </TableRow>
               ) : (
-                filteredLogs.map((item) => {
+                paginatedLogs.map((item) => {
                   const ews = getEwsStatus(item.type, item.volume);
                   const limit = getLimit(item.type);
                   const trend = item.id.charCodeAt(item.id.length - 1) % 2 === 0 ? "up" : "down";
@@ -282,14 +298,15 @@ export default function WasteMonitoring() {
                         </Badge>
                       </TableCell>
 
-                      <TableCell className="pr-4 text-right">
+                      <TableCell className="text-right pr-4">
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="font-black text-[9px] text-emerald-600 hover:bg-emerald-50 tracking-widest h-7 rounded-none outline-none"
+                          title="Detail Logbook"
+                          className="text-emerald-600 hover:bg-emerald-600 hover:text-white rounded-none h-8 w-8 p-0 outline-none"
                           onClick={() => setSelectedLog(item)}
                         >
-                          DETAIL LOGBOOK
+                          <FileText size={13} />
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -300,7 +317,89 @@ export default function WasteMonitoring() {
           </Table>
         </div>
 
-        {/* --- LOGBOOK DETAIL MODAL (GFW TACTICAL LOOK) [3] --- */}
+        {/* --- LIST VIEW (MOBILE) --- */}
+        <div className="md:hidden flex flex-col divide-y divide-slate-100 border-y border-slate-200">
+          {paginatedLogs.length === 0 ? (
+            <div className="text-center py-10 bg-white border border-slate-200 shadow-sm">
+              <div className="flex flex-col items-center gap-2 text-slate-400">
+                <AlertTriangle size={24} className="opacity-40" />
+                <p className="font-black text-[10px] uppercase tracking-widest">Tidak ada data log limbah</p>
+              </div>
+            </div>
+          ) : (
+            paginatedLogs.map((item) => {
+              const ews = getEwsStatus(item.type, item.volume);
+              const limit = getLimit(item.type);
+              const trend = item.id.charCodeAt(item.id.length - 1) % 2 === 0 ? "up" : "down";
+
+              return (
+                <div key={item.id} className="bg-transparent py-4 flex flex-col gap-3 relative overflow-hidden">
+                  {/* Status Strip */}
+                  <div className={cn("absolute top-0 left-0 w-1 h-full", 
+                    ews === "SAFE" ? "bg-emerald-500" :
+                    ews === "WARNING" ? "bg-amber-500" : "bg-rose-500"
+                  )} />
+
+                  {/* Header */}
+                  <div className="flex justify-between items-start gap-2 pt-0 pl-3 text-left">
+                    <div className="flex flex-col">
+                      <span className="font-black text-slate-900 text-xs leading-tight">{item.companyName}</span>
+                      <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-1">{item.date} • {item.id}</span>
+                    </div>
+                    <div className="shrink-0"><EWSBadge status={ews} /></div>
+                  </div>
+
+                  {/* Data Grids */}
+                  <div className="grid grid-cols-2 gap-2 text-xs pt-1 pl-3 text-left">
+                    <div className="flex flex-col">
+                      <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Kategori</span>
+                      <span className="font-bold text-slate-700 mt-0.5">{item.type}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Volume (Batas: {limit})</span>
+                      <div className="flex items-center gap-1.5 font-black text-slate-800 mt-0.5 text-sm">
+                        {item.volume} {item.unit}
+                        {trend === "up" ? <ArrowUpRight size={12} className="text-rose-500" /> : <ArrowDownRight size={12} className="text-emerald-500" />}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Footer / Actions */}
+                  <div className="flex justify-between items-center border-t border-slate-100 pt-3 mt-1 pl-3">
+                    <div className="flex-1 text-left">
+                      <Badge variant="outline" className={cn(
+                        "rounded-none font-bold text-[8px] border uppercase tracking-widest shadow-none",
+                        item.status === 'Terverifikasi' ? "border-emerald-200 text-emerald-600 bg-emerald-50" :
+                          item.status === 'Ditolak' ? "border-rose-200 text-rose-600 bg-rose-50" :
+                            item.status === 'Proses_Verifikasi' ? "border-amber-200 text-amber-600 bg-amber-50" :
+                              "border-slate-200 text-slate-600 bg-slate-50"
+                      )}>
+                        {item.status.replace('_', ' ')}
+                      </Badge>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="font-black text-[9px] text-emerald-600 hover:bg-emerald-50 tracking-widest h-8 rounded-none outline-none"
+                      onClick={() => setSelectedLog(item)}
+                    >
+                      DETAIL
+                    </Button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* --- PAGINATION CONTROLS --- */}
+        <PaginationControls
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          itemsPerPage={ITEMS_PER_PAGE}
+          onPageChange={setCurrentPage}
+        />
         {selectedLog && (
           <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
             <div className="bg-white rounded-none shadow-none w-full max-w-xl overflow-hidden border border-slate-300 flex flex-col">
@@ -416,6 +515,7 @@ export default function WasteMonitoring() {
         )}
 
       </div>
+      </div>
     </DashboardLayout>
   );
 }
@@ -444,14 +544,15 @@ function StatMiniCard({ title, value, sub, icon, color, isWarning, isDanger }: a
 
 function EWSBadge({ status }: { status: string }) {
   const styles: any = {
-    SAFE: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    WARNING: "bg-amber-50 text-amber-700 border-amber-200",
-    DANGER: "bg-rose-50 text-rose-700 border-rose-200",
+    SAFE: "text-emerald-600",
+    WARNING: "text-amber-600",
+    DANGER: "text-rose-600",
   };
   return (
-    <Badge className={cn("px-2 py-0.5 rounded-none text-[9px] font-bold border uppercase tracking-widest shadow-none", styles[status])}>
+    <div className={cn("flex items-center justify-center gap-1.5 font-black text-[9px] uppercase tracking-widest", styles[status] || "text-slate-500")}>
+      <span className="w-1.5 h-1.5 rounded-full currentColor bg-current" />
       {status}
-    </Badge>
+    </div>
   );
 }
 

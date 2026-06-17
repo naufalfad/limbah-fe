@@ -51,7 +51,7 @@ export default function ActiveManifests({
     };
 
     return (
-        <Card className="rounded-none border border-slate-200 shadow-sm bg-white flex flex-col h-full text-left">
+        <div className="border border-slate-200 bg-white flex flex-col h-full text-left">
             {/* Header Laci */}
             <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center gap-2">
                 <Navigation size={14} className="text-emerald-700" />
@@ -143,6 +143,6 @@ export default function ActiveManifests({
                     ))
                 )}
             </div>
-        </Card>
+        </div>
     );
 }

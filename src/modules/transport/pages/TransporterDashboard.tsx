@@ -62,7 +62,7 @@ export default function TransporterDashboard() {
 
         {/* --- 1. HEADER BRIEF & STATUS LISENSI (GFW TACTICAL) --- */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <Card className="lg:col-span-2 rounded-none border border-slate-200 shadow-none p-4 bg-white flex flex-col justify-between">
+          <div className="lg:col-span-2 border border-slate-200 p-4 bg-white flex flex-col justify-between">
             <div className="space-y-1">
               <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase leading-none">Order Pengangkutan Limbah</h1>
               <p className="text-slate-500 font-medium text-xs mt-1.5">
@@ -71,21 +71,21 @@ export default function TransporterDashboard() {
             </div>
 
             <div className="flex gap-4 mt-4">
-              <div className="p-3 bg-slate-50 rounded-none flex-1 border border-slate-200 text-left">
+              <div className="p-3 bg-slate-50 border border-slate-200 flex-1 text-left">
                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Order Aktif</p>
                 <h4 className="text-lg font-black text-slate-800 tracking-tighter mt-1.5 italic leading-none">{activePickupsCount} Penjemputan</h4>
               </div>
-              <div className="p-3 bg-slate-50 rounded-none flex-1 border border-slate-200 text-left">
+              <div className="p-3 bg-slate-50 border border-slate-200 flex-1 text-left">
                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Tunggu Bid</p>
                 <h4 className="text-lg font-black text-slate-800 tracking-tighter mt-1.5 italic leading-none">{pendingBidsCount} Permintaan</h4>
               </div>
             </div>
-          </Card>
+          </div>
 
           {/* License Status Card (Sharp & Flat) */}
-          <Card className="rounded-none border border-slate-200 bg-slate-900 text-white p-4 flex flex-col justify-between shadow-none">
+          <div className="border border-slate-200 bg-slate-900 text-white p-4 flex flex-col justify-between">
             <div className="space-y-1.5">
-              <div className="w-8 h-8 bg-white/10 rounded-none flex items-center justify-center text-emerald-400 border border-white/5">
+              <div className="w-8 h-8 bg-white/10 flex items-center justify-center text-emerald-400 border border-white/5">
                 <Truck size={16} />
               </div>
               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest pt-2 leading-none">Kepatuhan Lisensi Transporter</p>
@@ -96,11 +96,11 @@ export default function TransporterDashboard() {
                 Izin Operasional Angkutan B3 dari DLH Provinsi berlaku s.d. 31 Des 2028. Seluruh e-manifest terintegrasi dinas.
               </p>
             </div>
-            <div className="flex items-center gap-2 bg-slate-800 border border-slate-700 p-2 rounded-none mt-4">
-              <span className="w-2 h-2 bg-emerald-500 rounded-none animate-ping shrink-0" />
+            <div className="flex items-center gap-2 bg-slate-800 border border-slate-700 p-2 mt-4">
+              <span className="w-2 h-2 bg-emerald-500 animate-ping shrink-0" />
               <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest leading-none">E-Manifest Online</span>
             </div>
-          </Card>
+          </div>
         </div>
 
         {/* --- 2. DOUBLE PANEL ACTIVE ACTIVITIES --- */}
@@ -123,22 +123,22 @@ export default function TransporterDashboard() {
         </div>
 
         {/* --- 3. ADOPSI FITUR BARU: LOG AKTIVITAS SELESAI (GFW TACTICAL) [3] --- */}
-        <Card className="rounded-none border border-slate-200 p-4 bg-white shadow-none space-y-4">
+        <div className="border border-slate-200 p-4 bg-white space-y-4">
           <div className="border-b pb-3 flex items-center gap-2">
             <CheckCircle2 className="text-emerald-500 shrink-0" size={14} />
             <h3 className="font-black text-xs text-slate-800 uppercase tracking-widest leading-none">Log Aktivitas (Selesai)</h3>
           </div>
 
           {completedPickups.length === 0 ? (
-            <div className="py-8 text-center text-slate-400 border border-slate-100 rounded-none bg-slate-50/50">
+            <div className="py-8 text-center text-slate-400 border border-slate-100 bg-slate-50/50">
               <CheckCircle2 className="mx-auto text-slate-200 mb-1.5" size={24} />
               <p className="text-[10px] font-black uppercase tracking-widest">Belum ada tugas yang diselesaikan.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {completedPickups.map((pick) => (
-                <div key={pick.id} className="p-3 border border-slate-200 rounded-none bg-slate-50/50 flex items-start gap-3">
-                  <div className="w-8 h-8 bg-emerald-50 text-emerald-600 border border-emerald-150 rounded-none flex items-center justify-center shrink-0">
+                <div key={pick.id} className="p-3 border border-slate-200 bg-slate-50/50 flex items-start gap-3">
+                  <div className="w-8 h-8 bg-emerald-50 text-emerald-600 border border-emerald-150 flex items-center justify-center shrink-0">
                     <CheckCircle2 size={16} />
                   </div>
                   <div className="text-left overflow-hidden">
@@ -152,7 +152,7 @@ export default function TransporterDashboard() {
               ))}
             </div>
           )}
-        </Card>
+        </div>
 
         {/* --- 4. MODULAR MODALS --- */}
         {selectedRequest && (

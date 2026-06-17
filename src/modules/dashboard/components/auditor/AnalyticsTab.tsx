@@ -10,6 +10,7 @@ import {
     Tooltip, ResponsiveContainer, PieChart, Pie, Cell
 } from "recharts";
 import { Award, Leaf, TrendingUp, DollarSign } from "lucide-react";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 
 export default function AnalyticsTab() {
     // Membaca data agregat dinamis dari Zustand Store (Fase 3 & 4)
@@ -79,6 +80,11 @@ export default function AnalyticsTab() {
         return <Badge className="bg-red-50 text-red-700 border-none rounded-none text-[8px] font-black uppercase tracking-widest">Critical ({score})</Badge>;
     };
 
+    // PAGINATION
+    const [currentPage, setCurrentPage] = React.useState(1);
+    const ITEMS_PER_PAGE = 5;
+    const paginatedCompanies = rankedCompanies.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
     return (
         <div className="space-y-4 animate-in fade-in duration-300 text-left">
 
@@ -118,7 +124,7 @@ export default function AnalyticsTab() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
 
                 {/* ESG Bar Chart */}
-                <Card className="lg:col-span-8 rounded-none border border-slate-200 shadow-sm bg-white p-4">
+                <div className="lg:col-span-8 border border-slate-200 bg-white p-4">
                     <div className="border-b pb-3 mb-4">
                         <h3 className="font-black text-xs uppercase tracking-widest text-slate-800">Skor Kepatuhan ESG Perusahaan</h3>
                     </div>
@@ -133,10 +139,10 @@ export default function AnalyticsTab() {
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
-                </Card>
+                </div>
 
                 {/* Waste Pie Chart (Dinamis Berbasis Logbook) */}
-                <Card className="lg:col-span-4 rounded-none border border-slate-200 shadow-sm bg-white p-4 flex flex-col justify-between">
+                <div className="lg:col-span-4 border border-slate-200 bg-white p-4 flex flex-col justify-between">
                     <div className="border-b pb-3 mb-2">
                         <h3 className="font-black text-xs uppercase tracking-widest text-slate-800">Komposisi Volume Limbah</h3>
                     </div>
@@ -176,18 +182,18 @@ export default function AnalyticsTab() {
                         {wastePieData.map((d, i) => (
                             <div key={i} className="flex justify-between items-center text-[10px] font-bold">
                                 <div className="flex items-center gap-1.5">
-                                    <span className="w-2 h-2 rounded-none shrink-0" style={{ backgroundColor: d.color }} />
+                                    <span className="w-2 h-2 shrink-0" style={{ backgroundColor: d.color }} />
                                     <span className="text-slate-500 uppercase tracking-tight">{d.name}</span>
                                 </div>
                                 <span className="text-slate-850 font-black">{d.value.toLocaleString()} L/kg</span>
                             </div>
                         ))}
                     </div>
-                </Card>
+                </div>
             </div>
 
             {/* 3. Industry Compliance Ranking Table (Dinamis & Terurut) */}
-            <div className="bg-white rounded-none border border-slate-200 shadow-sm overflow-hidden">
+            <div className="bg-white border border-slate-200 overflow-hidden">
                 <div className="p-4 border-b bg-slate-50/50">
                     <h3 className="font-black text-xs uppercase tracking-widest text-slate-800">Peringkat Kepatuhan ESG Industri</h3>
                 </div>
@@ -203,33 +209,33 @@ export default function AnalyticsTab() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {rankedCompanies.length === 0 ? (
+                        {paginatedCompanies.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={5} className="text-center py-6 text-slate-400 font-bold">
                                     Belum ada industri terdaftar.
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            rankedCompanies.map((c) => (
-                                <TableRow key={c.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors h-14">
-                                    <TableCell className="pl-4">
+                            paginatedCompanies.map((c) => (
+                                <TableRow key={c.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors h-10">
+                                    <TableCell className="pl-4 py-1.5">
                                         <div className="flex flex-col text-left">
                                             <span className="font-bold text-slate-900 text-xs">{c.companyName}</span>
                                             <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{c.address}</span>
                                         </div>
                                     </TableCell>
-                                    <TableCell className="font-bold text-slate-600 text-xs">{c.kbli || "N/A"}</TableCell>
-                                    <TableCell className="text-center">
+                                    <TableCell className="font-bold text-slate-600 text-xs py-1.5">{c.kbli || "N/A"}</TableCell>
+                                    <TableCell className="text-center py-1.5">
                                         <Badge className="bg-slate-100 text-slate-600 rounded-none border-none font-bold text-[9px] tracking-widest">
                                             {c.docType}
                                         </Badge>
                                     </TableCell>
-                                    <TableCell className="text-center">
+                                    <TableCell className="text-center py-1.5">
                                         <span className={`text-[10px] font-black uppercase tracking-widest ${c.status === "APPROVED" ? "text-emerald-600" : "text-amber-500"}`}>
                                             {c.status}
                                         </span>
                                     </TableCell>
-                                    <TableCell className="text-right pr-4">
+                                    <TableCell className="text-right pr-4 py-1.5">
                                         {getScoreBadge(c.score)}
                                     </TableCell>
                                 </TableRow>
@@ -237,6 +243,13 @@ export default function AnalyticsTab() {
                         )}
                     </TableBody>
                 </Table>
+                <PaginationControls
+                    currentPage={currentPage}
+                    totalPages={Math.ceil(rankedCompanies.length / ITEMS_PER_PAGE)}
+                    totalItems={rankedCompanies.length}
+                    itemsPerPage={ITEMS_PER_PAGE}
+                    onPageChange={setCurrentPage}
+                />
             </div>
         </div>
     );

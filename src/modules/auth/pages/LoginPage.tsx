@@ -129,12 +129,12 @@ export default function LoginPage() {
           - Menghilangkan tumpukan kartu (No nested box-in-a-box)
           - Form input siku kaku flat yang kompak, padat, dan rapi
       ====================================================================== */}
-      <div className="flex-1 bg-white p-8 md:p-16 flex flex-col justify-center items-center z-10 relative h-full">
+      <div className="flex-1 bg-white p-6 sm:p-8 md:p-16 flex flex-col justify-center items-center z-10 relative h-full">
 
-        <div className="w-full max-w-sm space-y-8">
+        <div className="w-full max-w-sm space-y-6 sm:space-y-8">
 
           {/* Logo Brand Alternatif (Hanya muncul di Mobile/Tablet sebagai pengganti sidebar kiri) */}
-          <div className="lg:hidden flex items-center gap-2.5 text-left select-none">
+          <div className="lg:hidden flex items-center gap-2.5 text-left select-none pt-4 sm:pt-0">
             <div className="w-8 h-8 bg-emerald-50 border border-emerald-500/20 flex items-center justify-center text-emerald-600 rounded-none shrink-0">
               <Leaf size={18} strokeWidth={2.5} />
             </div>

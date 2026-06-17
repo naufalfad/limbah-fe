@@ -130,7 +130,7 @@ export default function DocumentStatusPage() {
         <CompanyHeader />
 
         {/* 2. PAGE ACTION BAR (DENSE TOOLBAR) */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 border border-slate-200 rounded-none shadow-none">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 py-2 border-y border-slate-200 bg-transparent">
           <div>
             <h1 className="text-xl font-black text-slate-900 tracking-tight leading-none uppercase">Dokumen Lingkungan</h1>
             <p className="text-slate-500 font-medium text-xs mt-1.5">Pantau siklus validasi dan unduh sertifikat kesanggupan lingkungan (SPPL/UKL-UPL) Anda [3].</p>
@@ -150,7 +150,7 @@ export default function DocumentStatusPage() {
         </div>
 
         {/* 3. STATUS STEPPER PANEL (GFW TACTICAL LOOK) */}
-        <Card className="rounded-none border border-slate-200 p-6 bg-white shadow-none space-y-6">
+        <div className="border border-slate-200 p-6 bg-white space-y-6">
           <div className="border-b pb-3">
             <h3 className="font-black text-xs text-slate-800 uppercase tracking-widest">Siklus Validasi Berkas</h3>
           </div>
@@ -280,7 +280,7 @@ export default function DocumentStatusPage() {
               </div>
             </div>
           )}
-        </Card>
+        </div>
 
         {/* 4. REAL PDF FULLSCREEN PREVIEW OVERLAY */}
         {previewPdfUrl && (

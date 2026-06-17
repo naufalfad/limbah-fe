@@ -106,7 +106,7 @@ export default function AuditorDashboardPage() {
       <div className="space-y-4 text-left">
 
         {/* --- 1. HEADER UTAMA (DIET CARD) --- */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-none border border-slate-200 shadow-sm">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 py-2 border-y border-slate-200 bg-transparent">
           <div>
             <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-none uppercase">
               Command Center Auditor

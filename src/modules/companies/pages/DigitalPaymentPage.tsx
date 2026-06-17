@@ -105,24 +105,24 @@ export default function DigitalPaymentPage() {
 
         {/* 2. TACTICAL BILLING BRIEF GRID (GFW LOOK) [3] */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <Card className="lg:col-span-2 rounded-none border border-slate-200 shadow-none p-4 bg-white flex flex-col justify-between text-left">
+          <div className="lg:col-span-2 border border-slate-200 p-4 bg-white flex flex-col justify-between text-left">
             <div className="space-y-1">
               <h2 className="text-sm font-black text-slate-800 uppercase tracking-widest">Fasilitator Pembayaran Digital</h2>
               <p className="text-slate-500 font-medium text-xs leading-relaxed mt-2">
                 Bayar tagihan retribusi lingkungan dan jasa pengangkutan limbah secara digital langsung disetorkan secara instan ke Kas Daerah daerah [3].
               </p>
             </div>
-            <div className="flex items-center gap-2.5 bg-emerald-50/50 border border-emerald-150 p-3 rounded-none mt-4">
+            <div className="flex items-center gap-2.5 bg-emerald-50/50 border border-emerald-150 p-3 mt-4">
               <ShieldCheck className="text-emerald-600 shrink-0" size={16} />
               <p className="text-[9px] font-semibold text-emerald-800 leading-normal">
                 <strong>DIRECT BILLING RKUD:</strong> Sistem mendukung pembayaran langsung ke Rekening Kas Umum Daerah (RKUD) seketika lunas [3].
               </p>
             </div>
-          </Card>
+          </div>
 
-          <Card className="rounded-none border border-slate-200 bg-slate-900 text-white p-4 flex flex-col justify-between shadow-none text-left">
+          <div className="border border-slate-200 bg-slate-900 text-white p-4 flex flex-col justify-between text-left">
             <div className="space-y-1.5">
-              <div className="w-8 h-8 bg-white/10 rounded-none flex items-center justify-center text-emerald-400">
+              <div className="w-8 h-8 bg-white/10 flex items-center justify-center text-emerald-400">
                 <Wallet size={16} />
               </div>
               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest pt-2">Total Setoran Kas Daerah</p>
@@ -133,14 +133,15 @@ export default function DigitalPaymentPage() {
             <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest block border-t border-slate-800 pt-3">
               Lunas terverifikasi bank daerah
             </span>
-          </Card>
+          </div>
         </div>
 
         {/* 3. DUAL PANEL BILLS LIST */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
 
           {/* SISI KIRI (7 Kolom): Menunggu Pembayaran [3] */}
-          <Card className="lg:col-span-7 rounded-none p-4 border border-slate-200 shadow-none bg-white text-left flex flex-col h-full">
+          {/* SISI KIRI (7 Kolom): Menunggu Pembayaran [3] */}
+          <div className="lg:col-span-7 p-4 border border-slate-200 bg-white text-left flex flex-col h-full">
             <div className="border-b pb-3 mb-4">
               <h3 className="font-black text-xs text-slate-800 uppercase tracking-widest">Tagihan Aktif</h3>
             </div>
@@ -180,10 +181,10 @@ export default function DigitalPaymentPage() {
                 ))
               )}
             </div>
-          </Card>
+          </div>
 
           {/* SISI KANAN (5 Kolom): Riwayat Pembayaran */}
-          <Card className="lg:col-span-5 rounded-none p-4 border border-slate-200 shadow-none bg-white text-left flex flex-col h-full">
+          <div className="lg:col-span-5 p-4 border border-slate-200 bg-white text-left flex flex-col h-full">
             <div className="border-b pb-3 mb-4">
               <h3 className="font-black text-xs text-slate-800 uppercase tracking-widest">Riwayat Setoran</h3>
             </div>
@@ -209,7 +210,7 @@ export default function DigitalPaymentPage() {
                 ))
               )}
             </div>
-          </Card>
+          </div>
         </div>
 
         {/* 4. MODULAR DRAWER SIMULATOR PEMBAYARAN KAS DAERAH [3] */}

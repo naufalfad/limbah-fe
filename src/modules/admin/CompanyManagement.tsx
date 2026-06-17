@@ -21,6 +21,7 @@ import { useSijagaStore } from "@/store/useSijagaStore";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Company } from "@/store/types";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 
 // --- Leaflet & Map Imports ---
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
@@ -75,6 +76,8 @@ export default function CompanyManagement() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [docFilter, setDocFilter] = useState<DocFilter>("ALL");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   // States for Detail Dialog
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
@@ -208,6 +211,19 @@ export default function CompanyManagement() {
     });
   }, [companies, searchQuery, statusFilter, docFilter]);
 
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, docFilter]);
+
+  // Pagination slice
+  const totalItems = filteredCompanies.length;
+  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+  const paginatedCompanies = filteredCompanies.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
   return (
     <DashboardLayout role="ADMIN_DLH">
       <div className="space-y-4 text-left">
@@ -243,76 +259,78 @@ export default function CompanyManagement() {
         </div>
 
         {/* --- METRICS CARDS --- */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4">
           <Card className="rounded-none border border-slate-200 shadow-none bg-white relative overflow-hidden">
-            <CardContent className="p-4 flex justify-between items-center">
-              <div className="space-y-1">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Perusahaan</p>
-                <p className="text-3xl font-black text-slate-900 leading-none">{metrics.total}</p>
+            <CardContent className="p-3 md:p-4 flex justify-between items-center">
+              <div className="space-y-0.5 md:space-y-1">
+                <p className="text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Total Perusahaan</p>
+                <p className="text-xl md:text-3xl font-black text-slate-900 leading-none">{metrics.total}</p>
               </div>
-              <div className="w-10 h-10 bg-slate-100 flex items-center justify-center text-slate-600">
-                <Building2 size={20} />
+              <div className="w-6 h-6 md:w-10 md:h-10 bg-slate-100 flex items-center justify-center text-slate-600 shrink-0">
+                <Building2 className="w-3 h-3 md:w-5 md:h-5" />
               </div>
             </CardContent>
             <div className="absolute bottom-0 left-0 w-full h-1 bg-slate-900" />
           </Card>
 
           <Card className="rounded-none border border-slate-200 shadow-none bg-white relative overflow-hidden">
-            <CardContent className="p-4 flex justify-between items-center">
-              <div className="space-y-1">
-                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Sertifikat Aktif</p>
-                <p className="text-3xl font-black text-emerald-600 leading-none">{metrics.active}</p>
+            <CardContent className="p-3 md:p-4 flex justify-between items-center">
+              <div className="space-y-0.5 md:space-y-1">
+                <p className="text-[8px] md:text-[10px] font-black text-emerald-600 uppercase tracking-widest leading-none">Sertifikat Aktif</p>
+                <p className="text-xl md:text-3xl font-black text-emerald-600 leading-none">{metrics.active}</p>
               </div>
-              <div className="w-10 h-10 bg-emerald-50 flex items-center justify-center text-emerald-600">
-                <CheckCircle size={20} />
+              <div className="w-6 h-6 md:w-10 md:h-10 bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
+                <CheckCircle className="w-3 h-3 md:w-5 md:h-5" />
               </div>
             </CardContent>
             <div className="absolute bottom-0 left-0 w-full h-1 bg-emerald-600" />
           </Card>
 
           <Card className="rounded-none border border-slate-200 shadow-none bg-white relative overflow-hidden">
-            <CardContent className="p-4 flex justify-between items-center">
-              <div className="space-y-1">
-                <p className="text-[10px] font-black text-rose-600 uppercase tracking-widest">Izin Ditangguhkan</p>
-                <p className="text-3xl font-black text-rose-600 leading-none">{metrics.suspended}</p>
+            <CardContent className="p-3 md:p-4 flex justify-between items-center">
+              <div className="space-y-0.5 md:space-y-1">
+                <p className="text-[8px] md:text-[10px] font-black text-rose-600 uppercase tracking-widest leading-none">Ditangguhkan</p>
+                <p className="text-xl md:text-3xl font-black text-rose-600 leading-none">{metrics.suspended}</p>
               </div>
-              <div className="w-10 h-10 bg-rose-50 flex items-center justify-center text-rose-600">
-                <Lock size={20} />
+              <div className="w-6 h-6 md:w-10 md:h-10 bg-rose-50 flex items-center justify-center text-rose-600 shrink-0">
+                <Lock className="w-3 h-3 md:w-5 md:h-5" />
               </div>
             </CardContent>
             <div className="absolute bottom-0 left-0 w-full h-1 bg-rose-600" />
           </Card>
 
           <Card className="rounded-none border border-slate-200 shadow-none bg-white relative overflow-hidden">
-            <CardContent className="p-4 flex justify-between items-center">
-              <div className="space-y-1">
-                <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest">Izin Kadaluarsa</p>
-                <p className="text-3xl font-black text-amber-600 leading-none">{metrics.expired}</p>
+            <CardContent className="p-3 md:p-4 flex justify-between items-center">
+              <div className="space-y-0.5 md:space-y-1">
+                <p className="text-[8px] md:text-[10px] font-black text-amber-600 uppercase tracking-widest leading-none">Kadaluarsa</p>
+                <p className="text-xl md:text-3xl font-black text-amber-500 leading-none">{metrics.expired}</p>
               </div>
-              <div className="w-10 h-10 bg-amber-50 flex items-center justify-center text-amber-600">
-                <AlertOctagon size={20} />
+              <div className="w-6 h-6 md:w-10 md:h-10 bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
+                <AlertOctagon className="w-3 h-3 md:w-5 md:h-5" />
               </div>
             </CardContent>
             <div className="absolute bottom-0 left-0 w-full h-1 bg-amber-500" />
           </Card>
         </div>
 
-        {/* --- TABS SYSTEM --- */}
-        <div className="flex flex-wrap gap-1 bg-slate-100 p-1 border border-slate-200 w-max max-w-full">
+        {/* --- TABS SYSTEM (BORDERLESS UNDERLINE) --- */}
+        <div className="flex flex-wrap gap-6 border-b border-slate-200 w-full mb-4">
           {tabs.map(tab => (
             <button
               key={tab.key}
               onClick={() => setStatusFilter(tab.key)}
               className={cn(
-                "flex items-center gap-2 px-3.5 py-1.5 rounded-none text-[9px] font-black uppercase tracking-wider transition-all border outline-none",
-                statusFilter === tab.key ? tab.active : "bg-white " + tab.color
+                "flex items-center gap-2 pb-3 text-[10px] font-black uppercase tracking-wider transition-all outline-none border-b-2",
+                statusFilter === tab.key
+                  ? "border-emerald-600 text-emerald-600"
+                  : "border-transparent text-slate-500 hover:text-slate-800"
               )}
             >
               {tab.icon}
               <span>{tab.label}</span>
               <span className={cn(
-                "inline-flex items-center justify-center px-1.5 h-4 text-[8px] font-black font-mono",
-                statusFilter === tab.key ? "bg-white/25 text-white" : "bg-slate-100 text-slate-600"
+                "inline-flex items-center justify-center px-1.5 py-0.5 text-[9px] font-black font-mono rounded-full ml-1",
+                statusFilter === tab.key ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"
               )}>
                 {tab.count}
               </span>
@@ -320,20 +338,20 @@ export default function CompanyManagement() {
           ))}
         </div>
 
-        {/* --- SEARCH & QUICK FILTER BAR --- */}
-        <Card className="rounded-none border border-slate-200 shadow-none p-3 bg-white">
+        {/* --- TABS & SEARCH (COMPACT) --- */}
+        <div className="py-2 border-y border-slate-200 bg-transparent flex flex-col xl:flex-row justify-between gap-3">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <div className="relative md:col-span-2">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
               <Input
-                placeholder="Cari Nama Perusahaan, NIB, Alamat, PIC..."
-                className="pl-9 h-9 bg-slate-50 border-slate-200 rounded-none font-bold text-xs"
+                placeholder="Cari..."
+                className="pl-9 h-8 bg-slate-50 border-slate-200 rounded-none font-bold text-xs"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
 
-            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 h-9">
+            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 h-8">
               <Filter size={12} className="text-slate-400 shrink-0" />
               <select
                 className="bg-transparent text-xs font-bold text-slate-700 outline-none w-full cursor-pointer"
@@ -349,16 +367,16 @@ export default function CompanyManagement() {
 
             <div className="flex items-center justify-end pr-2 text-right">
               <span className="text-[10px] font-mono font-black text-slate-400 uppercase tracking-widest">
-                Hasil: <span className="text-slate-800">{filteredCompanies.length}</span> Perusahaan
+                Hasil: <span className="text-slate-800">{filteredCompanies.length}</span>
               </span>
             </div>
           </div>
-        </Card>
+        </div>
 
-        {/* --- DENSE COMPACT DATA TABLE --- */}
-        <div className="bg-white rounded-none border border-slate-200 shadow-none overflow-hidden">
+        {/* --- DENSE COMPACT DATA TABLE (DESKTOP) --- */}
+        <div className="hidden md:block bg-transparent overflow-hidden text-left">
           <Table>
-            <TableHeader className="bg-slate-50">
+            <TableHeader className="bg-slate-50 border-y border-slate-200">
               <TableRow className="border-b border-slate-200 h-9">
                 <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest pl-4 w-[280px]">Perusahaan & Alamat</TableHead>
                 <TableHead className="font-black text-slate-500 uppercase text-[9px] tracking-widest w-[160px]">Kontak PIC</TableHead>
@@ -368,7 +386,7 @@ export default function CompanyManagement() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredCompanies.length === 0 ? (
+              {paginatedCompanies.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center py-16">
                     <div className="flex flex-col items-center gap-2 text-slate-400">
@@ -378,7 +396,7 @@ export default function CompanyManagement() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredCompanies.map((c) => {
+                paginatedCompanies.map((c) => {
                   const certState = getCertificateStatus(c);
                   const daysRemaining = getDaysRemaining(c.certificateActiveUntil);
                   const isApproved = c.status === "APPROVED";
@@ -443,28 +461,28 @@ export default function CompanyManagement() {
                         <StatusIndicator state={certState} docType={c.docType} />
                       </TableCell>
 
-                      {/* Tactical Icon Actions (Compact Tooltip Style) */}
+                      {/* Tactical Icon Actions (Compact) */}
                       <TableCell className="text-right pr-4 w-[140px]">
                         <div className="flex items-center justify-end gap-1.5">
 
-                          {/* Detail Button */}
+                          {/* DETAIL BUTTON */}
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
-                            title="Detail Informasi Perusahaan"
-                            className="text-slate-600 hover:text-emerald-600 hover:bg-slate-100 rounded-none h-8 w-8 p-0 border-slate-200"
-                            onClick={() => handleOpenDetail(c)}
+                            title="Lihat Detail"
+                            className="text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-none h-8 w-8 p-0"
+                            onClick={() => { setSelectedCompany(c); setIsDetailOpen(true); }}
                           >
                             <Eye size={13} />
                           </Button>
 
                           {/* Download Certificate Button */}
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
                             title={!isApproved || (daysRemaining !== null && daysRemaining < 0) ? "Sertifikat Belum Terbit / Kadaluarsa" : "Unduh Sertifikat Izin"}
                             disabled={!isApproved || (daysRemaining !== null && daysRemaining < 0)}
-                            className="text-slate-700 hover:text-emerald-600 hover:bg-emerald-50/50 rounded-none h-8 w-8 p-0 border-slate-200 disabled:opacity-40"
+                            className="text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-none h-8 w-8 p-0 disabled:opacity-40"
                             onClick={() => handleDownloadCertificate(c)}
                           >
                             <Download size={13} />
@@ -473,10 +491,10 @@ export default function CompanyManagement() {
                           {/* Suspend Action */}
                           {isApproved && (
                             <Button
-                              variant="outline"
+                              variant="ghost"
                               size="sm"
-                              title="Tangguhkan Izin Usaha (Suspend)"
-                              className="text-rose-600 hover:text-white hover:bg-rose-600 rounded-none h-8 w-8 p-0 border-rose-200"
+                              title="Tangguhkan Izin Usaha (Sanksi DLH)"
+                              className="text-rose-600 hover:text-white hover:bg-rose-600 rounded-none h-8 w-8 p-0"
                               onClick={() => handleTriggerAction(c, "SUSPENDED")}
                             >
                               <Lock size={13} />
@@ -486,10 +504,10 @@ export default function CompanyManagement() {
                           {/* Activate Action */}
                           {isSuspended && (
                             <Button
-                              variant="outline"
+                              variant="ghost"
                               size="sm"
                               title="Pulihkan / Aktifkan Kembali Izin Usaha"
-                              className="text-emerald-600 hover:text-white hover:bg-emerald-600 rounded-none h-8 w-8 p-0 border-emerald-200"
+                              className="text-emerald-600 hover:text-white hover:bg-emerald-600 rounded-none h-8 w-8 p-0"
                               onClick={() => handleTriggerAction(c, "APPROVED")}
                             >
                               <Unlock size={13} />
@@ -513,6 +531,113 @@ export default function CompanyManagement() {
             </TableBody>
           </Table>
         </div>
+
+        {/* --- LIST VIEW (MOBILE) --- */}
+        <div className="md:hidden flex flex-col divide-y divide-slate-100 border-y border-slate-200">
+          {paginatedCompanies.length === 0 ? (
+            <div className="text-center py-10 bg-white border border-slate-200 shadow-sm">
+              <div className="flex flex-col items-center gap-2 text-slate-400">
+                <ShieldAlert size={24} className="opacity-40" />
+                <p className="font-black text-[10px] uppercase tracking-widest">Tidak ada data perusahaan ditemukan</p>
+              </div>
+            </div>
+          ) : (
+            paginatedCompanies.map((c) => {
+              const certState = getCertificateStatus(c);
+              const daysRemaining = getDaysRemaining(c.certificateActiveUntil);
+              const isApproved = c.status === "APPROVED";
+              const isSuspended = c.status === "SUSPENDED";
+
+              return (
+                <div key={c.id} className="bg-transparent py-4 flex flex-col gap-3 relative overflow-hidden">
+                  {/* Status Strip at the top */}
+                  <div className={cn("absolute top-0 left-0 w-1 h-full", 
+                    certState === "ACTIVE" ? "bg-emerald-500" :
+                    certState === "SUSPENDED" ? "bg-rose-500" :
+                    certState === "EXPIRED" ? "bg-amber-500" : "bg-blue-500"
+                  )} />
+
+                  {/* Header: Company Name & Status */}
+                  <div className="flex justify-between items-start gap-2 pt-0 pl-3 text-left">
+                    <div className="flex flex-col">
+                      <span className="font-black text-slate-900 text-xs leading-tight">{c.companyName}</span>
+                      <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-1">{c.address}</span>
+                    </div>
+                    <div className="shrink-0"><StatusIndicator state={certState} docType={c.docType} /></div>
+                  </div>
+
+                  {/* Body: PIC & Date */}
+                  <div className="grid grid-cols-2 gap-2 text-xs pt-1 pl-3 text-left">
+                    <div className="flex flex-col">
+                      <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Kontak PIC</span>
+                      <span className="font-bold text-slate-700 flex items-center gap-1 mt-0.5"><User size={10} className="text-slate-400 shrink-0" /> {c.picName || "-"}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Masa Berlaku</span>
+                      {isApproved && c.certificateActiveUntil ? (
+                        <div className="flex flex-col mt-0.5">
+                          <span className="font-bold text-slate-800 flex items-center gap-1"><Calendar size={10} className="text-slate-400 shrink-0" /> {c.certificateActiveUntil}</span>
+                        </div>
+                      ) : isSuspended ? (
+                        <span className="font-black text-rose-500 flex items-center gap-1 mt-0.5 text-[9px] uppercase tracking-widest"><Lock size={10} className="shrink-0" /> Ditangguhkan</span>
+                      ) : (
+                        <span className="font-bold text-slate-500 flex items-center gap-1 mt-0.5 text-[9px] uppercase tracking-widest">- Belum Terbit</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Actions Row */}
+                  <div className="flex justify-between items-center border-t border-slate-100 pt-3 mt-1 pl-3">
+                    {/* Days remaining indicator */}
+                    <div className="flex-1 text-left">
+                      {isApproved && daysRemaining !== null && (
+                        <span className={cn(
+                          "text-[9px] font-black uppercase tracking-widest",
+                          daysRemaining < 0 ? "text-rose-600" : daysRemaining <= 30 ? "text-amber-500" : "text-emerald-600"
+                        )}>
+                          {daysRemaining < 0 ? `Kadaluarsa ${Math.abs(daysRemaining)} hari` : `Sisa ${daysRemaining} hari`}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button variant="outline" size="sm" onClick={() => handleOpenDetail(c)} className="h-8 w-8 p-0 rounded-none border-slate-200">
+                        <Eye size={13} />
+                      </Button>
+                      <Button 
+                        variant="outline" size="sm" 
+                        disabled={!isApproved || (daysRemaining !== null && daysRemaining < 0)} 
+                        onClick={() => handleDownloadCertificate(c)}
+                        className="h-8 w-8 p-0 rounded-none border-slate-200"
+                      >
+                        <Download size={13} />
+                      </Button>
+                      {isApproved && (
+                        <Button variant="outline" size="sm" onClick={() => handleTriggerAction(c, "SUSPENDED")} className="h-8 w-8 p-0 rounded-none border-rose-200 text-rose-600 hover:bg-rose-50">
+                          <Lock size={13} />
+                        </Button>
+                      )}
+                      {isSuspended && (
+                        <Button variant="outline" size="sm" onClick={() => handleTriggerAction(c, "APPROVED")} className="h-8 w-8 p-0 rounded-none border-emerald-200 text-emerald-600 hover:bg-emerald-50">
+                          <Unlock size={13} />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* --- PAGINATION CONTROLS --- */}
+        <PaginationControls
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          itemsPerPage={ITEMS_PER_PAGE}
+          onPageChange={setCurrentPage}
+        />
 
       </div>
 

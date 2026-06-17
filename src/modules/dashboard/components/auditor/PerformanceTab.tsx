@@ -71,7 +71,7 @@ export default function PerformanceTab() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 font-sans">
 
                 {/* Log Kunjungan Inspeksi Lapangan (Gaya Flush List Berbasis Database API) */}
-                <Card className="lg:col-span-6 rounded-none border border-slate-200 shadow-sm bg-white">
+                <div className="lg:col-span-6 border border-slate-200 bg-white">
                     <div className="p-4 border-b border-slate-200 bg-slate-50">
                         <h3 className="font-bold text-xs uppercase tracking-widest text-slate-800">Log Kunjungan Inspeksi Lapangan</h3>
                     </div>
@@ -96,10 +96,10 @@ export default function PerformanceTab() {
                             ))
                         )}
                     </div>
-                </Card>
+                </div>
 
                 {/* Status Registrasi Progress Tracker (Dinamis Siku Kaku) */}
-                <Card className="lg:col-span-6 rounded-none border border-slate-200 shadow-sm bg-white p-4 space-y-6 flex flex-col justify-between">
+                <div className="lg:col-span-6 border border-slate-200 bg-white p-4 space-y-6 flex flex-col justify-between">
                     <div className="space-y-4">
                         <div className="border-b pb-3">
                             <h3 className="font-bold text-xs uppercase tracking-widest text-slate-800">Status Registrasi Dokumen Pelaku Usaha</h3>
@@ -144,7 +144,7 @@ export default function PerformanceTab() {
                             </p>
                         </div>
                     </div>
-                </Card>
+                </div>
 
             </div>
         </div>

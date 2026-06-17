@@ -133,19 +133,18 @@ export default function LandingPage() {
 
       {/* --- NAVIGATION (Sharp & Minimalist) --- */}
       <nav className="fixed top-0 w-full z-50 bg-white border-b border-slate-200 h-16 flex items-center">
-        <div className="max-w-7xl mx-auto px-6 w-full flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 lg:px-6 w-full flex items-center justify-between">
 
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-emerald-50 border border-emerald-500/20 flex items-center justify-center text-emerald-600 rounded-none shrink-0">
-              <Leaf size={18} strokeWidth={2.5} />
+          <div className="flex items-center gap-2 md:gap-2.5">
+            <div className="w-7 h-7 md:w-8 md:h-8 bg-emerald-50 border border-emerald-500/20 flex items-center justify-center text-emerald-600 rounded-none shrink-0">
+              <Leaf size={16} strokeWidth={2.5} className="md:w-[18px] md:h-[18px]" />
             </div>
-            <span className="font-sans font-semibold text-xl tracking-tight text-slate-800">
+            <span className="font-sans font-semibold text-lg md:text-xl tracking-tight text-slate-800">
               Geo <span className="text-emerald-600">Limbah</span>
             </span>
           </div>
 
-          <div className="flex items-center gap-1.5">
-            {/* Tombol Lacak Pengaduan (Borderless / Ghost Style) */}
+          <div className="flex items-center gap-1 md:gap-1.5">
             <Button
               onClick={() => {
                 if (localReportId) {
@@ -156,14 +155,17 @@ export default function LandingPage() {
               }}
               variant="ghost"
               title="Lacak Pengaduan Aktif"
-              className="font-black text-slate-700 hover:bg-slate-50 relative rounded-none h-9 px-3 text-[10px] uppercase tracking-widest gap-1.5 border-none outline-none"
+              className="font-black text-slate-700 hover:bg-slate-50 relative rounded-none h-9 px-2 md:px-3 text-[10px] uppercase tracking-widest gap-1.5 border-none outline-none"
             >
               <Search size={12} className="text-slate-400 shrink-0" />
-              <span>Lacak Pengaduan</span>
+              <span className="hidden sm:inline">Lacak Pengaduan</span>
+              <span className="sm:hidden">Lacak</span>
               {/* Indikator Senyap: Hanya berdenyut halus di pojok kanan atas ikon jika ada draf lokal */}
               {localReportId && (
                 <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
-                                 </span>
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
               )}
             </Button>
 
@@ -184,7 +186,7 @@ export default function LandingPage() {
       </nav>
 
       {/* --- HERO SECTION (Atmospheric Full-Bleed Background Wash) --- */}
-      <section className="relative min-h-[85vh] flex items-center bg-slate-950 text-white overflow-hidden py-24 px-6">
+      <section className="relative min-h-[85vh] flex items-center bg-slate-950 text-white overflow-hidden py-20 px-4 lg:px-6">
         {/* Gambar Latar Belakang Pembangunan Lingkungan Beresolusi Tinggi */}
         <div
           className="absolute inset-0 bg-cover bg-center z-0 scale-105 filter saturate-75"
@@ -193,7 +195,7 @@ export default function LandingPage() {
         {/* Lapisan Gradien Overlay Pemda Taktis */}
         <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/90 to-slate-950/45 z-10" />
 
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative z-20 w-full">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 md:gap-12 items-center relative z-20 w-full mt-10 md:mt-0">
 
           {/* Teks Informasi & Narasi Baru (Tighter & Compact Copywriting) */}
           <div className="lg:col-span-7 space-y-5 text-left">
@@ -260,8 +262,8 @@ export default function LandingPage() {
       </section>
 
       {/* --- PROSEDUR SECTION (Editorial Newspaper Style - Bersih Tanpa nested boxes) --- */}
-      <section id="prosedur" className="py-20 bg-slate-50">
-        <div className="max-w-7xl mx-auto px-6 space-y-12">
+      <section id="prosedur" className="py-16 md:py-20 bg-slate-50">
+        <div className="max-w-7xl mx-auto px-4 lg:px-6 space-y-10 md:space-y-12">
 
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 border-b border-slate-200 pb-5 text-left">
             <div className="space-y-2">
@@ -295,8 +297,8 @@ export default function LandingPage() {
       </section>
 
       {/* --- SECTION 1: INTERACTIVE CIVIC DATA EXPLORER (MENGGANTIKAN FEATURE CARDS KAKU) --- */}
-      <section id="civic-explorer" className="py-20 bg-slate-50 border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-6 space-y-8">
+      <section id="civic-explorer" className="py-16 md:py-20 bg-slate-50 border-b border-slate-200">
+        <div className="max-w-7xl mx-auto px-4 lg:px-6 space-y-6 md:space-y-8">
 
           {/* Header Seksi */}
           <div className="space-y-2 text-left">
@@ -417,8 +419,8 @@ export default function LandingPage() {
       </section>
 
       {/* --- FOOTER (Editorial & Clean) --- */}
-      <footer className="bg-slate-950 text-white py-16 px-6 border-t border-slate-900 text-xs">
-        <div className="max-w-7xl mx-auto grid md:grid-cols-4 gap-12 border-b border-slate-900 pb-12 text-left">
+      <footer className="bg-slate-950 text-white py-12 md:py-16 px-4 lg:px-6 border-t border-slate-900 text-xs">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12 border-b border-slate-900 pb-8 md:pb-12 text-left">
 
           <div className="col-span-2 space-y-6">
             <div className="flex items-center gap-2.5">

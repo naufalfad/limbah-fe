@@ -21,7 +21,7 @@ export default function IncomingBids({ onSelectRequest }: IncomingBidsProps) {
     }, [pickupRequests, transporterId]);
 
     return (
-        <Card className="rounded-none border border-slate-200 shadow-sm bg-white flex flex-col h-full text-left">
+        <div className="border border-slate-200 bg-white flex flex-col h-full text-left">
             {/* Header Laci */}
             <div className="p-4 border-b border-slate-200 bg-slate-50">
                 <h3 className="font-black text-xs uppercase tracking-widest text-slate-800">
@@ -62,6 +62,6 @@ export default function IncomingBids({ onSelectRequest }: IncomingBidsProps) {
                     ))
                 )}
             </div>
-        </Card>
+        </div>
     );
 }

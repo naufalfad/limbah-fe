@@ -6,6 +6,7 @@ import { useSijagaStore } from "@/store/useSijagaStore";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 import { Card } from "@/components/ui/card";
 import { CalendarDays, MapPin, AlertTriangle, CheckCircle2, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
@@ -135,6 +136,17 @@ export default function OfficerInspectionsPage() {
     });
   }, [companies, inspections]);
 
+  // PAGINATION untuk monitoringData
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 5;
+  const totalPages = Math.ceil(monitoringData.length / ITEMS_PER_PAGE);
+  const paginatedMonitoringData = useMemo(() => {
+    return monitoringData.slice(
+      (currentPage - 1) * ITEMS_PER_PAGE,
+      currentPage * ITEMS_PER_PAGE
+    );
+  }, [monitoringData, currentPage, ITEMS_PER_PAGE]);
+
   const handleQuickSchedule = async (comp: any) => {
     // Penjadwalan otomatis H+1 esok hari [3]
     const tomorrow = new Date();
@@ -163,7 +175,7 @@ export default function OfficerInspectionsPage() {
       <div className="space-y-4 text-left">
 
         {/* --- 1. HEADER UTAMA (DIET CARD) --- */}
-        <div className="bg-white p-4 rounded-none border border-slate-200 shadow-sm">
+        <div className="py-2 border-y border-slate-200 bg-transparent flex flex-col justify-center">
           <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-none uppercase">
             Inspeksi Fisik Lapangan
           </h1>
@@ -188,7 +200,7 @@ export default function OfficerInspectionsPage() {
         </div>
 
         {/* --- 3. DOKUMEN MONITORING KEPATUHAN 30 HARI (GFW STYLE) [3] --- */}
-        <Card className="rounded-none border border-slate-200 p-4 bg-white shadow-none space-y-4">
+        <div className="border border-slate-200 p-4 bg-white space-y-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b pb-3">
             <div>
               <h3 className="font-black text-xs text-slate-800 uppercase tracking-widest leading-none">Aktivitas Monitoring Wilayah</h3>
@@ -214,23 +226,23 @@ export default function OfficerInspectionsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {monitoringData.length === 0 ? (
+                {paginatedMonitoringData.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center py-8 font-bold text-slate-400 text-xs uppercase tracking-widest">
                       Belum ada perusahaan terdaftar di sistem.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  monitoringData.map((row) => (
-                    <TableRow key={row.company.id} className="border-b hover:bg-slate-50/50 transition-colors h-12">
-                      <TableCell className="pl-4">
+                  paginatedMonitoringData.map((row) => (
+                    <TableRow key={row.company.id} className="border-b hover:bg-slate-50/50 transition-colors h-10">
+                      <TableCell className="pl-4 py-1.5">
                         <p className="font-black text-slate-800 text-xs leading-none">{row.company.companyName}</p>
                         <p className="text-[8px] font-black text-slate-400 uppercase mt-1 leading-none">{row.company.docType}</p>
                       </TableCell>
-                      <TableCell className="text-slate-500 font-medium text-xs max-w-[200px] truncate">
+                      <TableCell className="text-slate-500 font-medium text-xs max-w-[200px] truncate py-1.5">
                         {row.company.address}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="py-1.5">
                         {row.lastInspection ? (
                           <div className="flex flex-col text-left font-sans text-xs">
                             <span className="font-bold text-slate-800 leading-none">{row.lastInspection.date}</span>
@@ -240,7 +252,7 @@ export default function OfficerInspectionsPage() {
                           <span className="text-[9px] font-black text-slate-400 uppercase italic">Nihil</span>
                         )}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="py-1.5">
                         <span className={cn(
                           "px-2 py-0.5 text-[8px] font-black border uppercase tracking-widest rounded-none",
                           row.statusLabel === "Aman" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
@@ -252,7 +264,7 @@ export default function OfficerInspectionsPage() {
                           {row.statusLabel}
                         </span>
                       </TableCell>
-                      <TableCell className="text-right pr-4">
+                      <TableCell className="text-right pr-4 py-1.5">
                         <Button
                           onClick={() => handleQuickSchedule(row.company)}
                           disabled={row.isScheduled || row.statusLabel === "Aman"}
@@ -267,8 +279,15 @@ export default function OfficerInspectionsPage() {
                 )}
               </TableBody>
             </Table>
+            <PaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={monitoringData.length}
+              itemsPerPage={ITEMS_PER_PAGE}
+              onPageChange={setCurrentPage}
+            />
           </div>
-        </Card>
+        </div>
 
         {/* --- 4. WIZARD CHECKLIST & SIGNATURE MODAL --- */}
         {selectedInsp && (

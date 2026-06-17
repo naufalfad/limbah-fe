@@ -180,7 +180,7 @@ export default function CompanyDashboard() {
 
           {/* SISI KIRI (75%): Tabel Database Logbook */}
           <div className="lg:col-span-8 space-y-3">
-            <div className="bg-slate-50 border border-slate-200 p-3.5 flex justify-between items-center rounded-none">
+            <div className="border-b border-slate-200 pb-3 flex justify-between items-end">
               <div>
                 <h3 className="font-black text-xs text-slate-800 uppercase tracking-widest leading-none flex items-center gap-1.5">
                   <ClipboardList size={14} className="text-emerald-700" /> Database Logbook Historis
@@ -201,14 +201,14 @@ export default function CompanyDashboard() {
           <div className="lg:col-span-4 space-y-4">
 
             {/* Quick Access List */}
-            <Card className="rounded-none border border-slate-200 p-4 bg-white shadow-none text-left flex flex-col gap-3">
-              <h3 className="font-black text-xs text-slate-800 uppercase tracking-widest border-b pb-2">Menu Navigasi</h3>
+            <div className="border border-slate-200 bg-white text-left flex flex-col">
+              <h3 className="font-black text-xs text-slate-800 uppercase tracking-widest border-b border-slate-200 p-3 bg-slate-50">Menu Navigasi</h3>
               <div className="flex flex-col divide-y divide-slate-100 font-sans text-xs">
                 <QuickMenuRow label="Input Logbook Harian" desc="Pelaporan Rutin" onClick={() => navigate("/company/logbook")} />
                 {/* <QuickMenuRow label="Settle Retribusi Daerah" desc="Virtual Account & QRIS" onClick={() => navigate("/company/payments")} /> */}
                 <QuickMenuRow label="Unduh Dokumen Lingkungan" desc="SPPL / UKL-UPL Digital" onClick={() => navigate("/company/documents")} />
               </div>
-            </Card>
+            </div>
 
             {/* EWS Health Status Box */}
             <div className="p-4 bg-emerald-50/50 border border-emerald-200 rounded-none flex items-start gap-3 text-left">
@@ -257,11 +257,11 @@ function QuickMenuRow({ label, desc, onClick }: { label: string, desc: string, o
       onClick={onClick}
       className="py-3 flex justify-between items-center hover:bg-slate-50 transition-colors text-left w-full px-2 rounded-none outline-none group"
     >
-      <div>
+      <div className="px-3">
         <h4 className="font-bold text-slate-800 text-xs group-hover:text-emerald-700 transition-colors">{label}</h4>
         <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">{desc}</p>
       </div>
-      <span className="text-slate-400 group-hover:text-emerald-600 font-black transition-transform group-hover:translate-x-1">
+      <span className="text-slate-400 group-hover:text-emerald-600 font-black transition-transform group-hover:translate-x-1 pr-3">
         →
       </span>
     </button>

@@ -9,9 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
-    MapPin, Trash2, Settings2, Cpu, CheckCircle2,
-    Plus, Search, AlertTriangle, RefreshCw, Layers
+    Plus, Search, AlertTriangle, RefreshCw, Layers, MapPin, Trash2, Settings2, Cpu, CheckCircle2
 } from "lucide-react";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 // TERPERBAIKI: Mengimpor Popup secara resmi dari react-leaflet [3]
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from "react-leaflet";
 import L from "leaflet";
@@ -197,6 +197,11 @@ export default function SensorManagementPage() {
         );
     }, [waterStations, searchQuery]);
 
+    // PAGINATION
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 5;
+    const paginatedStations = filteredStations.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
     return (
         <DashboardLayout role="ADMIN_DLH">
             <div className="space-y-4 text-left font-sans">
@@ -230,9 +235,9 @@ export default function SensorManagementPage() {
                     <div className="lg:col-span-7 space-y-4 flex flex-col justify-between">
 
                         {/* Interactive Geotagging Map Canvas */}
-                        <Card className="rounded-none border border-slate-200 shadow-none overflow-hidden bg-white">
+                        <div className="border border-slate-200 bg-white overflow-hidden">
                             <div className="h-[260px] w-full relative z-10">
-                                <div className="absolute top-3 left-10 bg-slate-900/90 text-white text-[8px] font-black uppercase tracking-widest px-2.5 py-1.5 z-[999] pointer-events-none rounded-none shadow">
+                                <div className="absolute top-3 left-10 bg-slate-900/90 text-white text-[8px] font-black uppercase tracking-widest px-2.5 py-1.5 z-[999] pointer-events-none shadow">
                                     Peta Mikro: Klik pada kanvas untuk menandai letak titik koordinat sensor
                                 </div>
                                 <MapContainer
@@ -261,10 +266,10 @@ export default function SensorManagementPage() {
                                     ))}
                                 </MapContainer>
                             </div>
-                        </Card>
+                        </div>
 
                         {/* Search Toolbar */}
-                        <Card className="rounded-none border border-slate-200 shadow-none p-3 bg-white">
+                        <div className="border border-slate-200 p-3 bg-white">
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                                 <Input
@@ -274,7 +279,7 @@ export default function SensorManagementPage() {
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                 />
                             </div>
-                        </Card>
+                        </div>
 
                         {/* High Density Sensors Table */}
                         <div className="bg-white rounded-none border border-slate-200 shadow-none overflow-hidden flex-1">
@@ -289,7 +294,7 @@ export default function SensorManagementPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {filteredStations.length === 0 ? (
+                                    {paginatedStations.length === 0 ? (
                                         <TableRow>
                                             <TableCell colSpan={5} className="text-center py-16">
                                                 <div className="flex flex-col items-center gap-2 text-slate-400">
@@ -299,18 +304,18 @@ export default function SensorManagementPage() {
                                             </TableCell>
                                         </TableRow>
                                     ) : (
-                                        filteredStations.map((station) => (
-                                            <TableRow key={station.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors h-12 group">
-                                                <TableCell className="font-mono font-bold text-slate-500 pl-4 text-xs">
+                                        paginatedStations.map((station) => (
+                                            <TableRow key={station.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors h-10 group">
+                                                <TableCell className="font-mono font-bold text-slate-500 pl-4 text-xs py-1.5">
                                                     {station.id}
                                                 </TableCell>
-                                                <TableCell>
+                                                <TableCell className="py-1.5">
                                                     <div className="flex flex-col text-left">
                                                         <span className="font-bold text-slate-900 text-xs">{station.name}</span>
                                                         <span className="text-[8px] font-mono text-slate-400 font-bold mt-0.5">COORD: {station.lat}, {station.lng}</span>
                                                     </div>
                                                 </TableCell>
-                                                <TableCell>
+                                                <TableCell className="py-1.5">
                                                     <Badge className={cn(
                                                         "rounded-none border-none text-[8px] font-black tracking-widest uppercase px-2 py-0.5",
                                                         station.sourceType === "PHYSICAL_IOT" ? "bg-indigo-50 text-indigo-700" : "bg-cyan-500/10 text-cyan-700"
@@ -318,7 +323,7 @@ export default function SensorManagementPage() {
                                                         {station.sourceType || "SIMULATED"}
                                                     </Badge>
                                                 </TableCell>
-                                                <TableCell className="text-center">
+                                                <TableCell className="text-center py-1.5">
                                                     <Badge className={cn(
                                                         "rounded-none border-none text-[8px] font-black tracking-widest uppercase px-2 py-0.5",
                                                         station.status === "ACTIVE"
@@ -330,7 +335,7 @@ export default function SensorManagementPage() {
                                                         {station.status || "ACTIVE"}
                                                     </Badge>
                                                 </TableCell>
-                                                <TableCell className="text-right pr-4">
+                                                <TableCell className="text-right pr-4 py-1.5">
                                                     <div className="flex items-center justify-end gap-1.5">
                                                         <Button
                                                             variant="ghost"
@@ -355,13 +360,20 @@ export default function SensorManagementPage() {
                                     )}
                                 </TableBody>
                             </Table>
+                            <PaginationControls
+                                currentPage={currentPage}
+                                totalPages={Math.ceil(filteredStations.length / ITEMS_PER_PAGE)}
+                                totalItems={filteredStations.length}
+                                itemsPerPage={ITEMS_PER_PAGE}
+                                onPageChange={setCurrentPage}
+                            />
                         </div>
 
                     </div>
 
                     {/* KOLOM KANAN (5 Kolom): Formulir Pengaturan Perangkat */}
                     <div className="lg:col-span-5">
-                        <Card className="rounded-none border border-slate-200 shadow-none bg-white h-full flex flex-col justify-between">
+                        <div className="border border-slate-200 bg-white h-full flex flex-col justify-between">
                             <div className="p-4 bg-slate-50 border-b border-slate-200 text-left shrink-0">
                                 <h3 className="text-xs font-black text-slate-800 tracking-widest uppercase flex items-center gap-1.5">
                                     <Cpu size={14} className="text-emerald-600" />
@@ -489,7 +501,7 @@ export default function SensorManagementPage() {
                                     {isEditing ? "SIMPAN PEMBARUAN" : "DAFTARKAN SENSOR"}
                                 </Button>
                             </div>
-                        </Card>
+                        </div>
                     </div>
 
                 </div>

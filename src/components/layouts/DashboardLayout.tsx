@@ -107,12 +107,20 @@ export default function DashboardLayout({ children, noPadding = false }: any) {
   };
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">
+    <div className="flex h-screen w-full overflow-hidden bg-slate-50 font-sans">
 
       {/* --- SIDEBAR (DIET WIDTH: w-72 -> w-64) --- */}
+      {/* Mobile Backdrop */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-900/50 z-40 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+      
       <aside className={cn(
-        "bg-slate-900 text-slate-300 transition-all duration-300 flex flex-col h-screen sticky top-0 z-50",
-        sidebarOpen ? "w-64" : "w-16"
+        "bg-slate-900 text-slate-300 transition-all duration-300 flex flex-col h-full shrink-0 z-50 fixed md:relative",
+        sidebarOpen ? "w-64 translate-x-0" : "w-64 -translate-x-full md:w-16 md:translate-x-0"
       )}>
 
         {/* 1. Logo Section (DIET HEIGHT: h-20 -> h-16) */}
@@ -120,8 +128,8 @@ export default function DashboardLayout({ children, noPadding = false }: any) {
           <div className="w-8 h-8 bg-emerald-600 flex items-center justify-center text-white shrink-0">
             <Leaf size={18} />
           </div>
-          {sidebarOpen && (
-            <div className="flex flex-col leading-none overflow-hidden">
+          {(sidebarOpen || window.innerWidth < 768) && (
+            <div className={cn("flex flex-col leading-none overflow-hidden", !sidebarOpen && "md:hidden")}>
               <span className="font-sans font-semibold text-xl tracking-tight text-white whitespace-nowrap">
                 Geo <span className="text-emerald-500">Limbah</span>
               </span>
@@ -149,7 +157,7 @@ export default function DashboardLayout({ children, noPadding = false }: any) {
                 <div className={cn("transition-colors shrink-0", isActive ? "text-emerald-400" : "text-slate-500 group-hover:text-emerald-400")}>
                   {item.icon}
                 </div>
-                {sidebarOpen && <span className="text-xs font-bold tracking-wider uppercase truncate">{item.label}</span>}
+                {(sidebarOpen || window.innerWidth < 768) && <span className={cn("text-xs font-bold tracking-wider uppercase truncate", !sidebarOpen && "md:hidden")}>{item.label}</span>}
               </Link>
             );
           })}
@@ -163,13 +171,13 @@ export default function DashboardLayout({ children, noPadding = false }: any) {
             title={!sidebarOpen ? "Keluar Sistem" : undefined}
           >
             <LogOut size={18} className="shrink-0" />
-            {sidebarOpen && <span className="text-xs font-bold tracking-wider uppercase">Keluar Sistem</span>}
+            {(sidebarOpen || window.innerWidth < 768) && <span className={cn("text-xs font-bold tracking-wider uppercase", !sidebarOpen && "md:hidden")}>Keluar Sistem</span>}
           </button>
         </div>
       </aside>
 
       {/* --- MAIN CONTENT --- */}
-      <div className="flex-1 flex flex-col h-screen overflow-hidden">
+      <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0">
 
         {/* Navbar (DIET HEIGHT: h-20 -> h-16) */}
         <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between shrink-0 z-40">
@@ -200,9 +208,9 @@ export default function DashboardLayout({ children, noPadding = false }: any) {
                 )}
               </button>
 
-              {/* Notification Overlay Popover (Diet Padding & Corners) */}
+              {/* Notification Overlay Popover (Diet Padding & Corners & Responsive Modal) */}
               {notifOpen && (
-                <div className="absolute right-0 mt-3 w-80 bg-white border border-slate-200 shadow-xl z-[999] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="fixed top-[68px] right-4 left-4 sm:absolute sm:top-auto sm:right-0 sm:left-auto mt-0 sm:mt-3 w-auto sm:w-80 bg-white border border-slate-200 shadow-xl z-[999] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                   <div className="px-4 py-3 border-b bg-slate-50 flex justify-between items-center">
                     <span className="font-black text-[10px] uppercase tracking-widest text-slate-800">NOTIFIKASI EWS</span>
                     <button
@@ -261,10 +269,10 @@ export default function DashboardLayout({ children, noPadding = false }: any) {
         </header>
 
         {/* Content Area (DIET PADDING: p-8 -> p-6) */}
-        <main className="flex-1 overflow-hidden flex flex-col bg-slate-50">
+        <main className="flex-1 overflow-hidden min-h-0 bg-slate-50">
           <section className={cn(
-            "flex-1 overflow-y-auto custom-scrollbar",
-            noPadding ? "p-0" : "p-6"
+            "h-full overflow-y-auto custom-scrollbar overflow-x-hidden",
+            noPadding ? "p-0" : "p-4 md:p-6"
           )}>
             {children}
           </section>

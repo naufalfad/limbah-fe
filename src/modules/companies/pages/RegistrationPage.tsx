@@ -286,7 +286,7 @@ export default function RegistrationPage() {
 
               {/* STEP 1: IDENTITAS & UPLOAD DOKUMEN (GFW HIGH DENSITY) */}
               {currentStep === 1 && (
-                <Card className="bg-white border border-slate-200 rounded-none shadow-none overflow-hidden animate-in fade-in slide-in-from-bottom-4">
+                <div className="bg-white border border-slate-200 animate-in fade-in slide-in-from-bottom-4">
                   <CardHeaderLayout title="Identitas & Legalitas" desc="Masukkan data resmi perusahaan dan unggah dokumen pendukung." />
                   <CardContent className="space-y-6 p-6">
 
@@ -379,12 +379,12 @@ export default function RegistrationPage() {
                       </Button>
                     </div>
                   </CardContent>
-                </Card>
+                </div>
               )}
 
               {/* STEP 2: ASSESSMENT */}
               {currentStep === 2 && (
-                <Card className="bg-white border border-slate-200 rounded-none shadow-none overflow-hidden animate-in fade-in slide-in-from-bottom-4">
+                <div className="bg-white border border-slate-200 animate-in fade-in slide-in-from-bottom-4">
                   <CardHeaderLayout title="Smart Assessment" desc="Sistem akan menganalisis kewajiban dokumen lingkungan Anda." />
                   <CardContent className="space-y-4 p-4 md:p-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -422,13 +422,13 @@ export default function RegistrationPage() {
                       </Button>
                     </div>
                   </CardContent>
-                </Card>
+                </div>
               )}
 
               {/* STEP 3: RECOMMENDATION RESULT */}
               {currentStep === 3 && (
                 <div className="animate-in zoom-in duration-300">
-                  <Card className="border border-emerald-500 bg-emerald-50/20 rounded-none overflow-hidden">
+                  <div className="border border-emerald-500 bg-emerald-50/20">
                     <CardContent className="p-8 text-center space-y-4">
                       <div className="bg-emerald-100 border border-emerald-200 w-12 h-12 rounded-none flex items-center justify-center mx-auto shadow-inner text-emerald-700">
                         <CheckCircle2 size={24} />
@@ -449,13 +449,13 @@ export default function RegistrationPage() {
                         </Button>
                       </div>
                     </CardContent>
-                  </Card>
+                  </div>
                 </div>
               )}
 
               {/* STEP 4: MATRIKS ISIAN TEKNIS (DOWNLOAD & UPLOAD) */}
               {currentStep === 4 && (
-                <Card className="bg-white border-2 border-slate-900 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] rounded-none overflow-hidden animate-in fade-in slide-in-from-right-4 text-left">
+                <div className="bg-white border border-slate-200 animate-in fade-in slide-in-from-right-4 text-left">
                   <CardHeaderLayout
                     title={`Langkah 4: Matriks Isian Teknis ${docType}`}
                     desc={`Unduh template resmi ${docType} dari DLH, lengkapi, lalu unggah kembali dokumen tersebut.`}
@@ -555,12 +555,12 @@ export default function RegistrationPage() {
                       </Button>
                     </div>
                   </CardContent>
-                </Card>
+                </div>
               )}
 
               {/* STEP 5: GIS MAPPING */}
               {currentStep === 5 && (
-                <Card className="bg-white border border-slate-200 rounded-none shadow-none overflow-hidden animate-in fade-in slide-in-from-right-4">
+                <div className="bg-white border border-slate-200 animate-in fade-in slide-in-from-right-4">
                   <CardHeaderLayout title="Pemetaan Titik Lokasi GIS" desc="Tentukan koordinat spasial persis pabrik Anda pada kanvas peta." />
                   <CardContent className="p-4 md:p-6 space-y-4">
 
@@ -625,7 +625,7 @@ export default function RegistrationPage() {
                       </Button>
                     </div>
                   </CardContent>
-                </Card>
+                </div>
               )}
 
             </form>

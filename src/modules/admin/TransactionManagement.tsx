@@ -11,6 +11,7 @@ import {
   Download, Wallet, ArrowRightLeft, History,
   CheckCircle2, Clock
 } from "lucide-react";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 import { cn } from "@/lib/utils";
 import { useSijagaStore } from '@/store/useSijagaStore';
 import { toast } from "sonner";
@@ -47,6 +48,11 @@ export default function TransactionManagement() {
       trx.company.toLowerCase().includes(query) ||
       trx.type.toLowerCase().includes(query);
   });
+
+  // PAGINATION
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 5;
+  const paginatedTransactions = filteredTransactions.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   return (
     <DashboardLayout role="ADMIN_DLH">
@@ -120,32 +126,32 @@ export default function TransactionManagement() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredTransactions.length === 0 ? (
+              {paginatedTransactions.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center py-8 font-bold text-slate-400 text-xs">
                     Tidak ada data pembayaran yang ditemukan.
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredTransactions.map((trx) => (
-                  <TableRow key={trx.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors h-14">
-                    <TableCell className="pl-4">
+                paginatedTransactions.map((trx) => (
+                  <TableRow key={trx.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors h-10">
+                    <TableCell className="pl-4 py-1.5">
                       <div className="flex flex-col">
                         <span className="font-black text-slate-900 text-xs">{trx.id}</span>
                         <span className="text-[9px] text-slate-400 font-bold uppercase">{trx.date}</span>
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-1.5">
                       <p className="font-bold text-xs text-slate-800 leading-tight">{trx.company}</p>
                       <span className="text-[9px] font-black text-slate-400 bg-slate-100 px-1.5 py-0.5 uppercase">{trx.type}</span>
                     </TableCell>
-                    <TableCell className="text-center font-black text-emerald-700 text-sm italic tracking-tight">
+                    <TableCell className="text-center font-black text-emerald-700 text-sm italic tracking-tight py-1.5">
                       {trx.amount}
                     </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="text-center py-1.5">
                       <TransactionBadge status={trx.status} />
                     </TableCell>
-                    <TableCell className="pr-4 text-right">
+                    <TableCell className="pr-4 text-right py-1.5">
                       <Button
                         variant="ghost"
                         size="icon-xs"
@@ -160,6 +166,13 @@ export default function TransactionManagement() {
               )}
             </TableBody>
           </Table>
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={Math.ceil(filteredTransactions.length / ITEMS_PER_PAGE)}
+            totalItems={filteredTransactions.length}
+            itemsPerPage={ITEMS_PER_PAGE}
+            onPageChange={setCurrentPage}
+          />
         </div>
 
       </div>

@@ -70,7 +70,7 @@ export default function PickupRequestPage() {
         <CompanyHeader />
 
         {/* 2. PAGE ACTION BAR (DENSE TOOLBAR) */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 border border-slate-200 rounded-none shadow-none">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 py-2 border-y border-slate-200 bg-transparent">
           <div>
             <h1 className="text-xl font-black text-slate-900 tracking-tight leading-none uppercase">Jasa Pengangkutan Limbah</h1>
             <p className="text-slate-500 font-medium text-xs mt-1.5">Ajukan pengangkutan limbah berbahaya (B3) Anda ke transporter berlisensi daerah [3].</p>
@@ -85,8 +85,8 @@ export default function PickupRequestPage() {
         </div>
 
         {/* 3. MODULAR HIGH DENSITY TABLES [3] */}
-        <div className="space-y-2">
-          <div className="bg-slate-50 border border-slate-200 px-4 py-2 flex justify-between items-center rounded-none">
+        <div className="space-y-3">
+          <div className="border-b border-slate-200 pb-3 flex justify-between items-end">
             <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
               <Truck size={12} /> Riwayat Pengangkutan & Manifest Elektronik
             </span>
