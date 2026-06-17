@@ -56,7 +56,7 @@ export default function GisNavbar() {
     };
 
     return (
-        <nav className="absolute top-0 left-0 right-0 h-16 px-6 flex items-center justify-between bg-white border-b border-slate-200 z-50 pointer-events-auto">
+        <nav className="absolute top-0 left-0 right-0 h-16 px-4 md:px-6 flex items-center justify-between bg-white border-b border-slate-200 z-50 pointer-events-auto">
 
             {/* KIRI: Tombol Back Dinamis (Fail-Safe Navigation) & Branding [3] */}
             <div className="flex items-center gap-5">
@@ -82,10 +82,10 @@ export default function GisNavbar() {
                         <Leaf size={18} />
                     </div>
                     <div className="flex flex-col leading-none">
-                        <span className="font-sans font-semibold text-xl tracking-tight text-slate-800">
+                        <span className="font-sans font-semibold text-lg md:text-xl tracking-tight text-slate-800">
                             Geo <span className="text-emerald-600">Limbah</span>
                         </span>
-                        <span className="text-[8px] text-slate-400 font-bold tracking-[0.2em] uppercase mt-0.5">
+                        <span className="text-[8px] text-slate-400 font-bold tracking-[0.2em] uppercase mt-0.5 hidden sm:block">
                             Geospasial Kepatuhan
                         </span>
                     </div>

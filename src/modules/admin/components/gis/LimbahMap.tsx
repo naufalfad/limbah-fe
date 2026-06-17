@@ -363,7 +363,14 @@ export default function LimbahMap() {
                 <div className="absolute top-[88px] right-6 z-[1000]">
                     <div className="relative group">
                         <button
-                            onClick={() => openPanel('ai-copilot', 'AI Spatial Assistant')}
+                            onClick={() => {
+                                if (activePanels.some(p => p.type === 'ai-copilot')) {
+                                    closePanelsToTheRight(-1);
+                                } else {
+                                    closePanelsToTheRight(-1);
+                                    openPanel('ai-copilot', 'AI Spatial Assistant');
+                                }
+                            }}
                             aria-label="Open AI Spatial Assistant"
                             title="AI Spatial Assistant"
                             className="

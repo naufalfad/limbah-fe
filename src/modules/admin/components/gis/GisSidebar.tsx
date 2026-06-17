@@ -74,25 +74,29 @@ export default function GisSidebar() {
     };
 
     const handleNavClick = (item: typeof navigationItems[0]) => {
-        closePanelsToTheRight(-1);
-        openPanel(item.type, item.title);
+        if (isPanelActive(item.type)) {
+            closePanelsToTheRight(-1); // Tutup panel jika diklik lagi
+        } else {
+            closePanelsToTheRight(-1);
+            openPanel(item.type, item.title);
+        }
     };
 
     return (
-        <aside className="absolute top-16 bottom-0 left-0 w-16 flex flex-col items-center bg-white border-r border-slate-200 z-40 pointer-events-auto">
+        <aside className="absolute bottom-0 md:top-16 md:bottom-0 left-0 right-0 md:right-auto w-full md:w-16 h-16 md:h-auto flex flex-row md:flex-col items-center justify-between md:justify-start bg-white border-t md:border-t-0 md:border-r border-slate-200 z-[150] md:z-40 pointer-events-auto overflow-x-auto md:overflow-visible">
 
-            <div className="flex-1 flex flex-col items-center w-full">
+            <div className="flex-1 flex flex-row md:flex-col items-center w-max md:w-full h-full md:h-auto">
                 {navigationItems.map((item, index) => {
                     const isActive = isPanelActive(item.type);
 
                     return (
-                        <div key={index} className="relative group w-full flex justify-center">
+                        <div key={index} className="relative group h-full md:h-auto w-16 md:w-full flex justify-center shrink-0">
                             <button
                                 onClick={() => handleNavClick(item)}
-                                className={`w-full h-16 flex flex-col items-center justify-center gap-1 transition-colors relative active:bg-slate-100 rounded-none outline-none
+                                className={`w-full h-full md:h-16 flex flex-col items-center justify-center gap-1 transition-colors relative active:bg-slate-100 rounded-none outline-none
                   ${isActive
-                                        ? "bg-emerald-50 text-emerald-700 border-l-[3px] border-emerald-600"
-                                        : "bg-transparent text-slate-400 hover:bg-slate-50 hover:text-slate-800 border-l-[3px] border-transparent"
+                                        ? "bg-emerald-50 text-emerald-700 border-t-[3px] md:border-t-0 md:border-l-[3px] border-emerald-600"
+                                        : "bg-transparent text-slate-400 hover:bg-slate-50 hover:text-slate-800 border-t-[3px] md:border-t-0 md:border-l-[3px] border-transparent"
                                     }`}
                             >
                                 <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} />
@@ -101,7 +105,7 @@ export default function GisSidebar() {
                                 </span>
                             </button>
 
-                            <div className="absolute top-1/2 left-full -translate-y-1/2 ml-1 px-3 py-2 bg-slate-800 text-white text-[10px] font-bold uppercase tracking-widest rounded-none opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                            <div className="hidden md:block absolute top-1/2 left-full -translate-y-1/2 ml-1 px-3 py-2 bg-slate-800 text-white text-[10px] font-bold uppercase tracking-widest rounded-none opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
                                 {item.title}
                                 <div className="absolute top-1/2 -left-1 -translate-y-1/2 w-2 h-2 bg-slate-800 rotate-45 rounded-none" />
                             </div>
@@ -110,21 +114,25 @@ export default function GisSidebar() {
                 })}
             </div>
 
-            <div className="flex flex-col items-center w-full mt-auto">
-                <div className="w-8 h-px bg-slate-200 mb-1" />
+            <div className="flex flex-row md:flex-col items-center justify-between h-full md:h-auto w-auto md:w-full md:mt-auto shrink-0 pr-2 md:pr-0">
+                <div className="h-8 md:w-8 w-px md:h-px bg-slate-200 mx-2 md:mx-0 md:mb-1" />
 
-                <div className="relative group w-full flex justify-center">
+                <div className="relative group h-full md:h-auto w-16 md:w-full flex justify-center shrink-0">
                     <button
                         onClick={() => {
-                            closePanelsToTheRight(-1);
-                            openPanel("tentang", "Tentang GIS Geo Limbah");
+                            if (isPanelActive("tentang")) {
+                                closePanelsToTheRight(-1);
+                            } else {
+                                closePanelsToTheRight(-1);
+                                openPanel("tentang", "Tentang GIS Geo Limbah");
+                            }
                         }}
-                        className={`w-full h-16 flex items-center justify-center transition-colors relative active:bg-slate-100 rounded-none outline-none border-l-[3px] ${isPanelActive("tentang") ? "bg-emerald-50 text-emerald-700 border-emerald-600" : "bg-transparent text-slate-400 hover:bg-slate-50 hover:text-slate-800 border-transparent"}`}
+                        className={`w-full h-full md:h-16 flex items-center justify-center transition-colors relative active:bg-slate-100 rounded-none outline-none border-t-[3px] md:border-t-0 md:border-l-[3px] ${isPanelActive("tentang") ? "bg-emerald-50 text-emerald-700 border-emerald-600" : "bg-transparent text-slate-400 hover:bg-slate-50 hover:text-slate-800 border-transparent"}`}
                     >
                         <Info size={20} strokeWidth={isPanelActive("tentang") ? 2.5 : 2} />
                     </button>
 
-                    <div className="absolute top-1/2 left-full -translate-y-1/2 ml-1 px-3 py-2 bg-slate-800 text-white text-[10px] font-bold uppercase tracking-widest rounded-none opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                    <div className="hidden md:block absolute top-1/2 left-full -translate-y-1/2 ml-1 px-3 py-2 bg-slate-800 text-white text-[10px] font-bold uppercase tracking-widest rounded-none opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
                         Tentang Sistem
                         <div className="absolute top-1/2 -left-1 -translate-y-1/2 w-2 h-2 bg-slate-800 rotate-45 rounded-none" />
                     </div>

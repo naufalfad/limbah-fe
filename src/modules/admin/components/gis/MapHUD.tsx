@@ -1,5 +1,5 @@
 // src/modules/admin/components/gis/MapHUD.tsx
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { Plus, Minus, Maximize, Map as MapIcon, BellRing } from "lucide-react";
 import { useGisUIStore } from "@/store/useGisUIStore";
 import { useSijagaStore } from "@/store/useSijagaStore";
@@ -10,6 +10,16 @@ export default function MapHUD() {
     const { currentUser } = useSijagaStore();
 
     const isOfficer = currentUser?.role === "PETUGAS_LAPANGAN";
+
+    // State untuk mode lipat legenda (collapsible legend)
+    const [isLegendExpanded, setIsLegendExpanded] = useState(true);
+
+    useEffect(() => {
+        const handleResize = () => setIsLegendExpanded(window.innerWidth >= 768);
+        handleResize();
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
 
     // Cek apakah mode layar penuh (AQI atau Sungai) sedang aktif
     const isAqiActive = activeLayers.includes("layer-aqi");
@@ -91,17 +101,25 @@ export default function MapHUD() {
     const hasLegends = legendItems.length > 0;
 
     return (
-        <div className="absolute bottom-8 right-8 z-30 pointer-events-auto flex flex-row items-end gap-4 select-none">
+        <div className="absolute bottom-20 md:bottom-8 right-4 md:right-8 z-40 pointer-events-auto flex flex-row md:flex-col items-end gap-2 md:gap-4 select-none">
             {hasLegends && (
-                <div className="bg-white/90 backdrop-blur border border-slate-300 shadow-sm rounded-none w-60 animate-in fade-in slide-in-from-bottom-4 flex flex-col max-h-[75vh] overflow-y-auto custom-scrollbar">
+                <div className="flex flex-col items-end gap-2">
+                    {isLegendExpanded ? (
+                        <div className="bg-white/90 backdrop-blur border border-slate-300 shadow-sm rounded-none w-60 animate-in fade-in slide-in-from-bottom-4 flex flex-col max-h-[75vh] overflow-y-auto custom-scrollbar">
 
-                    {/* Header Legenda */}
-                    <div className="flex items-center gap-2 px-3 py-2 bg-slate-50/90 border-b border-slate-200 sticky top-0 z-10 text-left">
-                        <MapIcon size={12} className="text-emerald-700" />
-                        <h4 className="text-[9px] font-black text-slate-700 uppercase tracking-widest">
-                            {isOfficer ? "Legenda Sasaran Tugas" : "Legenda Kepatuhan"}
-                        </h4>
-                    </div>
+                            {/* Header Legenda - Bisa Ditekan Untuk Menutup (Collapsible) */}
+                            <div 
+                                className="flex items-center justify-between gap-2 px-3 py-2 bg-slate-50/90 border-b border-slate-200 sticky top-0 z-10 text-left cursor-pointer hover:bg-slate-100 transition-colors"
+                                onClick={() => setIsLegendExpanded(false)}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <MapIcon size={12} className="text-emerald-700" />
+                                    <h4 className="text-[9px] font-black text-slate-700 uppercase tracking-widest">
+                                        {isOfficer ? "Legenda Sasaran" : "Legenda Kepatuhan"}
+                                    </h4>
+                                </div>
+                                <Minus size={12} className="text-slate-400" />
+                            </div>
 
                     {/* Daftar Item Legenda */}
                     <div className="flex flex-col">
@@ -157,10 +175,20 @@ export default function MapHUD() {
                         })}
                     </div>
                 </div>
+                    ) : (
+                        <button 
+                            onClick={() => setIsLegendExpanded(true)}
+                            className="bg-white/90 backdrop-blur border border-slate-300 shadow-sm w-10 h-10 flex items-center justify-center text-slate-600 hover:text-emerald-700 hover:bg-slate-50 transition-colors active:bg-slate-200 rounded-none outline-none animate-in zoom-in-95"
+                            title="Buka Legenda"
+                        >
+                            <MapIcon size={18} strokeWidth={2.5} />
+                        </button>
+                    )}
+                </div>
             )}
 
             {/* Navigasi Tombol Zoom & Reset */}
-            <div className="flex flex-col bg-white/90 backdrop-blur border border-slate-300 shadow-none rounded-none overflow-hidden divide-y divide-slate-200 shrink-0">
+            <div className="hidden md:flex flex-col bg-white/90 backdrop-blur border border-slate-300 shadow-none rounded-none overflow-hidden divide-y divide-slate-200 shrink-0">
                 <button onClick={triggerZoomIn} className="w-10 h-10 flex items-center justify-center text-slate-600 hover:bg-slate-100 hover:text-emerald-700 transition-colors active:bg-slate-200 rounded-none outline-none">
                     <Plus size={18} strokeWidth={2.5} />
                 </button>

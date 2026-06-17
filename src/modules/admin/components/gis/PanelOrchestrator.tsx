@@ -1,8 +1,9 @@
 // src/modules/admin/components/gis/PanelOrchestrator.tsx
 import React, { useEffect, useState } from "react";
-import { X, Map as MapIcon } from "lucide-react";
+import { X, Map as MapIcon, GripHorizontal } from "lucide-react";
 import { useGisUIStore } from "@/store/useGisUIStore";
 import { GisPanelType } from "@/types/gis";
+import { motion, AnimatePresence } from "framer-motion";
 
 // Mengimpor Sub-Panel GFW Spasial (Cohesive Modules)
 import LayerPanel from "./panels/LayerPanel";
@@ -114,7 +115,8 @@ export default function PanelOrchestrator() {
     };
 
     return (
-        <div className="absolute top-16 bottom-0 left-16 z-30 pointer-events-auto flex items-start">
+        <div className="absolute top-16 md:bottom-0 bottom-16 left-0 md:left-16 right-0 md:right-auto z-[100] md:z-30 pointer-events-none md:pointer-events-auto flex items-start">
+            <AnimatePresence>
             {activePanels.map((panel, index) => {
                 // 1. EVALUASI TIPOLOGI PANEL SECARA DINAMIS
                 const isFloating =
@@ -162,32 +164,43 @@ export default function PanelOrchestrator() {
                 }
 
                 return (
-                    <div
+                    <motion.div
                         key={panel.id}
-                        className={`absolute pointer-events-auto transition-all duration-300 ease-in-out bg-white overflow-hidden flex flex-col ${isFloating
-                            ? 'shadow-2xl border border-slate-200 rounded-none'
-                            : 'border-r border-slate-200 shadow-none rounded-none'
+                        initial={isMobile ? { y: '100%' } : { opacity: 0, x: -20 }}
+                        animate={isMobile ? { y: 0 } : { opacity: 1, x: 0 }}
+                        exit={isMobile ? { y: '100%' } : { opacity: 0, x: -20 }}
+                        transition={{ duration: 0.3, ease: "easeOut" }}
+                        className={`absolute pointer-events-auto bg-white overflow-hidden flex flex-col ${isFloating
+                            ? 'md:shadow-2xl md:border border-slate-200 md:rounded-none'
+                            : 'md:border-r border-slate-200 shadow-[0_-8px_30px_rgba(0,0,0,0.12)] md:shadow-none rounded-t-3xl md:rounded-none'
                             }`}
                         style={
                             isFloating
                                 ? {
-                                    left: `${floatingLeft}px`,
-                                    top: '16px',
-                                    bottom: '16px',
-                                    width: `${currentWidth}px`, // Menggunakan lebar dinamis [3]
-                                    maxWidth: 'calc(100vw - 80px)',
-                                    zIndex: 50,
+                                    left: isMobile ? 0 : `${floatingLeft}px`,
+                                    top: isMobile ? '10vh' : '16px',
+                                    bottom: isMobile ? 0 : '16px',
+                                    width: isMobile ? '100%' : `${currentWidth}px`, // Menggunakan lebar dinamis [3]
+                                    maxWidth: isMobile ? '100%' : 'calc(100vw - 80px)',
+                                    zIndex: isMobile ? 100 + index : 50,
                                 }
                                 : {
                                     left: 0,
-                                    top: 0,
+                                    top: isMobile ? '25vh' : 0,
                                     bottom: 0,
-                                    width: `${currentWidth}px`, // Menggunakan lebar dinamis [3]
-                                    transform: `translateX(${dockedOffset}px)`, // Menggunakan offset dinamis [3]
-                                    zIndex: 40 - index,
+                                    width: isMobile ? '100%' : `${currentWidth}px`, // Menggunakan lebar dinamis [3]
+                                    transform: isMobile ? 'none' : `translateX(${dockedOffset}px)`, // Menggunakan offset dinamis [3]
+                                    zIndex: isMobile ? 100 + index : 40 - index,
                                 }
                         }
                     >
+                        {/* DRAG HANDLE FOR MOBILE (Google Maps Style) */}
+                        {isMobile && (
+                            <div className="w-full flex justify-center py-2 bg-white shrink-0 cursor-pointer active:bg-slate-50 transition-colors group" onClick={() => closePanel(panel.id)}>
+                                <div className="w-12 h-1.5 bg-slate-200 group-hover:bg-slate-300 transition-colors rounded-full"></div>
+                            </div>
+                        )}
+
                         {/* HEADER PANEL (Penyelarasan Hirarki Visual, Tanpa Bold/Capslock) */}
                         <div className="px-4 py-3 border-b border-slate-200 flex justify-between items-center bg-slate-50 shrink-0 select-none text-left">
                             <div className="flex flex-col">
@@ -219,9 +232,10 @@ export default function PanelOrchestrator() {
                         >
                             {renderPanelContent(panel.type, panel.data)}
                         </div>
-                    </div>
+                    </motion.div>
                 );
             })}
+            </AnimatePresence>
         </div>
     );
 }
