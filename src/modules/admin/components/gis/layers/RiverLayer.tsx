@@ -5,7 +5,7 @@ import L from 'leaflet';
 import { useGisUIStore } from '@/store/useGisUIStore';
 import { useSijagaStore } from '@/store/useSijagaStore';
 
-// @ts-ignore
+// @ts-ignore - Bypass issue mapping exports Turf.js v6.5 di TypeScript modern (Vite Bundler)
 import * as turf from '@turf/turf';
 
 // @ts-ignore - Hanya mengimpor garis aliran sungai utama Kabupaten Bogor
@@ -23,24 +23,26 @@ interface WaterParticle {
     ptIdx: number;      // Sedang menuju vertex ke-berapa
     x: number;          // Posisi X saat ini
     y: number;          // Posisi Y saat ini
-    speed: number;      // Kecepatan aliran (tergantung status polusi)
+    speed: number;      // Kecepatan aliran (tergantung status polusi & cuaca BMKG)
     color: string;      // Warna komet
 }
 
 // ============================================================================
 // CONFIGURASI FLUID DYNAMICS (DIET & MINIMALIST TUNING)
 // ============================================================================
-const PARTICLE_COUNT = 500;  // Diturunkan menjadi 500 agar visual tenang dan lapang
-const FADE_RATE = 0.03;       // Peluruhan jejak lebih halus untuk komet tipis
+const PARTICLE_COUNT = 750;  // Diturunkan menjadi 500 agar visual tenang dan lapang
+const FADE_RATE = 0.04;       // Peluruhan jejak lebih halus untuk komet tipis
 const ZOOM_LOD_THRESHOLD = 11; // Batas minimal zoom untuk animasi
 
 /**
  * ============================================================================
- * RIVER LAYER (CANVAS FLUID PARTICLE ENGINE)
+ * RIVER LAYER (WEATHER-REACTIVE CANVAS FLUID ENGINE)
  * ============================================================================
  * Menggunakan prinsip Pemisahan Tanggung Jawab (Separation of Concerns).
  * - Canvas 1 (Statis): Menggambar dasar sungai sesuai warna Zona Polusi (Pemetaan Area).
  * - Canvas 2 (Dinamis): Menjalankan partikel air 60FPS dengan Fading Trails (Ilusi Arus).
+ * 
+ * REFAKTORISASI: Kecepatan partikel air berkorelasi langsung dengan live weather BMKG [1]
  */
 export default function RiverLayer() {
     const map = useMap();
@@ -165,19 +167,37 @@ export default function RiverLayer() {
                 const station = waterStations.find(s => s.id === nearestId);
 
                 // ====================================================================
-                // MUTED EDITORIAL COLOR PALETTE (Menghilangkan kontras laser/neon pekat)
+                // SINKRONISASI WARNA DENGAN HORIZONTAL LEGEND (PP 22/2021) [3]
                 // ====================================================================
-                let color = '#7dd3fc'; // Sky Blue 300 (Normal / Sehat)
-                let speed = 0.4;       // Aliran natural air bersih yang tenang
+                let color = '#22d3ee'; // Cyan 400 (Normal / Sehat) [3]
+                let speed = 0.35;      // Aliran natural air bersih yang tenang (baseline)
 
                 if (station) {
-                    const isCritical = station.currentData.bod > 3.0 || station.currentData.cod > 25.0 || station.currentData.do < 4.0;
+                    const isCritical = station.currentData.bod > 3.0; // Kritis [3]
+                    const isWarning = station.currentData.bod >= 2.0 && station.currentData.bod <= 3.0; // Waspada [3]
+
                     if (isCritical) {
-                        color = '#fda4af'; // Rose 300 (Kritis - Soft Muted Pink)
+                        color = '#f43f5e'; // Rose 500 (Kritis) [3]
                         speed = 0.12;      // Lambat/kental
-                    } else if (station.currentData.bod > 2.0) {
-                        color = '#fde047'; // Yellow 300 (Waspada - Soft Muted Yellow)
-                        speed = 0.25;      // Sedikit lambat
+                    } else if (isWarning) {
+                        color = '#fbbf24'; // Amber 400 (Waspada) [3]
+                        speed = 0.22;      // Sedikit lambat
+                    }
+
+                    // ================================================================
+                    // SINKRONISASI TRANSMISI CUACA BMKG -> FLUID ARUS SUNGAI [1]
+                    // ================================================================
+                    const weather = (station.currentData as any).weather;
+                    if (weather) {
+                        const weatherDesc = weather.weatherDesc.toLowerCase();
+
+                        if (weatherDesc.includes("hujan") || weatherDesc.includes("gerimis") || weatherDesc.includes("petir")) {
+                            // Hujan lebat/sedang memicu arus kencang (High-Discharge Torrential Flow)
+                            speed = isCritical ? 0.30 : 0.65;
+                        } else if (weatherDesc.includes("cerah") || weatherDesc.includes("panas")) {
+                            // Suhu ekstrem / kemarau memicu air tenang menyusut hampir terhenti (Stagnant Low-Flow)
+                            speed = isCritical ? 0.05 : 0.12;
+                        }
                     }
                 }
 
@@ -194,8 +214,8 @@ export default function RiverLayer() {
             sCtx.clearRect(0, 0, sCanvas.width, sCanvas.height);
             sCtx.lineCap = 'round';
             sCtx.lineJoin = 'round';
-            sCtx.lineWidth = 1.5; // Dikecilkan dari 4 agar anggun minimalis
-            sCtx.globalAlpha = 0.2; // Dibuat sangat tipis agar menyatu halus dengan basemap
+            sCtx.lineWidth = 1.25; // Dikecilkan dari 4 agar anggun minimalis
+            sCtx.globalAlpha = 0.25; // Dibuat sangat tipis agar menyatu halus dengan basemap
 
             activeSegments.forEach(seg => {
                 if (seg.points.length < 2) return;
@@ -241,9 +261,9 @@ export default function RiverLayer() {
             dCtx.fillRect(0, 0, w, h);
 
             dCtx.globalCompositeOperation = 'source-over';
-            dCtx.lineWidth = 1.0; // Dikecilkan dari 3.5 menjadi 1.0 (Sehalus benang sutra!)
+            dCtx.lineWidth = 1.5; // Dikecilkan dari 3.5 menjadi 1.0 (Sehalus benang sutra!)
             dCtx.lineCap = 'round';
-            dCtx.globalAlpha = 0.5; // Transparansi 50% agar komet membaur lembut
+            dCtx.globalAlpha = 0.55; // Transparansi 55% agar komet membaur lembut
 
             particles.forEach(p => {
                 const segment = activeSegments[p.segmentIdx];

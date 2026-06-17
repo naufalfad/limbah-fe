@@ -127,14 +127,30 @@ const defaultPerformanceAnalytics: PerformanceAnalyticsData = {
   documentComposition: { sppl: 0, uklUpl: 0 }
 };
 
-// --- MOCK DATA STASIUN AIR REALISTIS (PP No. 22 Tahun 2021) ---
+// --- MOCK DATA STASIUN AIR DENGAN PARAMETER CUACA BMKG [1] ---
 const mockWaterStations: WaterStationNode[] = [
   {
     id: "WS-01",
-    name: "Stasiun Hulu Ciliwung (Cisarua)",
+    name: "Stasiun Hulu Ciliwung (Tugu Selatan, Cisarua)",
     lat: -6.6986,
     lng: 106.9430,
-    currentData: { month: "Mei", bod: 1.8, cod: 12.5, do: 6.8, ph: 7.2 },
+    currentData: {
+      month: "Jun",
+      bod: 1.8,
+      cod: 12.5,
+      do: 6.8,
+      ph: 7.2,
+      weather: {
+        temperature: 24.5,
+        humidity: 85,
+        weatherDesc: "Cerah Berawan (Simulasi)",
+        windSpeed: 5.4,
+        windDirection: "Barat Daya",
+        localTime: "2026-06-17 07:00:00",
+        isSimulatedWeather: true
+      },
+      source: "simulated_fallback"
+    },
     monthlyHistory: [
       { month: "Jan", bod: 1.5, cod: 10.0, do: 7.2, ph: 7.1 },
       { month: "Feb", bod: 1.6, cod: 11.2, do: 7.0, ph: 7.0 },
@@ -145,10 +161,26 @@ const mockWaterStations: WaterStationNode[] = [
   },
   {
     id: "WS-02",
-    name: "Stasiun Tengah Ciliwung (Katulampa)",
+    name: "Stasiun Tengah Ciliwung (Katulampa, Kota Bogor)",
     lat: -6.6163,
     lng: 106.8325,
-    currentData: { month: "Mei", bod: 2.7, cod: 21.0, do: 5.4, ph: 6.8 },
+    currentData: {
+      month: "Jun",
+      bod: 2.7,
+      cod: 21.0,
+      do: 5.4,
+      ph: 6.8,
+      weather: {
+        temperature: 28.2,
+        humidity: 75,
+        weatherDesc: "Cerah Berawan (Simulasi)",
+        windSpeed: 8.2,
+        windDirection: "Selatan",
+        localTime: "2026-06-17 07:00:00",
+        isSimulatedWeather: true
+      },
+      source: "simulated_fallback"
+    },
     monthlyHistory: [
       { month: "Jan", bod: 2.1, cod: 17.5, do: 6.1, ph: 6.9 },
       { month: "Feb", bod: 2.2, cod: 18.2, do: 6.0, ph: 6.8 },
@@ -162,7 +194,23 @@ const mockWaterStations: WaterStationNode[] = [
     name: "Stasiun Hilir Cileungsi (Klapanunggal)",
     lat: -6.3986,
     lng: 106.9680,
-    currentData: { month: "Mei", bod: 5.4, cod: 38.0, do: 2.8, ph: 5.5 }, // MELEBIHI LIMIT (BAHAYA)
+    currentData: {
+      month: "Jun",
+      bod: 5.4,
+      cod: 38.0,
+      do: 2.8,
+      ph: 5.5,
+      weather: {
+        temperature: 31.5,
+        humidity: 62,
+        weatherDesc: "Cerah (Simulasi)",
+        windSpeed: 12.0,
+        windDirection: "Timur Laut",
+        localTime: "2026-06-17 07:00:00",
+        isSimulatedWeather: true
+      },
+      source: "simulated_fallback"
+    },
     monthlyHistory: [
       { month: "Jan", bod: 3.2, cod: 26.5, do: 4.1, ph: 6.1 },
       { month: "Feb", bod: 3.5, cod: 28.0, do: 3.9, ph: 6.0 },
@@ -176,7 +224,23 @@ const mockWaterStations: WaterStationNode[] = [
     name: "Stasiun Aliran Citeureup (Mayor Oking)",
     lat: -6.4786,
     lng: 106.8530,
-    currentData: { month: "Mei", bod: 3.8, cod: 29.5, do: 3.7, ph: 6.4 }, // MELEBIHI LIMIT (BAHAYA)
+    currentData: {
+      month: "Jun",
+      bod: 3.8,
+      cod: 29.5,
+      do: 3.7,
+      ph: 6.4,
+      weather: {
+        temperature: 29.8,
+        humidity: 68,
+        weatherDesc: "Berawan (Simulasi)",
+        windSpeed: 7.5,
+        windDirection: "Timur",
+        localTime: "2026-06-17 07:00:00",
+        isSimulatedWeather: true
+      },
+      source: "simulated_fallback"
+    },
     monthlyHistory: [
       { month: "Jan", bod: 2.8, cod: 22.0, do: 4.5, ph: 6.6 },
       { month: "Feb", bod: 2.9, cod: 23.5, do: 4.3, ph: 6.5 },

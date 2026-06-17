@@ -28,10 +28,11 @@ const BAKU_MUTU_LIMITS = {
 export default function WaterSampleMarkerLayer() {
     const {
         activeLayers,
-        selectedCompanyId,
+        selectedWaterStationId,     // Menggunakan ID seleksi stasiun air terisolasi
+        setSelectedWaterStationId,
+        setSelectedCompanyId,
         openPanel,
-        closePanelsToTheRight,
-        setSelectedCompanyId
+        closePanelsToTheRight
     } = useGisUIStore();
 
     // Menyerap data stasiun air yang tersinkronisasi murni dari Zustand / DB [3]
@@ -95,7 +96,8 @@ export default function WaterSampleMarkerLayer() {
         // Terbangkan kamera peta ke koordinat stasiun yang dipilih
         e.target._map.flyTo([station.lat, station.lng], 14, { animate: true, duration: 1.5 });
 
-        // Batalkan pemilihan perusahaan karena yang aktif adalah stasiun air
+        // Tandai stasiun air terpilih, dan batalkan seleksi perusahaan untuk mengunci laci
+        setSelectedWaterStationId(station.id);
         setSelectedCompanyId(null);
 
         // Tutup laci kanan sebelumnya
@@ -138,7 +140,7 @@ export default function WaterSampleMarkerLayer() {
             `}</style>
 
             {waterStations.map((station) => {
-                const isSelected = selectedCompanyId === station.id;
+                const isSelected = selectedWaterStationId === station.id;
                 const critical = checkIsCritical(station);
 
                 return (

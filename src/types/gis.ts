@@ -52,6 +52,7 @@ export interface ObligationStyle {
 
 /**
  * Representasi parameter hasil uji sampel laboratorium air sungai bulanan.
+ * Diperluas secara dinamis untuk menampung status telemetri atmosfer koralatif [1].
  */
 export interface WaterSampleData {
     month: string;      // Singkatan nama bulan (Jan, Feb, Mar, dsb.)
@@ -59,6 +60,20 @@ export interface WaterSampleData {
     cod: number;        // Chemical Oxygen Demand (mg/L) — Standar Kelas II: <= 25 mg/L
     do: number;         // Dissolved Oxygen / Oksigen Terlarut (mg/L) — Standar Kelas II: >= 4 mg/L
     ph: number;         // Derajat Keasaman — Standar Kelas II: 6.0 - 9.0
+
+    // INJEKSI BARU: Parameter cuaca mikro BMKG real-time untuk pemodelan Digital Twin [1]
+    weather?: {
+        temperature: number;
+        humidity: number;
+        weatherDesc: string;
+        windSpeed: number;
+        windDirection: string;
+        localTime: string;
+        isSimulatedWeather: boolean;
+    };
+
+    // INJEKSI BARU: Penanda asal usul saluran transmisi data (live_api vs simulated)
+    source?: string;
 }
 
 /**

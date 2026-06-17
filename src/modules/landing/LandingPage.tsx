@@ -198,7 +198,7 @@ export default function LandingPage() {
           {/* Teks Informasi & Narasi Baru (Tighter & Compact Copywriting) */}
           <div className="lg:col-span-7 space-y-5 text-left">
             <span className="uppercase tracking-[0.25em] text-[8px] font-black text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-3 py-1 w-max block">
-              SIJAGA LINGKUNGAN
+              Geo Limbah
             </span>
 
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-white tracking-tight leading-none uppercase">
