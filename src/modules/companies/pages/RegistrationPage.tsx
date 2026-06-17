@@ -356,7 +356,7 @@ export default function RegistrationPage() {
                         <FileUploadBox
                           label="Foto Profil Industri / Pabrik (Opsional)"
                           required={false}
-                          accept="image/*"
+                          accept=".pdf,.jpg,.jpeg,.png"
                           file={companyPhotoFile}
                           onFileChange={setCompanyPhotoFile}
                           hint="Format JPG, JPEG, PNG, maks 5 MB"
@@ -587,7 +587,7 @@ export default function RegistrationPage() {
                       <textarea
                         {...methods.register("address")}
                         className="w-full min-h-[70px] rounded-none border border-slate-300 p-2.5 text-xs font-bold focus:outline-none focus:border-emerald-600 focus:ring-0 bg-white"
-                        placeholder="Contoh: Jl. Cisitu Indah No. 2A, Bandung"
+                        placeholder="Contoh: Jl. Mayor Oking No. 1, Citeureup, Kabupaten Bogor"
                       />
                     </div>
 
