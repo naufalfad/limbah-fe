@@ -21,14 +21,14 @@ const MENU_CONFIG = {
   ],
   ADMIN_DLH: [
     { label: "Overview", icon: <LayoutDashboard size={18} />, path: "/admin" },
-    { label: "Arsip Pengaduan", icon: <AlertTriangle size={18} />, path: "/admin/reports" }, // REFACTOR FASE 2: Penyelarasan label arsip statis [3]
     { label: "Registrasi SPPL/UKL", icon: <ShieldCheck size={18} />, path: "/admin/registrations" },
-    { label: "Daftar Perusahaan", icon: <Building2 size={18} />, path: "/admin/companies" },
+    { label: "Daftar Perusahaan", icon: <Building2 size={18} />, path: "/admin/companies" }, // REFACTOR FASE 2: Penyelarasan label arsip statis [3]
     { label: "Monitoring Limbah", icon: <Trash2 size={18} />, path: "/admin/waste" },
     { label: "GIS Geospasial", icon: <Map size={18} />, path: "/admin/gis" },
     // { label: "List Pembayaran", icon: <CreditCard size={18} />, path: "/admin/payments" },
     // { label: "Penugasan Armada", icon: <Truck size={18} />, path: "/admin/pickups" },
     { label: "Inspeksi Lapangan", icon: <ClipboardList size={18} />, path: "/admin/inspections" },
+    { label: "Arsip Pengaduan", icon: <AlertTriangle size={18} />, path: "/admin/reports" },
   ],
   PETUGAS_LAPANGAN: [
     { label: "Jadwal Inspeksi", icon: <ClipboardList size={18} />, path: "/officer/inspections" },
@@ -112,12 +112,12 @@ export default function DashboardLayout({ children, noPadding = false }: any) {
       {/* --- SIDEBAR (DIET WIDTH: w-72 -> w-64) --- */}
       {/* Mobile Backdrop */}
       {sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-slate-900/50 z-40 md:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
-      
+
       <aside className={cn(
         "bg-slate-900 text-slate-300 transition-all duration-300 flex flex-col h-full shrink-0 z-50 fixed md:relative",
         sidebarOpen ? "w-64 translate-x-0" : "w-64 -translate-x-full md:w-16 md:translate-x-0"

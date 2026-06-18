@@ -587,7 +587,7 @@ export default function RegistrationPage() {
                       <textarea
                         {...methods.register("address")}
                         className="w-full min-h-[70px] rounded-none border border-slate-300 p-2.5 text-xs font-bold focus:outline-none focus:border-emerald-600 focus:ring-0 bg-white"
-                        placeholder="Contoh: Jl. Mayor Oking No. 1, Citeureup, Kabupaten Bogor"
+                        placeholder="Contoh: Jl. H.M. Arsyad No.65, Mentawa Baru Hilir, Kec. Mentawa Baru Ketapang, Kabupaten Kotawaringin Timur, Kalimantan Tengah 74312"
                       />
                     </div>
 

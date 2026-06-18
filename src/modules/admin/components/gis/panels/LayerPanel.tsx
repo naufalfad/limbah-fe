@@ -33,7 +33,7 @@ export default function LayerPanel() {
 
     // 3. Kelompok 3: Kualitas Air
     const waterLayers = [
-        { id: "layer-river", label: "Aliran sungai (Bogor)", desc: "Jejak geospasial aliran sungai", color: "bg-cyan-400" },
+        { id: "layer-river", label: "Aliran sungai", desc: "Jejak geospasial aliran sungai", color: "bg-cyan-400" },
         { id: "layer-water-stations", label: "Stasiun sampel air", desc: "Parameter baku mutu air sungai", color: "bg-blue-600" },
     ];
 

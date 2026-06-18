@@ -352,14 +352,14 @@ const MENU_CONFIG = {
   ],
   ADMIN_DLH: [
     { label: "Overview", icon: <LayoutDashboard size={18} />, path: "/admin" },
-    { label: "Arsip Pengaduan", icon: <AlertTriangle size={18} />, path: "/admin/reports" }, // REFACTOR FASE 2: Penyelarasan label arsip statis [3]
     { label: "Registrasi SPPL/UKL", icon: <ShieldCheck size={18} />, path: "/admin/registrations" },
-    { label: "Daftar Perusahaan", icon: <Building2 size={18} />, path: "/admin/companies" },
+    { label: "Daftar Perusahaan", icon: <Building2 size={18} />, path: "/admin/companies" }, // REFACTOR FASE 2: Penyelarasan label arsip statis [3]
     { label: "Monitoring Limbah", icon: <Trash2 size={18} />, path: "/admin/waste" },
     { label: "GIS Geospasial", icon: <Map size={18} />, path: "/admin/gis" },
     // { label: "List Pembayaran", icon: <CreditCard size={18} />, path: "/admin/payments" },
     // { label: "Penugasan Armada", icon: <Truck size={18} />, path: "/admin/pickups" },
     { label: "Inspeksi Lapangan", icon: <ClipboardList size={18} />, path: "/admin/inspections" },
+    { label: "Arsip Pengaduan", icon: <AlertTriangle size={18} />, path: "/admin/reports" },
   ],
   PETUGAS_LAPANGAN: [
     { label: "Jadwal Inspeksi", icon: <ClipboardList size={18} />, path: "/officer/inspections" },
@@ -3455,10 +3455,10 @@ export default function AdminDashboard() {
             </div>
 
             <div className="h-[300px] bg-slate-100 relative group overflow-hidden rounded-none z-10">
-              {/* Map Container Mini-Preview Taktis (MODIFIED FASE 2) */}
+              {/* Map Container Mini-Preview Taktis (MODIFIED FASE 2 - SINKRON KWT) [3] */}
               <MapContainer
-                center={[-6.4816, 106.8560]} // SINKRONISASI BOGOR: Diubah ke Cibinong [3]
-                zoom={11} // Diubah ke zoom level 11 agar pas melihat luasan Bogor [3]
+                center={[-2.5337, 112.9515]} // SINKRONISASI KWT: Diubah ke Sampit [3]
+                zoom={10} // Diubah ke zoom level 10 agar pas melihat luasan Kotim [3]
                 className="w-full h-full rounded-none"
                 zoomControl={false}
                 scrollWheelZoom={false}
@@ -4311,7 +4311,7 @@ function ResizeMap() {
   return null;
 }
 
-/// FASE 2: Penyesuaian parameter fallback lat/lng MapPicker ke Cibinong, Kabupaten Bogor [3]
+/// FASE 2: Penyesuaian parameter fallback lat/lng MapPicker ke Sampit, Kotawaringin Timur [3]
 function MapPicker({ lat, lng, onChange }: { lat: string; lng: string; onChange: (lat: string, lng: string) => void }) {
   useMapEvents({
     click(e) {
@@ -4319,9 +4319,9 @@ function MapPicker({ lat, lng, onChange }: { lat: string; lng: string; onChange:
     },
   });
 
-  // Fallback dialihkan ke pusat koordinat Cibinong, Kabupaten Bogor
-  const parsedLat = parseFloat(lat) || -6.4816;
-  const parsedLng = parseFloat(lng) || 106.8560;
+  // Fallback dialihkan ke pusat koordinat Sampit, Kabupaten Kotawaringin Timur
+  const parsedLat = parseFloat(lat) || -2.5337;
+  const parsedLng = parseFloat(lng) || 112.9515;
 
   return <Marker position={[parsedLat, parsedLng]} />;
 }
@@ -4813,8 +4813,8 @@ export default function CompanyManagement() {
                   {/* Status Strip at the top */}
                   <div className={cn("absolute top-0 left-0 w-1 h-full",
                     certState === "ACTIVE" ? "bg-emerald-500" :
-                    certState === "SUSPENDED" ? "bg-rose-500" :
-                    certState === "EXPIRED" ? "bg-amber-500" : "bg-blue-500"
+                      certState === "SUSPENDED" ? "bg-rose-500" :
+                        certState === "EXPIRED" ? "bg-amber-500" : "bg-blue-500"
                   )} />
 
                   {/* Header: Company Name & Status */}
@@ -9057,10 +9057,10 @@ import 'leaflet/dist/leaflet.css';
 import { useSijagaStore } from '@/store/useSijagaStore';
 import { useGisUIStore } from '@/store/useGisUIStore';
 
-// Modul Analitik & GeoJSON Wilayah (Penyelarasan ke Kabupaten Bogor)
+// Modul Analitik & GeoJSON Wilayah (Penyelarasan ke Kabupaten Kotawaringin Timur) [3]
 import { calculateCompaniesPerKecamatan } from '@/lib/spatialAnalytics';
-import kecData from '@/assets/geojson/bogor-kecamatan.json';
-import desaData from '@/assets/geojson/bogor-desa.json';
+import kecData from '@/assets/geojson/kotim-kecamatan.json';
+import desaData from '@/assets/geojson/kotim-desa.json';
 
 // Engine Matematika Spasial (Gradient Color)
 import { spatialMath } from '@/lib/spatialMath';
@@ -9089,8 +9089,8 @@ let DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// PUSAT PETA DIKUNCI DI CIBINONG (KABUPATEN BOGOR)
-const DEFAULT_CENTER: [number, number] = [-6.4816, 106.8560];
+// PUSAT PETA DIKUNCI DI SAMPIT (KABUPATEN KOTAWARINGIN TIMUR) [3]
+const DEFAULT_CENTER: [number, number] = [-2.5337, 112.9515];
 
 // ============================================================================
 // HELPERS & ICONS GENERATORS
@@ -9196,7 +9196,7 @@ function ExternalMapController() {
     useEffect(() => {
         const handleZoomIn = () => map.zoomIn();
         const handleZoomOut = () => map.zoomOut();
-        const handleResetView = () => map.setView(DEFAULT_CENTER, 11, { animate: true });
+        const handleResetView = () => map.setView(DEFAULT_CENTER, 10, { animate: true }); // Reset ke zoom level default KWT
 
         const handleFlyToCoords = (e: Event) => {
             const customEvent = e as CustomEvent<{ lat: number; lng: number }>;
@@ -9220,25 +9220,25 @@ function ExternalMapController() {
 }
 
 /**
- * MapZoomListener (Modified)
+ * MapZoomListener
  * Menangkap event zoomend Leaflet dan men-sinkronkannya langsung ke Zustand Store [3]
  */
 function MapZoomListener({ onChange }: { onChange: (zoom: number) => void }) {
     const map = useMap();
-    const { setMapZoom } = useGisUIStore(); // INJEKSI: Mengambil fungsi setMapZoom global
+    const { setMapZoom } = useGisUIStore();
 
     useMapEvents({
         zoomend: () => {
             const zoomLevel = map.getZoom();
             onChange(zoomLevel);
-            setMapZoom(zoomLevel); // Sinkronisasi reaktif setiap kali user melakukan zoom-in/out [3]
+            setMapZoom(zoomLevel);
         }
     });
 
     useEffect(() => {
         const initialZoom = map.getZoom();
         onChange(initialZoom);
-        setMapZoom(initialZoom); // Sinkronisasi saat inisialisasi awal render peta [3]
+        setMapZoom(initialZoom);
     }, [map, onChange, setMapZoom]);
 
     return null;
@@ -9254,7 +9254,7 @@ function MapEventsHandler() {
         },
         moveend: (e) => {
             const center = e.target.getCenter();
-            setMapCenter([center.lat, center.lng]); // Sinkronisasi koordinat global untuk AI [3]
+            setMapCenter([center.lat, center.lng]);
         }
     });
     return null;
@@ -9280,12 +9280,12 @@ export default function LimbahMap() {
         activeAdminBoundary, showImpactRadius, activePanels
     } = useGisUIStore();
 
-    const [currentZoom, setCurrentZoom] = useState(11); // Zoom default diubah menjadi 11
+    const [currentZoom, setCurrentZoom] = useState(10); // Default zoom level Kotim disetel ke 10
 
     // SINKRONISASI BATCH DATA AQI & DATA STASIUN AIR SAAT AWAL LOAD PETA (Information Expert)
     useEffect(() => {
         fetchBatchAqiData();
-        fetchWaterStations(); // Ambil data stasiun kualitas air sungai
+        fetchWaterStations();
     }, [fetchBatchAqiData, fetchWaterStations]);
 
     const isOfficer = currentUser?.role === "PETUGAS_LAPANGAN";
@@ -9303,12 +9303,11 @@ export default function LimbahMap() {
         }
     };
 
-    const invertedBogorMask = useMemo(() => {
+    const invertedKotimMask = useMemo(() => {
         const kecGeoJson = kecData as any;
         if (!kecGeoJson || !kecGeoJson.features) return null;
 
-        // FASE 4: Pembetulan Geometris Winding Order Masking [3]
-        // Poligon luar dunia disusun searah jarum jam (Clockwise) untuk memicu Leaflet Subtract
+        // FASE 4: Pembetulan Geometris Winding Order Masking (Kotim) [3]
         const worldOuterBounds: [number, number][] = [
             [-90, -180],
             [90, -180],
@@ -9443,7 +9442,7 @@ export default function LimbahMap() {
 
             <MapContainer
                 center={DEFAULT_CENTER}
-                zoom={11}
+                zoom={10}
                 zoomControl={false}
                 style={{ height: '100%', width: '100%' }}
                 maxZoom={18}
@@ -9454,13 +9453,13 @@ export default function LimbahMap() {
 
                 <TileLayer url={getTileUrl()} />
 
-                {invertedBogorMask && (
+                {invertedKotimMask && (
                     <Polygon
-                        positions={invertedBogorMask}
+                        positions={invertedKotimMask}
                         pathOptions={{
                             color: "#0f172a",
                             fillColor: "#0f172a",
-                            fillOpacity: maskOpacity / 100, // Kontrol opacity meredupkan luar perbatasan secara dinamis [3]
+                            fillOpacity: maskOpacity / 100,
                             weight: 1,
                             opacity: 0.2,
                             interactive: false
@@ -9513,7 +9512,6 @@ export default function LimbahMap() {
                         {companies
                             .filter(c => {
                                 // PENGAMAN GEOMETRIS (GRASP): Saring ketat koordinat kosong/NaN [3]
-                                // Menghilangkan bug loop anak bernilai null penyebab crash layar putih
                                 const lat = parseFloat(c.lat);
                                 const lng = parseFloat(c.lng);
                                 return !isNaN(lat) && !isNaN(lng);
@@ -9523,7 +9521,7 @@ export default function LimbahMap() {
                                 const lng = parseFloat(c.lng);
 
                                 const aqi = getRealClusterAqi(lat, lng, batchAqiData);
-                                const safeAqi = isNaN(aqi) ? 35 : aqi; // Safeguard dari kegagalan matematika [3]
+                                const safeAqi = isNaN(aqi) ? 35 : aqi;
                                 const [r, g, b] = spatialMath.interpolateColorRgb(safeAqi);
                                 const bgColorRgb = `rgb(${r}, ${g}, ${b})`;
 
@@ -9681,7 +9679,7 @@ export default function MapHUD() {
     const hasLegends = legendItems.length > 0;
 
     return (
-        <div className="absolute bottom-20 md:bottom-8 right-4 md:right-8 z-40 pointer-events-auto flex flex-row md:flex-col items-end gap-2 md:gap-4 select-none">
+        <div className="absolute bottom-20 md:bottom-8 right-4 md:right-8 z-40 pointer-events-auto flex flex-col md:flex-row items-end gap-2 md:gap-4 select-none">
             {hasLegends && (
                 <div className="flex flex-col items-end gap-2">
                     {isLegendExpanded ? (
@@ -9808,6 +9806,7 @@ import ActiveFleetPanel from "@/modules/transport/components/gis/panels/ActiveFl
 
 // [NEW MODULE] Mengimpor laci asisten AI Forensik untuk Pimpinan/Admin
 import ExecutiveCopilotPanel from "@/modules/dashboard/components/auditor/ExecutiveCopilotPanel";
+import AboutPanel from "./panels/AboutPanel";
 
 // =========================================================================
 // MAPPER BAHASA INDONESIA: Menerjemahkan Tipe Panel Teknis ke Label Kategori
@@ -9903,124 +9902,124 @@ export default function PanelOrchestrator() {
     return (
         <div className="absolute top-16 md:bottom-0 bottom-16 left-0 md:left-16 right-0 md:right-auto z-[100] md:z-30 pointer-events-none md:pointer-events-auto flex items-start">
             <AnimatePresence>
-            {activePanels.map((panel, index) => {
-                // 1. EVALUASI TIPOLOGI PANEL SECARA DINAMIS
-                const isFloating =
-                    panel.type === "detil-perusahaan" ||
-                    panel.type === "detail-tugas" ||
-                    panel.type === "telemetri-lingkungan";
+                {activePanels.map((panel, index) => {
+                    // 1. EVALUASI TIPOLOGI PANEL SECARA DINAMIS
+                    const isFloating =
+                        panel.type === "detil-perusahaan" ||
+                        panel.type === "detail-tugas" ||
+                        panel.type === "telemetri-lingkungan";
 
-                const currentWidth = getPanelWidth(panel.type);
+                    const currentWidth = getPanelWidth(panel.type);
 
-                // 2. DYNAMIC OFFSET CALCULATION (Menghitung sumbu X tanpa hardcoded multiplier) [3]
+                    // 2. DYNAMIC OFFSET CALCULATION (Menghitung sumbu X tanpa hardcoded multiplier) [3]
 
-                // Kalkulasi offset X untuk panel docked sebelah kiri (Flush)
-                let dockedOffset = 0;
-                for (let i = 0; i < index; i++) {
-                    const p = activePanels[i];
-                    const pIsFloating = p.type === "detil-perusahaan" || p.type === "detail-tugas" || p.type === "telemetri-lingkungan";
-                    if (!pIsFloating) {
-                        dockedOffset += getPanelWidth(p.type);
-                    }
-                }
-
-                // Kalkulasi posisi kiri (left) untuk panel melayang (Floating)
-                let floatingLeft = 16;
-                if (!isMobile) {
-                    // A. Jumlahkan total lebar laci docked di kiri layar [3]
-                    let totalDockedWidth = 0;
-                    activePanels.forEach(p => {
-                        const pIsFloating = p.type === "detil-perusahaan" || p.type === "detail-tugas" || p.type === "telemetri-lingkungan";
-                        if (!pIsFloating) {
-                            totalDockedWidth += getPanelWidth(p.type);
-                        }
-                    });
-
-                    // B. Jumlahkan total lebar laci floating sebelum index saat ini [3]
-                    let totalFloatingBefore = 0;
+                    // Kalkulasi offset X untuk panel docked sebelah kiri (Flush)
+                    let dockedOffset = 0;
                     for (let i = 0; i < index; i++) {
                         const p = activePanels[i];
                         const pIsFloating = p.type === "detil-perusahaan" || p.type === "detail-tugas" || p.type === "telemetri-lingkungan";
-                        if (pIsFloating) {
-                            totalFloatingBefore += getPanelWidth(p.type) + 16; // 16px gap antar laci
+                        if (!pIsFloating) {
+                            dockedOffset += getPanelWidth(p.type);
                         }
                     }
 
-                    floatingLeft = totalDockedWidth + totalFloatingBefore + 16;
-                }
+                    // Kalkulasi posisi kiri (left) untuk panel melayang (Floating)
+                    let floatingLeft = 16;
+                    if (!isMobile) {
+                        // A. Jumlahkan total lebar laci docked di kiri layar [3]
+                        let totalDockedWidth = 0;
+                        activePanels.forEach(p => {
+                            const pIsFloating = p.type === "detil-perusahaan" || p.type === "detail-tugas" || p.type === "telemetri-lingkungan";
+                            if (!pIsFloating) {
+                                totalDockedWidth += getPanelWidth(p.type);
+                            }
+                        });
 
-                return (
-                    <motion.div
-                        key={panel.id}
-                        initial={isMobile ? { y: '100%' } : { opacity: 0, x: -20 }}
-                        animate={isMobile ? { y: 0 } : { opacity: 1, x: 0 }}
-                        exit={isMobile ? { y: '100%' } : { opacity: 0, x: -20 }}
-                        transition={{ duration: 0.3, ease: "easeOut" }}
-                        className={`absolute pointer-events-auto bg-white overflow-hidden flex flex-col ${isFloating
-                            ? 'md:shadow-2xl md:border border-slate-200 md:rounded-none'
-                            : 'md:border-r border-slate-200 shadow-[0_-8px_30px_rgba(0,0,0,0.12)] md:shadow-none rounded-t-3xl md:rounded-none'
-                            }`}
-                        style={
-                            isFloating
-                                ? {
-                                    left: isMobile ? 0 : `${floatingLeft}px`,
-                                    top: isMobile ? '10vh' : '16px',
-                                    bottom: isMobile ? 0 : '16px',
-                                    width: isMobile ? '100%' : `${currentWidth}px`, // Menggunakan lebar dinamis [3]
-                                    maxWidth: isMobile ? '100%' : 'calc(100vw - 80px)',
-                                    zIndex: isMobile ? 100 + index : 50,
-                                }
-                                : {
-                                    left: 0,
-                                    top: isMobile ? '25vh' : 0,
-                                    bottom: 0,
-                                    width: isMobile ? '100%' : `${currentWidth}px`, // Menggunakan lebar dinamis [3]
-                                    transform: isMobile ? 'none' : `translateX(${dockedOffset}px)`, // Menggunakan offset dinamis [3]
-                                    zIndex: isMobile ? 100 + index : 40 - index,
-                                }
+                        // B. Jumlahkan total lebar laci floating sebelum index saat ini [3]
+                        let totalFloatingBefore = 0;
+                        for (let i = 0; i < index; i++) {
+                            const p = activePanels[i];
+                            const pIsFloating = p.type === "detil-perusahaan" || p.type === "detail-tugas" || p.type === "telemetri-lingkungan";
+                            if (pIsFloating) {
+                                totalFloatingBefore += getPanelWidth(p.type) + 16; // 16px gap antar laci
+                            }
                         }
-                    >
-                        {/* DRAG HANDLE FOR MOBILE (Google Maps Style) */}
-                        {isMobile && (
-                            <div className="w-full flex justify-center py-2 bg-white shrink-0 cursor-pointer active:bg-slate-50 transition-colors group" onClick={() => closePanel(panel.id)}>
-                                <div className="w-12 h-1.5 bg-slate-200 group-hover:bg-slate-300 transition-colors rounded-full"></div>
-                            </div>
-                        )}
 
-                        {/* HEADER PANEL (Penyelarasan Hirarki Visual, Tanpa Bold/Capslock) */}
-                        <div className="px-4 py-3 border-b border-slate-200 flex justify-between items-center bg-slate-50 shrink-0 select-none text-left">
-                            <div className="flex flex-col">
-                                {/* Kategori Atas: Diperbesar ke text-sm, warna emerald, tidak tebal, tidak capslock */}
-                                <span className="text-sm font-normal text-emerald-600 leading-none">
-                                    {getPanelCategoryLabel(panel.type)}
-                                </span>
-                                {/* Judul/Nama Entitas Bawah: Hanya dirender jika string dinamis tidak kosong */}
-                                {getPanelDynamicTitle(panel) && (
-                                    <h3 className="text-xs font-normal text-slate-505 truncate max-w-[280px] tracking-tight mt-1.5 leading-none">
-                                        {getPanelDynamicTitle(panel)}
-                                    </h3>
-                                )}
-                            </div>
+                        floatingLeft = totalDockedWidth + totalFloatingBefore + 16;
+                    }
 
-                            <button
-                                onClick={() => closePanel(panel.id)}
-                                className="p-1 rounded-none bg-transparent hover:bg-slate-200 text-slate-400 hover:text-rose-500 transition-colors active:scale-95 outline-none"
-                                title="Tutup Panel"
-                            >
-                                <X size={16} strokeWidth={2.5} />
-                            </button>
-                        </div>
-
-                        {/* BODY PANEL */}
-                        <div
-                            className="flex-1 overflow-y-auto custom-scrollbar"
-                            onClick={() => !isFloating && closePanelsToTheRight(index)}
+                    return (
+                        <motion.div
+                            key={panel.id}
+                            initial={isMobile ? { y: '100%' } : { opacity: 0, x: -20 }}
+                            animate={isMobile ? { y: 0 } : { opacity: 1, x: 0 }}
+                            exit={isMobile ? { y: '100%' } : { opacity: 0, x: -20 }}
+                            transition={{ duration: 0.3, ease: "easeOut" }}
+                            className={`absolute pointer-events-auto bg-white overflow-hidden flex flex-col ${isFloating
+                                ? 'md:shadow-2xl md:border border-slate-200 md:rounded-none'
+                                : 'md:border-r border-slate-200 shadow-[0_-8px_30px_rgba(0,0,0,0.12)] md:shadow-none rounded-t-3xl md:rounded-none'
+                                }`}
+                            style={
+                                isFloating
+                                    ? {
+                                        left: isMobile ? 0 : `${floatingLeft}px`,
+                                        top: isMobile ? '10vh' : '16px',
+                                        bottom: isMobile ? 0 : '16px',
+                                        width: isMobile ? '100%' : `${currentWidth}px`, // Menggunakan lebar dinamis [3]
+                                        maxWidth: isMobile ? '100%' : 'calc(100vw - 80px)',
+                                        zIndex: isMobile ? 100 + index : 50,
+                                    }
+                                    : {
+                                        left: 0,
+                                        top: isMobile ? '25vh' : 0,
+                                        bottom: 0,
+                                        width: isMobile ? '100%' : `${currentWidth}px`, // Menggunakan lebar dinamis [3]
+                                        transform: isMobile ? 'none' : `translateX(${dockedOffset}px)`, // Menggunakan offset dinamis [3]
+                                        zIndex: isMobile ? 100 + index : 40 - index,
+                                    }
+                            }
                         >
-                            {renderPanelContent(panel.type, panel.data)}
-                        </div>
-                    </motion.div>
-                );
-            })}
+                            {/* DRAG HANDLE FOR MOBILE (Google Maps Style) */}
+                            {isMobile && (
+                                <div className="w-full flex justify-center py-2 bg-white shrink-0 cursor-pointer active:bg-slate-50 transition-colors group" onClick={() => closePanel(panel.id)}>
+                                    <div className="w-12 h-1.5 bg-slate-200 group-hover:bg-slate-300 transition-colors rounded-full"></div>
+                                </div>
+                            )}
+
+                            {/* HEADER PANEL (Penyelarasan Hirarki Visual, Tanpa Bold/Capslock) */}
+                            <div className="px-4 py-3 border-b border-slate-200 flex justify-between items-center bg-slate-50 shrink-0 select-none text-left">
+                                <div className="flex flex-col">
+                                    {/* Kategori Atas: Diperbesar ke text-sm, warna emerald, tidak tebal, tidak capslock */}
+                                    <span className="text-sm font-normal text-emerald-600 leading-none">
+                                        {getPanelCategoryLabel(panel.type)}
+                                    </span>
+                                    {/* Judul/Nama Entitas Bawah: Hanya dirender jika string dinamis tidak kosong */}
+                                    {getPanelDynamicTitle(panel) && (
+                                        <h3 className="text-xs font-normal text-slate-505 truncate max-w-[280px] tracking-tight mt-1.5 leading-none">
+                                            {getPanelDynamicTitle(panel)}
+                                        </h3>
+                                    )}
+                                </div>
+
+                                <button
+                                    onClick={() => closePanel(panel.id)}
+                                    className="p-1 rounded-none bg-transparent hover:bg-slate-200 text-slate-400 hover:text-rose-500 transition-colors active:scale-95 outline-none"
+                                    title="Tutup Panel"
+                                >
+                                    <X size={16} strokeWidth={2.5} />
+                                </button>
+                            </div>
+
+                            {/* BODY PANEL */}
+                            <div
+                                className="flex-1 overflow-y-auto custom-scrollbar"
+                                onClick={() => !isFloating && closePanelsToTheRight(index)}
+                            >
+                                {renderPanelContent(panel.type, panel.data)}
+                            </div>
+                        </motion.div>
+                    );
+                })}
             </AnimatePresence>
         </div>
     );
@@ -10056,15 +10055,7 @@ function renderPanelContent(type: GisPanelType, data: any) {
         case "ai-copilot": // <-- REGISTRASI RENDERER AI FORENSIK
             return <ExecutiveCopilotPanel />;
         case "tentang":
-            return (
-                <div className="p-6 text-center space-y-3 text-slate-500 font-sans">
-                    <MapIcon size={32} className="mx-auto text-emerald-600/40 animate-pulse" />
-                    <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-600 leading-none">GEO LIMBAH GIS</p>
-                        <p className="text-[11px] mt-2 font-medium leading-relaxed text-justify">Sistem Pemetaan Geospasial Kepatuhan Lingkungan v1.0</p>
-                    </div>
-                </div>
-            );
+            return <AboutPanel />;
         default:
             return <div className="p-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-left">Modul sedang dikonstruksi...</div>;
     }
@@ -10229,26 +10220,26 @@ import { ImageOverlay } from 'react-leaflet';
 import { spatialMath, AqiNode } from '@/lib/spatialMath';
 import { useSijagaStore } from '@/store/useSijagaStore';
 
-// Impor GeoJSON Wilayah Kabupaten Bogor untuk menciptakan path Clipping Canvas (Information Expert)
-import kecData from '@/assets/geojson/bogor-kecamatan.json';
+// Impor GeoJSON Wilayah Kabupaten Kotawaringin Timur untuk menciptakan path Clipping Canvas (Information Expert) [3]
+import kecData from '@/assets/geojson/kotim-kecamatan.json';
 
 interface AqiSurfaceLayerProps {
     companies: any[];
     mapOpacity: number; // 0 - 100
 }
 
-// Bounding Box Kabupaten Bogor (Diselaraskan persis dari letak geografis aslinya)
-const BOGOR_BOUNDS = {
-    latMin: -6.80,  // Batas Selatan (Area Megamendung / Cisarua)
-    latMax: -6.25,  // Batas Utara (Area Gunung Putri / Cileungsi)
-    lngMin: 106.35, // Batas Barat (Area Jasinga)
-    lngMax: 107.25  // Batas Timur (Area Jonggol)
+// Bounding Box Kabupaten Kotawaringin Timur (Diselaraskan persis dari letak geografis aslinya) [3]
+const KWT_BOUNDS = {
+    latMin: -3.35,  // Batas Selatan (Muara Mentaya Hilir Selatan / Laut Jawa)
+    latMax: -1.15,  // Batas Utara (Kawasan Bukit Santuai)
+    lngMin: 111.90, // Batas Barat (Perbatasan Seruyan)
+    lngMax: 113.35  // Batas Timur (Perbatasan Katingan)
 };
 
 // Bounds format Leaflet: [[South, West], [North, East]]
 const LEAFLET_BOUNDS: [number, number][] = [
-    [BOGOR_BOUNDS.latMin, BOGOR_BOUNDS.lngMin],
-    [BOGOR_BOUNDS.latMax, BOGOR_BOUNDS.lngMax]
+    [KWT_BOUNDS.latMin, KWT_BOUNDS.lngMin],
+    [KWT_BOUNDS.latMax, KWT_BOUNDS.lngMax]
 ];
 
 // Resolusi Kanvas. Semakin tinggi semakin detail, namun lebih berat di CPU.
@@ -10259,7 +10250,7 @@ const CANVAS_RESOLUTION = 80;
  * AQI SURFACE LAYER (CANVAS BLENDING ENGINE W/ CLIPPING)
  * ============================================================================
  * Menggunakan teknik Clipping Mask dari HTML5 Canvas agar bentuk gradasi
- * terpotong rapi mengikuti lekukan geografis Kabupaten Bogor.
+ * terpotong rapi mengikuti lekukan geografis Kabupaten Kotawaringin Timur [3].
  */
 export default function AqiSurfaceLayer({ companies, mapOpacity }: AqiSurfaceLayerProps) {
     const { batchAqiData } = useSijagaStore(); // INJEKSI: Mengambil data batch kualitas udara real-time
@@ -10300,15 +10291,15 @@ export default function AqiSurfaceLayer({ companies, mapOpacity }: AqiSurfaceLay
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
         if (!ctx) return;
 
-        const latStep = (BOGOR_BOUNDS.latMax - BOGOR_BOUNDS.latMin) / (CANVAS_RESOLUTION - 1);
-        const lngStep = (BOGOR_BOUNDS.lngMax - BOGOR_BOUNDS.lngMin) / (CANVAS_RESOLUTION - 1);
+        const latStep = (KWT_BOUNDS.latMax - KWT_BOUNDS.latMin) / (CANVAS_RESOLUTION - 1);
+        const lngStep = (KWT_BOUNDS.lngMax - KWT_BOUNDS.lngMin) / (CANVAS_RESOLUTION - 1);
 
-        // --- A. PEMBUATAN CLIPPING PATH BOGOR ---
-        const bogorPath = new Path2D();
+        // --- A. PEMBUATAN CLIPPING PATH KOTIM ---
+        const kotimPath = new Path2D();
 
-        const getX = (lng: number) => ((lng - BOGOR_BOUNDS.lngMin) / (BOGOR_BOUNDS.lngMax - BOGOR_BOUNDS.lngMin)) * CANVAS_RESOLUTION;
+        const getX = (lng: number) => ((lng - KWT_BOUNDS.lngMin) / (KWT_BOUNDS.lngMax - KWT_BOUNDS.lngMin)) * CANVAS_RESOLUTION;
         // Y di-inverse karena 0,0 di Canvas ada di atas, sedangkan LatMax ada di Utara (atas)
-        const getY = (lat: number) => ((BOGOR_BOUNDS.latMax - lat) / (BOGOR_BOUNDS.latMax - BOGOR_BOUNDS.latMin)) * CANVAS_RESOLUTION;
+        const getY = (lat: number) => ((KWT_BOUNDS.latMax - lat) / (KWT_BOUNDS.latMax - KWT_BOUNDS.latMin)) * CANVAS_RESOLUTION;
 
         (kecData as any).features.forEach((feature: any) => {
             const geom = feature.geometry;
@@ -10319,10 +10310,10 @@ export default function AqiSurfaceLayer({ companies, mapOpacity }: AqiSurfaceLay
                     ring.forEach((coord, i) => {
                         const x = getX(coord[0]);
                         const y = getY(coord[1]);
-                        if (i === 0) bogorPath.moveTo(x, y);
-                        else bogorPath.lineTo(x, y);
+                        if (i === 0) kotimPath.moveTo(x, y);
+                        else kotimPath.lineTo(x, y);
                     });
-                    bogorPath.closePath();
+                    kotimPath.closePath();
                 });
             } else if (geom.type === "MultiPolygon") {
                 geom.coordinates.forEach((poly: any[][]) => {
@@ -10330,10 +10321,10 @@ export default function AqiSurfaceLayer({ companies, mapOpacity }: AqiSurfaceLay
                         ring.forEach((coord, i) => {
                             const x = getX(coord[0]);
                             const y = getY(coord[1]);
-                            if (i === 0) bogorPath.moveTo(x, y);
-                            else bogorPath.lineTo(x, y);
+                            if (i === 0) kotimPath.moveTo(x, y);
+                            else kotimPath.lineTo(x, y);
                         });
-                        bogorPath.closePath();
+                        kotimPath.closePath();
                     });
                 });
             }
@@ -10341,19 +10332,19 @@ export default function AqiSurfaceLayer({ companies, mapOpacity }: AqiSurfaceLay
 
         // Terapkan Path sebagai Masking Canvas
         ctx.save();
-        ctx.clip(bogorPath);
+        ctx.clip(kotimPath);
 
         // --- B. RENDERING PIKSEL & OPTIMASI CPU ---
         for (let y = 0; y < CANVAS_RESOLUTION; y++) {
             for (let x = 0; x < CANVAS_RESOLUTION; x++) {
 
-                // OPTIMASI KRITIS: Jika titik X/Y ini jatuh di luar batas Kabupaten Bogor, skip kalkulasi
-                if (!ctx.isPointInPath(bogorPath, x, y)) {
+                // OPTIMASI KRITIS: Jika titik X/Y ini jatuh di luar batas Kabupaten Kotim, skip kalkulasi [3]
+                if (!ctx.isPointInPath(kotimPath, x, y)) {
                     continue;
                 }
 
-                const currentLat = BOGOR_BOUNDS.latMax - (y * latStep);
-                const currentLng = BOGOR_BOUNDS.lngMin + (x * lngStep);
+                const currentLat = KWT_BOUNDS.latMax - (y * latStep);
+                const currentLng = KWT_BOUNDS.lngMin + (x * lngStep);
 
                 // Tarik nilai tebakan dari Engine IDW kita
                 const interpolatedAqi = spatialMath.interpolateAqi(currentLat, currentLng, aqiSensors);
@@ -10585,8 +10576,8 @@ import { useSijagaStore } from '@/store/useSijagaStore';
 // @ts-ignore - Bypass issue mapping exports Turf.js v6.5 di TypeScript modern (Vite Bundler)
 import * as turf from '@turf/turf';
 
-// @ts-ignore - Hanya mengimpor garis aliran sungai utama Kabupaten Bogor
-import bogorSungaiLine from '@/assets/geojson/bogor-sungai-line.json';
+// @ts-ignore - Hanya mengimpor garis aliran sungai utama Kabupaten Kotawaringin Timur [3]
+import kotimSungaiLine from '@/assets/geojson/kotim-sungai-line.json';
 
 // --- KONTRAK DATA INTERNAL ENGINE ---
 interface RiverSegment {
@@ -10613,7 +10604,7 @@ const ZOOM_LOD_THRESHOLD = 11; // Batas minimal zoom untuk animasi
 
 /**
  * ============================================================================
- * RIVER LAYER (WEATHER-REACTIVE CANVAS FLUID ENGINE)
+ * RIVER LAYER (WEATHER-REACTIVE CANVAS FLUID ENGINE - KOTIM)
  * ============================================================================
  * Menggunakan prinsip Pemisahan Tanggung Jawab (Separation of Concerns).
  * - Canvas 1 (Statis): Menggambar dasar sungai sesuai warna Zona Polusi (Pemetaan Area).
@@ -10634,14 +10625,14 @@ export default function RiverLayer() {
     const isRiverActive = activeLayers.includes('layer-river');
 
     // ==========================================================================
-    // 1. SPATIAL JOIN (Turf.js Optimasi O(1)) - Pembagian Zona Kualitas Air
+    // 1. SPATIAL JOIN (Turf.js Optimasi O(1)) - Pembagian Zona Kualitas Air Kotim [3]
     // ==========================================================================
     const processedGeoJson = useMemo(() => {
-        if (!bogorSungaiLine || !waterStations || waterStations.length === 0) {
-            return bogorSungaiLine;
+        if (!kotimSungaiLine || !waterStations || waterStations.length === 0) {
+            return kotimSungaiLine;
         }
 
-        const geojson = JSON.parse(JSON.stringify(bogorSungaiLine));
+        const geojson = JSON.parse(JSON.stringify(kotimSungaiLine));
 
         geojson.features.forEach((feature: any) => {
             const geom = feature.geometry;
@@ -11452,19 +11443,19 @@ import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { spatialMath, WindNode } from '@/lib/spatialMath';
 
-// Impor GeoJSON Wilayah Kabupaten Bogor untuk pembuatan Path Clipping (Information Expert)
-import kecData from '@/assets/geojson/bogor-kecamatan.json';
+// Impor GeoJSON Wilayah Kabupaten Kotawaringin Timur untuk pembuatan Path Clipping (Information Expert) [3]
+import kecData from '@/assets/geojson/kotim-kecamatan.json';
 
 interface WindFlowLayerProps {
     companies: any[];
 }
 
-// Bounding Box Kabupaten Bogor (Disamakan persis dengan AqiSurfaceLayer)
-const BOGOR_BOUNDS = {
-    latMin: -6.80,  // Batas Selatan (Area Megamendung / Cisarua)
-    latMax: -6.25,  // Batas Utara (Area Gunung Putri / Cileungsi)
-    lngMin: 106.35, // Batas Barat (Area Jasinga)
-    lngMax: 107.25  // Batas Timur (Area Jonggol)
+// Bounding Box Kabupaten Kotawaringin Timur (Disamakan persis dengan AqiSurfaceLayer) [3]
+const KWT_BOUNDS = {
+    latMin: -3.35,  // Batas Selatan (Muara Mentaya Hilir Selatan / Laut Jawa)
+    latMax: -1.15,  // Batas Utara (Kawasan Bukit Santuai)
+    lngMin: 111.90, // Batas Barat (Perbatasan Seruyan)
+    lngMax: 113.35  // Batas Timur (Perbatasan Katingan)
 };
 
 // ============================================================================
@@ -11481,14 +11472,14 @@ const FADE_RATE = 0.04;          // Kecepatan Pudar Ekor Komet (Semakin kecil = 
  * WIND FLOW LAYER (CUSTOM CANVAS PARTICLE ENGINE - CLIPPED)
  * ============================================================================
  * Menciptakan ilusi Fluid Dynamics (seperti IQAir) menggunakan HTML5 Canvas.
- * Seluruh pergerakan partikel angin dikunci rapi di dalam poligon Kabupaten Bogor.
+ * Seluruh pergerakan partikel angin dikunci rapi di dalam poligon Kabupaten Kotawaringin Timur.
  */
 export default function WindFlowLayer({ companies }: WindFlowLayerProps) {
     const map = useMap();
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const animationRef = useRef<number | null>(null);
 
-    // Cache Memori untuk menahan bentuk koordinat piksel Kabupaten Bogor (Mencegah Lag 60FPS)
+    // Cache Memori untuk menahan bentuk koordinat piksel Kabupaten Kotim (Mencegah Lag 60FPS)
     const clipPathRef = useRef<Path2D | null>(null);
 
     // 1. Ekstrak Data Sensor Angin
@@ -11510,7 +11501,7 @@ export default function WindFlowLayer({ companies }: WindFlowLayerProps) {
     // 2. PRE-COMPUTE VECTOR FIELD (O(1) Lookup untuk Animasi)
     const vectorField = useMemo(() => {
         if (windSensors.length === 0) return [];
-        const grid = spatialMath.generateCanvasGrid(BOGOR_BOUNDS, RESOLUTION, RESOLUTION);
+        const grid = spatialMath.generateCanvasGrid(KWT_BOUNDS, RESOLUTION, RESOLUTION);
 
         return grid.map(pt => {
             const wind = spatialMath.interpolateWind(pt.lat, pt.lng, windSensors);
@@ -11557,7 +11548,7 @@ export default function WindFlowLayer({ companies }: WindFlowLayerProps) {
             L.DomUtil.setPosition(canvas, topLeft);
 
             // ====================================================================
-            // OPTIMASI KRITIS: GENERATE BOGOR PATH2D SAAT ZOOM / PAN (BUKAN DI RENDERING LOOP)
+            // OPTIMASI KRITIS: GENERATE KOTIM PATH2D SAAT ZOOM / PAN (BUKAN DI RENDERING LOOP)
             // ====================================================================
             const path = new Path2D();
             const kecGeoJson = kecData as any;
@@ -11644,7 +11635,7 @@ export default function WindFlowLayer({ companies }: WindFlowLayerProps) {
             // CLIPPING MASK EXECUTION (Akselerasi GPU Browser Tanpa Hambatan)
             // ====================================================================
             if (clipPathRef.current) {
-                ctx.clip(clipPathRef.current); // Kunci rendering hanya di dalam poligon Bogor
+                ctx.clip(clipPathRef.current); // Kunci rendering hanya di dalam poligon Kotim [3]
             }
 
             // Fading Tails menggunakan nilai FADE_RATE yang lebih rendah untuk jejak komet yang mulus
@@ -11668,8 +11659,8 @@ export default function WindFlowLayer({ companies }: WindFlowLayerProps) {
 
                 const pLatLng = map.containerPointToLatLng([p.x, p.y]);
 
-                const gridX = Math.floor(((pLatLng.lng - BOGOR_BOUNDS.lngMin) / (BOGOR_BOUNDS.lngMax - BOGOR_BOUNDS.lngMin)) * RESOLUTION);
-                const gridY = Math.floor(((BOGOR_BOUNDS.latMax - pLatLng.lat) / (BOGOR_BOUNDS.latMax - BOGOR_BOUNDS.latMin)) * RESOLUTION);
+                const gridX = Math.floor(((pLatLng.lng - KWT_BOUNDS.lngMin) / (KWT_BOUNDS.lngMax - KWT_BOUNDS.lngMin)) * RESOLUTION);
+                const gridY = Math.floor(((KWT_BOUNDS.latMax - pLatLng.lat) / (KWT_BOUNDS.latMax - KWT_BOUNDS.latMin)) * RESOLUTION);
 
                 if (gridX < 0 || gridX >= RESOLUTION || gridY < 0 || gridY >= RESOLUTION) {
                     p.age = PARTICLE_LIFESPAN + 1;
@@ -11684,7 +11675,6 @@ export default function WindFlowLayer({ companies }: WindFlowLayerProps) {
                 ctx.moveTo(p.x, p.y);
 
                 // Bergerak secara dinamis mengikuti arah (u,v) dengan kecepatan unik dari area tersebut
-                // Noise dikurangi agar tidak terlalu bergetar saat kecepatan pelan
                 p.x += vector.u + (Math.random() - 0.5) * 0.2;
                 p.y += vector.v + (Math.random() - 0.5) * 0.2;
                 p.age++;
@@ -11694,7 +11684,7 @@ export default function WindFlowLayer({ companies }: WindFlowLayerProps) {
 
             ctx.stroke();
 
-            ctx.restore(); // 2. Kembalikan state grafis semula untuk iterasi render berikutnya
+            ctx.restore(); // 2. Kembalikan state grafis semula untuk urutan render berikutnya
 
             // Loop ke frame berikutnya
             animationRef.current = requestAnimationFrame(render);
@@ -11715,6 +11705,151 @@ export default function WindFlowLayer({ companies }: WindFlowLayerProps) {
     }, [vectorField, map]);
 
     return null;
+}
+
+--- FILE: src\modules\admin\components\gis\panels\AboutPanel.tsx ---
+// src/modules/admin/components/gis/panels/AboutPanel.tsx
+import React from "react";
+import {
+    Info, Droplets, Wind, CloudSun, ShieldCheck,
+    Gavel, Award, Factory, HelpCircle
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+
+export default function AboutPanel() {
+    return (
+        <div className="flex flex-col h-full bg-white font-sans text-slate-700 pb-12 select-none text-left">
+
+            {/* --- HEADER BRANDING (Secure Console Style) --- */}
+            <div className="text-center py-5 bg-slate-900 border-b border-slate-850 text-white rounded-none shrink-0 font-sans">
+                <ShieldCheck size={28} className="mx-auto text-emerald-400 animate-pulse" />
+                <h4 className="text-[10px] font-black text-slate-100 uppercase tracking-[0.25em] mt-3 leading-none">
+                    GEO LIMBAH GIS
+                </h4>
+                <p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest mt-2 leading-none">
+                    Sistem Pemetaan Kepatuhan Lingkungan v1.0
+                </p>
+            </div>
+
+            {/* --- CONTENT AREA (Scrollable & High-Density) --- */}
+            <div className="p-5 space-y-6 overflow-y-auto custom-scrollbar flex-1 font-sans">
+
+                {/* Pengantar Ringkas (Diubah ke Rata Kiri murni) */}
+                <p className="text-[11px] font-semibold text-slate-500 leading-relaxed text-left">
+                    Geo Limbah GIS beroperasi sebagai platform <strong>Digital Twin & Virtual Sensor (Sensor Virtual)</strong> [3]. Platform ini mensimulasikan dan menganalisis parameter fisik-kimia atmosfer serta hidrologi wilayah secara dinamis dengan mengintegrasikan data cuaca mikro dan beban pembuangan industri nyata tanpa menebak-nebak [1, 3].
+                </p>
+
+                {/* --- SEKSI 1: SUMBER DATA UTAMA (Left-Bordered Cohesive List) --- */}
+                <div className="space-y-4 pt-2">
+                    <h3 className="text-[10px] font-black uppercase text-slate-900 tracking-wider flex items-center gap-1.5 border-b pb-1.5 leading-none">
+                        <Award size={13} className="text-emerald-600 shrink-0" /> 1. Sumber Data (Data Origin)
+                    </h3>
+
+                    <div className="space-y-4">
+                        {/* Air */}
+                        <div className="border-l-2 border-cyan-500 pl-3.5 py-1 space-y-1">
+                            <h4 className="text-[10px] font-black text-slate-800 flex items-center gap-1.5 leading-none uppercase tracking-wide">
+                                <Droplets size={12} className="text-cyan-500 shrink-0" /> Hidrologi & Air Sungai
+                            </h4>
+                            <p className="text-[10.5px] text-slate-500 leading-relaxed text-left">
+                                Data dasar stasiun air dan parameter bulanan (*prior seasonal baseline*) bersumber murni dari <strong>UPT Laboratorium Lingkungan Dinas Lingkungan Hidup (DLH) Kabupaten Kotawaringin Timur</strong> dan dikalibrasi 1:1 berdasarkan riset hidrologi resmi Sungai Mentaya [3].
+                            </p>
+                        </div>
+
+                        {/* Cuaca */}
+                        <div className="border-l-2 border-amber-500 pl-3.5 py-1 space-y-1">
+                            <h4 className="text-[10px] font-black text-slate-800 flex items-center gap-1.5 leading-none uppercase tracking-wide">
+                                <CloudSun size={12} className="text-amber-500 shrink-0" /> Klimatologi & Cuaca Mikro
+                            </h4>
+                            <p className="text-[10.5px] text-slate-500 leading-relaxed text-left">
+                                Parameter cuaca harian (suhu, kelembapan, kecepatan/arah angin, dan presipitasi) ditarik langsung secara asinkron dari stasiun meteorologi terdekat melalui <strong>API BMKG (Badan Meteorologi, Klimatologi, dan Geofisika)</strong> di tingkat kelurahan (ADM4) [1, 3].
+                            </p>
+                        </div>
+
+                        {/* Udara */}
+                        <div className="border-l-2 border-teal-500 pl-3.5 py-1 space-y-1">
+                            <h4 className="text-[10px] font-black text-slate-800 flex items-center gap-1.5 leading-none uppercase tracking-wide">
+                                <Wind size={12} className="text-teal-500 shrink-0" /> Kualitas Udara (AQI)
+                            </h4>
+                            <p className="text-[10.5px] text-slate-500 leading-relaxed text-left">
+                                Konsentrasi debu halus partikulat PM2.5 dan PM10 eksternal dikonsumsi secara real-time dari stasiun pemantauan terdekat melalui <strong>API IQAir (AirVisual)</strong> dengan algoritma *background caching* di server [3].
+                            </p>
+                        </div>
+
+                        {/* Industri */}
+                        <div className="border-l-2 border-slate-500 pl-3.5 py-1 space-y-1">
+                            <h4 className="text-[10px] font-black text-slate-800 flex items-center gap-1.5 leading-none uppercase tracking-wide">
+                                <Factory size={12} className="text-slate-500 shrink-0" /> Beban Polusi Sektoral
+                            </h4>
+                            <p className="text-[10.5px] text-slate-500 leading-relaxed text-left">
+                                Beban pencemaran organik (BOD/COD) dihitung berdasarkan data real-time pembuangan limbah cair industri yang dilaporkan pelaku usaha melalui **Logbook Limbah internal (`WasteLog`)** dalam 3 hari terakhir [3].
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* --- SEKSI 2: STANDAR PERHITUNGAN BATAS AMAN (REGULATION STANDARDS) --- */}
+                <div className="space-y-4 pt-2">
+                    <h3 className="text-[10px] font-black uppercase text-slate-900 tracking-wider flex items-center gap-1.5 border-b pb-1.5 leading-none">
+                        <Gavel size={13} className="text-emerald-600 shrink-0" /> 2. Standar Batas Aman & Regulasi
+                    </h3>
+
+                    <div className="space-y-4">
+                        {/* Regulasi Air */}
+                        <div className="space-y-2">
+                            <div className="flex justify-between items-center leading-none">
+                                <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-wide">Kepatuhan Air Sungai</h4>
+                                <Badge className="bg-cyan-50 text-cyan-700 border-none rounded-none text-[8px] font-black px-1.5 py-0.5">PP 22/2021</Badge>
+                            </div>
+                            <p className="text-[10.5px] text-slate-500 leading-relaxed text-left">
+                                Evaluasi kelayakan air sungai diverifikasi ketat mengacu pada **PP No. 22 Tahun 2021 Lampiran VI tentang Kriteria Mutu Air Sungai Kelas II** [3] dengan ambang batas parameter kaku:
+                            </p>
+                            <div className="grid grid-cols-2 gap-2 pt-1 font-mono text-[9px] font-black text-slate-700">
+                                <div className="bg-slate-50 p-2 border border-slate-200 rounded-none text-left">pH: 6.0 - 9.0</div>
+                                <div className="bg-slate-50 p-2 border border-slate-200 rounded-none text-left">DO: &ge; 4.0 mg/L</div>
+                                <div className="bg-slate-50 p-2 border border-slate-200 rounded-none text-left">BOD: &le; 3.0 mg/L</div>
+                                <div className="bg-slate-50 p-2 border border-slate-200 rounded-none text-left">COD: &le; 25.0 mg/L</div>
+                            </div>
+                        </div>
+
+                        {/* Regulasi Udara */}
+                        <div className="space-y-2 pt-1">
+                            <div className="flex justify-between items-center leading-none">
+                                <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-wide">Kepatuhan Atmosfer</h4>
+                                <Badge className="bg-teal-50 text-teal-700 border-none rounded-none text-[8px] font-black px-1.5 py-0.5">US EPA</Badge>
+                            </div>
+                            <p className="text-[10.5px] text-slate-500 leading-relaxed text-left">
+                                Perhitungan indeks kualitas udara merujuk murni pada standar **US EPA (United States Environmental Protection Agency) Air Quality Index (AQI)** yang memetakan konsentrasi partikulat mikro PM2.5 [3]:
+                            </p>
+                            {/* Color Stops List (Strict Circle Shape to match map markers) */}
+                            <div className="space-y-1.5 text-[9px] font-bold text-left text-slate-650">
+                                <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-[#10b981] inline-block shrink-0 border border-white shadow-sm" /> 0 - 50: Baik (Aman)</div>
+                                <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-[#facc15] inline-block shrink-0 border border-white shadow-sm" /> 51 - 100: Sedang (Waspada kelompok rentan)</div>
+                                <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-[#f97316] inline-block shrink-0 border border-white shadow-sm" /> 101 - 150: Tidak sehat untuk kelompok sensitif</div>
+                                <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-[#ef4444] inline-block shrink-0 border border-white shadow-sm" /> 151 - 200: Tidak sehat (Gejala iritasi fisik)</div>
+                                <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-[#9333ea] inline-block shrink-0 border border-white shadow-sm" /> 201 - 300: Sangat tidak sehat (Darurat polusi)</div>
+                                <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-[#7e0023] inline-block shrink-0 border border-white shadow-sm" /> 300+: Berbahaya (Evakuasi / Masker Medis)</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* --- DISCLAIMER & SECURITY (Flat Banner) --- */}
+                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-none flex items-start gap-2.5 text-left text-emerald-950">
+                    <HelpCircle className="text-emerald-600 shrink-0 mt-0.5" size={14} />
+                    <div className="space-y-1">
+                        <h5 className="text-[9px] font-black uppercase tracking-widest leading-none">Hak Cipta & Keamanan</h5>
+                        <p className="text-[9px] font-semibold leading-normal text-emerald-700 text-left">
+                            Seluruh simulasi hidrologi dilindungi oleh hak kepemilikan sistem Dinas Lingkungan Hidup. Setiap akses dan modifikasi parameter terekam di dalam log audit terenkripsi.
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    );
 }
 
 --- FILE: src\modules\admin\components\gis\panels\BasemapPanel.tsx ---
@@ -12117,6 +12252,21 @@ import { toast } from "sonner";
 // Konstanta URL Backend untuk memuat berkas statis gambar [3]
 const BACKEND_URL = "http://localhost:5000";
 
+const FALLBACK_IMAGES = [
+    "/uploads/companies/factory-automotive.jpg",
+    "/uploads/companies/factory-beverage.jpg",
+    "/uploads/companies/factory-cement.jpg",
+    "/uploads/companies/factory-chemical.jpg",
+    "/uploads/companies/factory-food-large.jpg",
+    "/uploads/companies/factory-food.jpg",
+    "/uploads/companies/factory-paper.jpg",
+    "/uploads/companies/factory-pharma.jpg",
+    "/uploads/companies/factory-plastics.jpg",
+    "/uploads/companies/factory-sbi.jpg",
+    "/uploads/companies/factory-textile.jpg",
+    "/uploads/companies/factory-water.jpg"
+];
+
 interface DetailPanelProps {
     companyData: any; // Menerima object company lengkap dari store/orchestrator
 }
@@ -12146,6 +12296,31 @@ export default function DetailPanel({ companyData }: DetailPanelProps) {
     // [NEW STATE] Menyimpan status loading & payload telemetri kualitas udara
     const [aqiData, setAqiData] = useState<any>(null);
     const [aqiLoading, setAqiLoading] = useState(false);
+
+    // Get consistent fallback image based on company ID
+    const fallbackImage = React.useMemo(() => {
+        if (!companyData?.id) return FALLBACK_IMAGES[0];
+        let hash = 0;
+        for (let i = 0; i < companyData.id.length; i++) {
+            hash = companyData.id.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        return FALLBACK_IMAGES[Math.abs(hash) % FALLBACK_IMAGES.length];
+    }, [companyData?.id]);
+
+    const [imgSrc, setImgSrc] = useState<string>("");
+
+    useEffect(() => {
+        if (companyData) {
+            setImgSrc(companyData.companyPhotoUrl ? `${BACKEND_URL}${companyData.companyPhotoUrl}` : `${BACKEND_URL}${fallbackImage}`);
+        }
+    }, [companyData, fallbackImage]);
+
+    const handleImageError = () => {
+        const fallbackUrl = `${BACKEND_URL}${fallbackImage}`;
+        if (imgSrc !== fallbackUrl) {
+            setImgSrc(fallbackUrl);
+        }
+    };
 
     // Trigger animasi saat masuk ke tab ESG
     useEffect(() => {
@@ -12199,11 +12374,11 @@ export default function DetailPanel({ companyData }: DetailPanelProps) {
 
     // [NEW HELPERS] Standardisasi kelas warna & deskripsi label AQI US EPA
     const getAqiColorClass = (aqiValue: number) => {
-        if (aqiValue <= 50) return "text-emerald-700 border-emerald-100";
-        if (aqiValue <= 100) return "text-amber-700 border-amber-100";
-        if (aqiValue <= 150) return "text-orange-700 border-orange-100";
-        if (aqiValue <= 200) return "text-red-700 border-red-100";
-        return "text-purple-700 border-purple-100";
+        if (aqiValue <= 50) return "text-emerald-700 border-emerald-100 bg-emerald-50/20";
+        if (aqiValue <= 100) return "text-amber-700 border-amber-100 bg-amber-50/20";
+        if (aqiValue <= 150) return "text-orange-700 border-orange-100 bg-orange-50/20";
+        if (aqiValue <= 200) return "text-red-700 border-red-100 bg-red-50/20";
+        return "text-purple-700 border-purple-100 bg-purple-50/20";
     };
 
     const getAqiStatusLabel = (aqiValue: number) => {
@@ -12225,73 +12400,61 @@ export default function DetailPanel({ companyData }: DetailPanelProps) {
     };
 
     return (
-        <div className="flex flex-col h-full w-full bg-white relative font-sans">
+        <div className="flex flex-col h-full w-full bg-white relative font-sans text-slate-800">
 
-            {/* TABS - Gaya GFW Edge-to-Edge (Refaktorisasi Bebas Capslock & Bold) */}
-            <div className="flex bg-slate-50 border-b border-slate-200 shrink-0">
+            {/* TABS - Gaya GFW Edge-to-Edge Simetris Tanpa Melengkung */}
+            <div className="flex bg-slate-50 border-b border-slate-200 shrink-0 select-none">
                 <button
                     onClick={() => setActiveTab("umum")}
-                    className={`flex-1 py-3 text-xs font-normal transition-colors outline-none ${activeTab === "umum"
-                        ? "bg-white text-emerald-800 border-t-[3px] border-t-emerald-600 border-r border-slate-200"
-                        : "bg-slate-50 text-slate-500 hover:text-slate-800 hover:bg-slate-100 border-t-[3px] border-t-transparent border-r border-slate-200"
-                        }`}
+                    className={cn(
+                        "flex-1 py-3 text-[10px] font-black uppercase tracking-widest transition-colors outline-none rounded-none",
+                        activeTab === "umum"
+                            ? "bg-white text-emerald-700 border-t-[3px] border-t-emerald-600 border-r border-slate-200"
+                            : "bg-slate-50 text-slate-400 hover:text-slate-800 hover:bg-slate-100 border-t-[3px] border-t-transparent border-r border-slate-200"
+                    )}
                 >
                     Profil industri
                 </button>
                 <button
                     onClick={() => setActiveTab("esg")}
-                    className={`flex-1 py-3 text-xs font-normal transition-colors outline-none ${activeTab === "esg"
-                        ? "bg-white text-emerald-800 border-t-[3px] border-t-emerald-600"
-                        : "bg-slate-50 text-slate-500 hover:text-slate-800 hover:bg-slate-100 border-t-[3px] border-t-transparent"
-                        }`}
+                    className={cn(
+                        "flex-1 py-3 text-[10px] font-black uppercase tracking-widest transition-colors outline-none rounded-none",
+                        activeTab === "esg"
+                            ? "bg-white text-emerald-700 border-t-[3px] border-t-emerald-600"
+                            : "bg-slate-50 text-slate-400 hover:text-slate-800 hover:bg-slate-100 border-t-[3px] border-t-transparent"
+                    )}
                 >
                     Analisis ESG
                 </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto custom-scrollbar">
+            <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col">
 
                 {/* TAB 1: UMUM */}
                 {activeTab === "umum" && (
                     <div className="flex flex-col pb-6 animate-in fade-in duration-300">
 
-                        {/* --- INTEGRASI VISUAL: FOTO PROFIL INDUSTRI (Apple-Style UI, Edge-to-Edge Seamless) --- */}
-                        <div className="w-full aspect-video bg-slate-50 border-b border-slate-100 overflow-hidden relative z-10 flex items-center justify-center">
-                            {companyData.companyPhotoUrl ? (
-                                <img
-                                    src={`${BACKEND_URL}${companyData.companyPhotoUrl}`}
-                                    alt={companyData.companyName}
-                                    className="w-full h-full object-cover animate-in fade-in duration-500"
-                                    onError={(e) => {
-                                        // Handling jika file statis di server terhapus / corrupt
-                                        e.currentTarget.src = "";
-                                        e.currentTarget.className = "hidden";
-                                        const fallbackEl = e.currentTarget.parentElement?.querySelector(".photo-fallback");
-                                        if (fallbackEl) fallbackEl.classList.remove("hidden");
-                                    }}
-                                />
-                            ) : null}
-                            {/* Fallback Element jika data bernilai null/error */}
-                            <div className={cn(
-                                "photo-fallback absolute inset-0 flex flex-col items-center justify-center bg-slate-50 text-slate-400 gap-1.5 select-none",
-                                companyData.companyPhotoUrl && "hidden"
-                            )}>
-                                <Factory size={22} className="text-slate-300" />
-                                <span className="text-[10px] font-normal text-slate-400">Foto pabrik belum tersedia</span>
-                            </div>
+                        {/* --- FOTO PROFIL INDUSTRI (Apple-Style UI, Edge-to-Edge Siku Kaku) --- */}
+                        <div className="w-full aspect-video bg-slate-50 border-b border-slate-200 overflow-hidden relative z-10 flex items-center justify-center rounded-none select-none">
+                            <img
+                                src={imgSrc}
+                                alt={companyData.companyName}
+                                className="w-full h-full object-cover animate-in fade-in duration-500 rounded-none border-none"
+                                onError={handleImageError}
+                            />
                         </div>
 
-                        {/* Metadata Ringkas Deskripsi Profil */}
-                        <div className="px-4 py-3 bg-white border-b border-slate-100 text-left">
-                            <p className="text-xs font-normal text-slate-650 leading-relaxed text-left font-sans">
+                        {/* Metadata Ringkas Deskripsi Profil (Flush layout) */}
+                        <div className="px-5 py-3.5 bg-white border-b border-slate-100 text-left select-none">
+                            <p className="text-xs font-semibold text-slate-500 leading-relaxed text-justify">
                                 Perusahaan ini bergerak di bidang manufaktur/pengolahan bahan baku dengan fokus operasional {companyData.rawMaterials || "umum"}.
                             </p>
                         </div>
 
-                        {/* List Detail Spesifikasi */}
+                        {/* List Detail Spesifikasi (High-Density Ledger Table) */}
                         <div className="flex flex-col bg-white">
-                            <DetailRow icon={ShieldCheck} label="Izin" value={normalizeDocType(companyData.docType)} />
-                            <DetailRow icon={MapPin} label="Alamat" value={companyData.address} />
+                            <DetailRow icon={ShieldCheck} label="Jenis Izin" value={normalizeDocType(companyData.docType)} />
+                            <DetailRow icon={MapPin} label="Alamat pabrik" value={companyData.address} />
                             <DetailRow icon={FileText} label="Nomor NIB" value={companyData.nib} />
                             <DetailRow icon={Factory} label="Tahun berdiri" value={companyData.yearBuilt} />
                             <DetailRow icon={Users} label="Karyawan" value={`${companyData.employees} Orang`} />
@@ -12299,16 +12462,16 @@ export default function DetailPanel({ companyData }: DetailPanelProps) {
                             <DetailRow icon={Zap} label="Energi & air" value={`${companyData.powerSource} / ${companyData.waterSource}`} />
                         </div>
 
-                        {/* Kontak Penanggung Jawab (Flat Integration, Terikat sebagai kelanjutan tabel) */}
-                        <div className="px-4 py-3 border-b border-slate-100 bg-white text-left">
-                            <p className="text-xs font-bold text-slate-800 mb-2">Kontak penanggung jawab</p>
+                        {/* Kontak Penanggung Jawab (Flat Integration) */}
+                        <div className="px-5 py-4 border-b border-slate-100 bg-white text-left">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 leading-none">Kontak penanggung jawab</p>
                             <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 bg-slate-50 rounded-none flex items-center justify-center text-slate-500 border border-slate-150">
-                                    <Phone size={13} />
+                                <div className="w-9 h-9 bg-slate-50 rounded-none flex items-center justify-center text-slate-500 border border-slate-200 shrink-0">
+                                    <Phone size={14} />
                                 </div>
-                                <div>
-                                    <p className="text-xs font-normal text-slate-700 leading-none">{companyData.picName}</p>
-                                    <p className="text-[10px] text-slate-500 font-normal mt-1">{companyData.picRole} • {companyData.picPhone}</p>
+                                <div className="min-w-0">
+                                    <p className="text-xs font-bold text-slate-800 leading-none truncate">{companyData.picName}</p>
+                                    <p className="text-[10px] text-slate-500 font-bold mt-1.5 leading-none">{companyData.picRole} • {companyData.picPhone}</p>
                                 </div>
                             </div>
                         </div>
@@ -12318,80 +12481,82 @@ export default function DetailPanel({ companyData }: DetailPanelProps) {
                 {/* TAB 2: ANALISIS ESG */}
                 {activeTab === "esg" && (
                     <div className="flex flex-col pb-6 animate-in fade-in duration-300 space-y-4">
-                        {/* HERO SCORE */}
-                        <div className="px-4 py-5 bg-slate-900 border-b border-slate-800 text-center flex flex-col items-center select-none shrink-0">
-                            <p className="text-[14px] font-normal text-slate-400 mb-2.5 tracking-wider">Indeks Kepatuhan Lingkungan</p>
-                            <div className="flex items-end gap-0.5 mb-1.5">
-                                <h2 className="text-3xl font-bold text-white leading-none">{score}</h2>
-                                <span className="text-sm font-medium text-slate-400 mb-0.5">/100</span>
+
+                        {/* HERO SCORE CARD */}
+                        <div className="px-5 py-5 bg-slate-900 border-b border-slate-850 text-center flex flex-col items-center select-none shrink-0 rounded-none">
+                            <p className="text-[12px] font-bold text-slate-400 mb-2 tracking-widest uppercase">Indeks Kepatuhan Lingkungan</p>
+                            <div className="flex items-end gap-0.5 mb-1.5 font-mono">
+                                <h2 className="text-3xl font-black text-white leading-none italic">{score}</h2>
+                                <span className="text-xs font-bold text-slate-400 mb-0.5">/100</span>
                             </div>
-                            <span className={`px-2.5 py-0.5 mt-1.5 text-[9px] font-normal text-white border border-white/10 ${getScoreColor()}`}>
+                            <span className={cn("px-3 py-1 mt-1 text-[9px] font-black text-white border border-white/10 rounded-none uppercase tracking-widest leading-none", getScoreColor())}>
                                 {getScoreLabel()}
                             </span>
                         </div>
 
                         {/* [NEW INTEGRATION]: COMPACT REAL-TIME ATMOSPHERE TELEMETRY WIDGET */}
-                        <div className="px-4 text-left">
-                            <div className="bg-white py-1 space-y-3.5">
-                                <div className="border-b border-slate-100 pb-2 flex items-center justify-between">
+                        <div className="px-5 text-left">
+                            <div className="bg-white py-1 space-y-3">
+                                <div className="border-b border-slate-200 pb-2 flex items-center justify-between">
                                     <div className="flex items-center gap-1.5">
                                         <CloudSun size={13} className="text-emerald-700 animate-pulse" />
-                                        <h4 className="text-xs font-normal text-slate-800">Telemetri udara terdekat</h4>
+                                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Telemetri udara terdekat</h4>
                                     </div>
-                                    <Badge className="bg-slate-100 text-slate-500 font-sans text-[8px] rounded-none border-none py-0.5">IQAir v2</Badge>
+                                    <Badge className="bg-slate-100 text-slate-500 font-sans text-[8px] rounded-none border-none py-0.5 px-2 font-black uppercase tracking-wider">IQAir v2</Badge>
                                 </div>
 
                                 {aqiLoading ? (
-                                    <div className="py-8 flex flex-col items-center justify-center gap-2 text-slate-400">
+                                    <div className="py-10 flex flex-col items-center justify-center gap-2 text-slate-400 select-none">
                                         <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
-                                        <span className="text-[8px] font-normal text-slate-500 mt-1">Mengakses pemantau udara...</span>
+                                        <span className="text-[9px] font-bold uppercase tracking-widest text-slate-450 mt-1">Mengakses sensor spasial...</span>
                                     </div>
                                 ) : aqiData ? (
                                     <div className="space-y-4 animate-in fade-in duration-200">
+
                                         {/* Colored AQI Box */}
-                                        <div className={cn("p-2 border-b flex items-center justify-between font-sans text-xs", getAqiColorClass(aqiData.aqi))}>
-                                            <div className="space-y-0.5 text-left">
-                                                <span className="text-[12px] font-normal text-slate-800 block">Indeks kualitas udara (AQI)</span>
-                                                <span className="text-[12px] font-normal text-slate-750 leading-none block">{getAqiStatusLabel(aqiData.aqi)}</span>
+                                        <div className={cn("p-2.5 border flex items-center justify-between font-sans text-xs rounded-none", getAqiColorClass(aqiData.aqi))}>
+                                            <div className="space-y-1 text-left leading-none">
+                                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Indeks kualitas udara (AQI)</span>
+                                                <span className="text-[11px] font-bold text-slate-800 block">{getAqiStatusLabel(aqiData.aqi)}</span>
                                             </div>
-                                            <span className="text-xl font-bold tracking-tight leading-none font-mono">{aqiData.aqi}</span>
+                                            <span className="text-2xl font-black tracking-tight leading-none font-mono">{aqiData.aqi}</span>
                                         </div>
 
-                                        {/* Weather parameters grid (2x2) */}
-                                        <div className="grid grid-cols-2 gap-x-4 gap-y-3 font-sans text-[11px] text-slate-500">
-                                            <div className="border-b border-slate-250 pb-3.5 text-left">
-                                                <span className="text-[13px] font-normal text-slate-800 block">Suhu udara</span>
-                                                <span className="text-[11px] font-normal text-slate-500 leading-none block mt-1">{aqiData.weather.temperature} °C</span>
+                                        {/* Weather parameters grid (Single-Level Clean Cards, No nested boxes) */}
+                                        <div className="grid grid-cols-2 gap-3 font-sans text-xs">
+                                            <div className="border border-slate-200 bg-slate-50/50 p-2.5 text-left">
+                                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Suhu udara</span>
+                                                <span className="text-sm font-black text-slate-800 leading-none block mt-1.5 font-mono">{aqiData.weather.temperature} °C</span>
                                             </div>
-                                            <div className="border-b border-slate-250 pb-3.5 text-left">
-                                                <span className="text-[13px] font-normal text-slate-800 block">Kelembapan</span>
-                                                <span className="text-[11px] font-normal text-slate-500 leading-none block mt-1">{aqiData.weather.humidity} %</span>
+                                            <div className="border border-slate-200 bg-slate-50/50 p-2.5 text-left">
+                                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Kelembapan</span>
+                                                <span className="text-sm font-black text-slate-800 leading-none block mt-1.5 font-mono">{aqiData.weather.humidity} %</span>
                                             </div>
-                                            <div className="pb-1 text-left">
-                                                <span className="text-[13px] font-normal text-slate-800 block">Kec. angin</span>
-                                                <span className="text-[11px ] font-normal text-slate-500 leading-none block mt-1">{aqiData.weather.windSpeed} m/s</span>
+                                            <div className="border border-slate-200 bg-slate-50/50 p-2.5 text-left">
+                                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Kec. angin</span>
+                                                <span className="text-sm font-black text-slate-800 leading-none block mt-1.5 font-mono">{aqiData.weather.windSpeed} m/s</span>
                                             </div>
-                                            <div className="pb-1 text-left overflow-hidden">
-                                                <span className="text-[13px] font-normal text-slate-800 block">Polutan utama</span>
-                                                <span className="text-[11px] font-normal text-slate-500 leading-none truncate block mt-1">{aqiData.mainPollutant}</span>
+                                            <div className="border border-slate-200 bg-slate-50/50 p-2.5 text-left overflow-hidden">
+                                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Polutan utama</span>
+                                                <span className="text-[11px] font-bold text-slate-800 leading-none truncate block mt-1.5">{aqiData.mainPollutant}</span>
                                             </div>
                                         </div>
 
                                         {/* Telemetry data info */}
-                                        <div className="flex justify-between items-center text-[10px] text-slate-400 font-normal border-t border-slate-250 pt-2">
-                                            <span>Sumber: {aqiData.source === 'simulation' ? 'Simulasi spasial' : aqiData.source === 'cache' ? 'Cache server' : 'IQAir live'}</span>
+                                        <div className="flex justify-between items-center text-[9px] text-slate-400 font-bold uppercase tracking-wider pt-2 border-t border-slate-100 select-none">
+                                            <span>Sumber: {aqiData.source === 'simulation' ? 'Simulasi' : aqiData.source === 'cache' ? 'Settle Cache' : 'IQAir live'}</span>
                                             {aqiData.cachedAt && <span>Jam: {new Date(aqiData.cachedAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>}
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="p-3 text-center text-[10px] text-slate-400 font-normal border border-slate-100">Koneksi sensor nihil</div>
+                                    <div className="p-3 text-center text-[9px] text-slate-400 font-bold uppercase border border-slate-250 select-none">Koneksi sensor spasial nihil</div>
                                 )}
                             </div>
                         </div>
 
                         {/* BAR CHART SIMULASI */}
-                        <div className="px-4 space-y-4 text-left">
-                            <h4 className="text-[14px] font-normal text-slate-800">Parameter penilaian terakhir</h4>
+                        <div className="px-5 space-y-4 text-left">
+                            <h4 className="text-xs font-black uppercase tracking-widest text-slate-400">Parameter penilaian terakhir</h4>
 
                             <ProgressBar label="Manajemen limbah B3" value={score > 0 ? 85 : 0} animate={animateBars} />
                             <ProgressBar label="Pengolahan air (IPAL)" value={score > 0 ? 70 : 0} animate={animateBars} />
@@ -12399,44 +12564,42 @@ export default function DetailPanel({ companyData }: DetailPanelProps) {
                             <ProgressBar label="Pelaporan logbook" value={score > 0 ? 60 : 0} animate={animateBars} />
                         </div>
 
-                        {/* ACTION BUTTONS */}
-                        <div className="mt-4 flex flex-col border-t border-slate-200">
+                        {/* ACTION BUTTONS (Clean GFW Style bottom toolbar, no border, no nested card) */}
+                        <div className="mt-4 flex flex-col border-t border-slate-200 shrink-0">
                             {/* ADAPTIVE ACTION BUTTON */}
                             {isOfficer ? (
-                                // Render Tombol "Mulai Audit / Sidak" khusus Petugas Lapangan
                                 <button
                                     onClick={handleStartSidak}
-                                    className="w-full flex items-center justify-between px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white transition-colors border-b border-slate-200 group outline-none"
+                                    className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white transition-colors border-b border-slate-200 flex items-center justify-between px-5 outline-none rounded-none cursor-pointer group"
                                 >
                                     <div className="flex items-center gap-2">
-                                        <Calendar size={14} className="text-white" />
-                                        <span className="text-xs font-normal">Mulai audit / sidak</span>
+                                        <Calendar size={14} className="text-white shrink-0" />
+                                        <span className="text-[10px] font-black uppercase tracking-widest">Mulai audit / sidak lapangan</span>
                                     </div>
-                                    <span className="text-white opacity-0 group-hover:opacity-100 transition-opacity font-bold">→</span>
+                                    <span className="text-white opacity-0 group-hover:opacity-100 transition-opacity font-bold">&rarr;</span>
                                 </button>
                             ) : (
-                                // Render Tombol "Jadwalkan" untuk Admin / Auditor biasa
                                 <button
                                     onClick={() => toast.success(`Jadwal inspeksi untuk ${companyData.companyName} disiapkan.`)}
-                                    className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-emerald-50 text-slate-700 transition-colors border-b border-slate-200 group outline-none"
+                                    className="w-full h-11 bg-white hover:bg-slate-50 text-slate-700 transition-colors border-b border-slate-200 flex items-center justify-between px-5 outline-none rounded-none cursor-pointer group"
                                 >
                                     <div className="flex items-center gap-2">
-                                        <Calendar size={14} className="text-emerald-600" />
-                                        <span className="text-xs font-normal">Jadwalkan inspeksi lapangan</span>
+                                        <Calendar size={14} className="text-emerald-600 shrink-0" />
+                                        <span className="text-[10px] font-black uppercase tracking-widest">Jadwal inspeksi lapangan</span>
                                     </div>
-                                    <span className="text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity font-bold">→</span>
+                                    <span className="text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity font-bold">&rarr;</span>
                                 </button>
                             )}
 
                             <button
                                 onClick={() => toast.info(`Membuka riwayat logbook ${companyData.companyName}`)}
-                                className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-slate-50 transition-colors border-b border-slate-200 group outline-none"
+                                className="w-full h-11 bg-white hover:bg-slate-50 text-slate-700 transition-colors border-b border-slate-200 flex items-center justify-between px-5 outline-none rounded-none cursor-pointer group"
                             >
                                 <div className="flex items-center gap-2">
-                                    <Activity size={14} className="text-slate-500" />
-                                    <span className="text-xs font-normal text-slate-700">Lihat logbook limbah</span>
+                                    <Activity size={14} className="text-slate-500 shrink-0" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest">Lihat logbook limbah berkala</span>
                                 </div>
-                                <span className="text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity font-bold">→</span>
+                                <span className="text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity font-bold">&rarr;</span>
                             </button>
                         </div>
                     </div>
@@ -12447,17 +12610,17 @@ export default function DetailPanel({ companyData }: DetailPanelProps) {
     );
 }
 
-// Komponen Pembantu Baris Data (Konsistensi Ukuran Judul [text-xs] vs Isi [text-[11px]])
+// Komponen Pembantu Baris Data (Konsistensi Ukuran Judul [text-[10px]] vs Isi [text-xs])
 function DetailRow({ icon: Icon, label, value }: { icon: any, label: string, value: string }) {
     return (
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between px-4 py-2 border-b border-slate-100 hover:bg-slate-50/50 transition-colors gap-1">
-            <div className="flex items-center gap-2 w-full sm:w-1/3 shrink-0">
-                <Icon size={12} className="text-emerald-600" />
-                <span className="text-xs font-normal text-slate-500">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-2.5 border-b border-slate-100 hover:bg-slate-50/50 transition-colors gap-1 min-h-[44px]">
+            <div className="flex items-center gap-2 w-full sm:w-1/3 shrink-0 select-none">
+                <Icon size={12} className="text-emerald-600 shrink-0" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-450 leading-none">
                     {label}
                 </span>
             </div>
-            <span className="text-[11px] font-normal text-slate-700 text-left sm:text-right w-full sm:w-2/3 break-words">
+            <span className="text-xs font-bold text-slate-800 text-left sm:text-right w-full sm:w-2/3 break-words leading-tight">
                 {value}
             </span>
         </div>
@@ -12469,14 +12632,14 @@ function ProgressBar({ label, value, animate }: { label: string, value: number, 
     const color = value >= 80 ? 'bg-emerald-500' : value >= 60 ? 'bg-amber-500' : 'bg-red-500';
 
     return (
-        <div className="flex flex-col gap-1.5">
-            <div className="flex justify-between items-end">
-                <span className="text-[12px] font-normal text-slate-800">{label}</span>
-                <span className="text-[12px] font-normal text-slate-600">{value}%</span>
+        <div className="flex flex-col gap-2 font-sans select-none">
+            <div className="flex justify-between items-end leading-none">
+                <span className="text-[11px] font-bold text-slate-850 uppercase tracking-tight">{label}</span>
+                <span className="text-[11px] font-black font-mono text-slate-700">{value}%</span>
             </div>
-            <div className="w-full h-1 bg-slate-100 rounded-none overflow-hidden">
+            <div className="w-full h-1 bg-slate-100 rounded-none overflow-hidden border-none shadow-none">
                 <div
-                    className={`h-full ${color} transition-all ease-out duration-1000`}
+                    className={`h-full ${color} transition-all ease-out duration-1000 rounded-none`}
                     style={{ width: animate ? `${value}%` : '0%' }}
                 />
             </div>
@@ -13983,9 +14146,9 @@ function MapPicker({ lat, lng, onChange }: { lat: string; lng: string; onChange:
     },
   });
 
-  // Fallback diubah ke titik pusat Cibinong, Kabupaten Bogor
-  const parsedLat = parseFloat(lat) || -6.4816;
-  const parsedLng = parseFloat(lng) || 106.8560;
+  // Fallback dialihkan ke titik pusat kota Sampit, Kabupaten Kotawaringin Timur [3]
+  const parsedLat = parseFloat(lat) || -2.5337;
+  const parsedLng = parseFloat(lng) || 112.9515;
 
   return <Marker position={[parsedLat, parsedLng]} />;
 }
@@ -14004,13 +14167,13 @@ export default function AddAmdalPage() {
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1);
 
-  // Form State Default dialihkan ke pusat wilayah Kabupaten Bogor (Cibinong)
+  // Form State Default dialihkan ke pusat wilayah Kabupaten Kotawaringin Timur [3]
   const [form, setForm] = useState({
     companyName: "",
     activityName: "",
     address: "",
-    lat: "-6.9175",
-    lng: "107.6191",
+    lat: "-2.5337", // Diubah secara internal mengikuti koordinat default Sampit
+    lng: "112.9515",
     envApprovalNo: "",
     envApprovalDate: "",
     amdalNo: "",
@@ -14228,7 +14391,7 @@ export default function AddAmdalPage() {
             <h1 className="text-xl font-black tracking-tight text-slate-900 uppercase leading-none">
               Registrasi Wajib <span className="text-rose-600">AMDAL</span> Baru
             </h1>
-            <p className="text-slate-500 text-[11px] font-semibold mt-1.5">Pendaftaran manual spasial & pemberkasan AMDAL terpadu DLH Kabupaten Bogor.</p>
+            <p className="text-slate-500 text-[11px] font-semibold mt-1.5">Pendaftaran manual spasial & pemberkasan AMDAL terpadu DLH Kabupaten Kotawaringin Timur.</p>
           </div>
         </div>
 
@@ -14292,7 +14455,7 @@ export default function AddAmdalPage() {
                     name="companyName"
                     value={form.companyName}
                     onChange={handleTextChange}
-                    placeholder="PT. Eco Semen Indonesia"
+                    placeholder="PT. Mentaya Sawit Mas"
                     className="h-10 rounded-none border-slate-200 font-bold text-xs focus:ring-0 focus:border-rose-500"
                   />
                 </div>
@@ -14306,7 +14469,7 @@ export default function AddAmdalPage() {
                     name="activityName"
                     value={form.activityName}
                     onChange={handleTextChange}
-                    placeholder="Pembangunan Pabrik Semen Terintegrasi"
+                    placeholder="Pembangunan Pabrik Kelapa Sawit Terintegrasi"
                     className="h-10 rounded-none border-slate-200 font-bold text-xs focus:ring-0 focus:border-rose-500"
                   />
                 </div>
@@ -14320,7 +14483,7 @@ export default function AddAmdalPage() {
                     name="businessSector"
                     value={form.businessSector}
                     onChange={handleTextChange}
-                    placeholder="Industri Semen / Manufaktur"
+                    placeholder="Industri Pengolahan Minyak Kelapa Sawit"
                     className="h-10 rounded-none border-slate-200 font-bold text-xs focus:ring-0 focus:border-rose-500"
                   />
                 </div>
@@ -14380,7 +14543,7 @@ export default function AddAmdalPage() {
                     name="amdalNo"
                     value={form.amdalNo}
                     onChange={handleTextChange}
-                    placeholder="AMDAL/REG/BDG/0091"
+                    placeholder="AMDAL/REG/KWT/0014"
                     className="h-10 rounded-none border-slate-200 font-bold text-xs focus:ring-0 focus:border-rose-500"
                   />
                 </div>
@@ -14464,7 +14627,7 @@ export default function AddAmdalPage() {
                       name="address"
                       value={form.address}
                       onChange={handleTextChange}
-                      placeholder="Jl. Mayor Oking No. 1, Citeureup, Kabupaten Bogor"
+                      placeholder="Jl. Tjilik Riwut KM 32, Cempaga, Kabupaten Kotawaringin Timur"
                       className="w-full min-h-[120px] rounded-none border border-slate-200 bg-white p-3 text-xs font-bold text-slate-700 focus:outline-none focus:border-rose-500 transition-all shadow-inner resize-none"
                     />
                   </div>
@@ -14477,7 +14640,7 @@ export default function AddAmdalPage() {
                         name="lat"
                         value={form.lat}
                         onChange={handleTextChange}
-                        placeholder="-6.4816"
+                        placeholder="-2.5337"
                         className="h-10 rounded-none border-slate-200 font-bold text-xs"
                       />
                     </div>
@@ -14488,7 +14651,7 @@ export default function AddAmdalPage() {
                         name="lng"
                         value={form.lng}
                         onChange={handleTextChange}
-                        placeholder="106.8560"
+                        placeholder="112.9515"
                         className="h-10 rounded-none border-slate-200 font-bold text-xs"
                       />
                     </div>
@@ -14506,7 +14669,7 @@ export default function AddAmdalPage() {
 
                   <div className="h-[280px] w-full bg-slate-100 border border-slate-200 rounded-none relative z-10 overflow-hidden shadow-inner">
                     <MapContainer
-                      center={[-6.4816, 106.8560]} // Pusat peta Cibinong
+                      center={[-2.5337, 112.9515]} // Pusat peta Sampit
                       zoom={11}
                       zoomControl={true}
                       style={{ height: "100%", width: "100%" }}
@@ -14533,7 +14696,7 @@ export default function AddAmdalPage() {
                 </Button>
                 <Button
                   onClick={handleNextStep}
-                  className="bg-slate-900 hover:bg-slate-800 text-white font-black text-xs px-6 h-10 rounded-none tracking-wider uppercase"
+                  className="bg-slate-900 hover:bg-emerald-600 text-white font-black text-xs px-6 h-10 rounded-none tracking-wider uppercase"
                 >
                   Lanjut ke Langkah 3
                 </Button>
@@ -14693,6 +14856,7 @@ export default function AddAmdalPage() {
 
               <div className="pt-4 flex justify-between border-t border-slate-100">
                 <Button
+                  type="button"
                   variant="outline"
                   onClick={handlePrevStep}
                   className="border-slate-200 hover:bg-slate-100 text-slate-700 font-black text-xs px-5 h-10 rounded-none uppercase tracking-wider"
@@ -14700,7 +14864,7 @@ export default function AddAmdalPage() {
                   Kembali
                 </Button>
                 <Button
-                  onClick={handleSubmit}
+                  type="submit"
                   disabled={loading}
                   className="bg-rose-600 hover:bg-rose-700 text-white font-black text-xs px-6 h-10 rounded-none shadow-sm tracking-wider flex items-center gap-1.5 uppercase"
                 >
@@ -19185,7 +19349,7 @@ export default function RegistrationPage() {
                         <FileUploadBox
                           label="Foto Profil Industri / Pabrik (Opsional)"
                           required={false}
-                          accept="image/*"
+                          accept=".pdf,.jpg,.jpeg,.png"
                           file={companyPhotoFile}
                           onFileChange={setCompanyPhotoFile}
                           hint="Format JPG, JPEG, PNG, maks 5 MB"
@@ -19395,7 +19559,7 @@ export default function RegistrationPage() {
 
                     <div className="h-[280px] w-full bg-slate-100 rounded-none border border-slate-300 overflow-hidden relative z-10">
                       <MapContainer
-                        center={[parseFloat(watch("lat") || "-6.9175"), parseFloat(watch("lng") || "107.6191")]}
+                        center={[parseFloat(watch("lat") || "-2.5337"), parseFloat(watch("lng") || "112.9515")]}
                         zoom={13}
                         zoomControl={true}
                         style={{ height: "100%", width: "100%" }}
@@ -19407,8 +19571,8 @@ export default function RegistrationPage() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormGroup label="Latitude" name="lat" placeholder="-6.9147" />
-                      <FormGroup label="Longitude" name="lng" placeholder="107.6098" />
+                      <FormGroup label="Latitude" name="lat" placeholder="-2.5337" />
+                      <FormGroup label="Longitude" name="lng" placeholder="112.9515" />
                     </div>
 
                     <div className="space-y-1.5">
@@ -19416,7 +19580,7 @@ export default function RegistrationPage() {
                       <textarea
                         {...methods.register("address")}
                         className="w-full min-h-[70px] rounded-none border border-slate-300 p-2.5 text-xs font-bold focus:outline-none focus:border-emerald-600 focus:ring-0 bg-white"
-                        placeholder="Contoh: Jl. Cisitu Indah No. 2A, Bandung"
+                        placeholder="Contoh: Jl. Mayor Oking No. 1, Citeureup, Kabupaten Bogor"
                       />
                     </div>
 
@@ -19610,8 +19774,8 @@ function FileStatusRow({ label, file, required, existingUrl }: { label: string; 
 
 function InteractiveMap() {
   const { setValue, watch } = useFormContext();
-  const lat = parseFloat(watch("lat") || "-6.9175");
-  const lng = parseFloat(watch("lng") || "107.6191");
+  const lat = parseFloat(watch("lat") || "-2.5337");
+  const lng = parseFloat(watch("lng") || "112.9515");
 
   useMapEvents({
     click(e) {
@@ -20635,14 +20799,14 @@ let DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// PUSAT PETA DIKUNCI DI KOTA SAMPIT (KOTAWARINGIN TIMUR)
+// PUSAT PETA DIKUNCI DI KOTA SAMPIT (KABUPATEN KOTAWARINGIN TIMUR) [3]
 const DEFAULT_CENTER: [number, number] = [-2.5337, 112.9515];
 
 export default function GisTab() {
     // MODIFIKASI ARSITEKTURAL: Menghapus fetchAdminReports & adminReports demi isolasi data [3]
     const { companies } = useSijagaStore();
 
-    // Menghitung statistik kepatuhan industri aktif (APPROVED)
+    // Menghitung statistik kepatuhan industri aktif (APPROVED) di wilayah Kotim
     const stats = useMemo(() => {
         const approved = companies.filter(c => c.status === "APPROVED");
         const sangatPatuh = approved.filter(c => c.score !== undefined && c.score !== null && c.score >= 80).length;
@@ -21304,8 +21468,8 @@ export const LocationPicker = ({ onLocationSelected, lat, lng }: LocationPickerP
   }
 
   return (
-    // FASE 2: Sinkronisasi Default Center diarahkan ke Cibinong, Kabupaten Bogor secara global [3]
-    <MapContainer center={[-6.4816, 106.8560]} zoom={11} className="h-64 w-full rounded-md">
+    // FASE 2: Sinkronisasi Default Center diarahkan ke Sampit, Kabupaten Kotawaringin Timur secara global [3]
+    <MapContainer center={[-2.5337, 112.9515]} zoom={10} className="h-64 w-full rounded-md">
       <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
       <LocationMarker />
       <ResizeMap />
@@ -24366,8 +24530,8 @@ export default function LandingPage() {
           </div>
 
           <div className="space-y-4">
-            <h4 className="font-black uppercase tracking-widest text-[10px] text-emerald-500">Tautan Regulasi</h4>
-            <ul className="space-y-2 text-slate-400 font-bold uppercase text-[9px] tracking-wider">
+            <h4 className="font-black uppercase tracking-widest text-[12px] text-emerald-500">Tautan Regulasi</h4>
+            <ul className="space-y-2 text-slate-400 font-bold text-[11px] tracking-wider">
               <li><a href="#" className="hover:text-white transition-colors">Panduan Sistem Registrasi</a></li>
               <li><a href="#" className="hover:text-white transition-colors">Daftar Kode KBLI Berisiko</a></li>
               <li><a href="#" className="hover:text-white transition-colors">Undang-Undang Cipta Kerja</a></li>
@@ -24375,9 +24539,9 @@ export default function LandingPage() {
           </div>
 
           <div className="space-y-4">
-            <h4 className="font-black uppercase tracking-widest text-[10px] text-emerald-500">Kontak Pengaduan</h4>
-            <ul className="space-y-2 text-slate-400 font-bold text-[9px] tracking-wider uppercase">
-              <li className="underline text-emerald-400 hover:text-emerald-300"><a href="mailto:support@sijaga-lingkungan.id">support@sijaga-lingkungan.id</a></li>
+            <h4 className="font-black uppercase tracking-widest text-[12px] text-emerald-500">Kontak Pengaduan</h4>
+            <ul className="space-y-2 text-slate-400 font-bold text-[11px] tracking-wider">
+              <li className="underline text-emerald-400 hover:text-emerald-300"><a href="mailto:support@geolimbah.id">support@geolimbah.id</a></li>
               <li>Sekretariat DLH Bidang Tata Lingkungan</li>
             </ul>
           </div>
@@ -24871,8 +25035,8 @@ const DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// FASE 2: PETA DEFAULT DIUBAH SECARA GLOBAL KE CIBINONG (KABUPATEN BOGOR) [3]
-const DEFAULT_CENTER: [number, number] = [-6.4816, 106.8560];
+// FASE 2: PETA DEFAULT DIUBAH SECARA GLOBAL KE SAMPIT (KABUPATEN KOTAWARINGIN TIMUR) [3]
+const DEFAULT_CENTER: [number, number] = [-2.5337, 112.9515];
 
 // SOLUSI ARSITEKTURAL: Kunci referensi array di luar komponen agar terhindar dari re-render loop
 const EXCLUDED_FORM_FIELDS = ["evidencePhotos"];
@@ -25085,7 +25249,7 @@ export default function ReportPage() {
                                 Lingkungan.
                             </h1>
                             <p className="text-emerald-100/70 text-xs font-normal leading-relaxed text-justify">
-                                Laporkan indikasi pembuangan limbah kimia, asap beracun, atau limbah industri ilegal langsung di daerah Anda. Kami mengamankan penuh privasi pengaduan Anda [3].
+                                Laporkan indikasi pembuangan limbah cair sawit, asap cerobong beracun, atau limbah industri ilegal langsung di daerah Anda. Kami mengamankan penuh privasi pengaduan Anda [3].
                             </p>
                         </div>
                     </div>
@@ -25098,7 +25262,7 @@ export default function ReportPage() {
                     </div>
 
                     <div className="text-[10px] text-emerald-700 font-bold uppercase tracking-widest leading-none relative z-10">
-                        DINAS LINGKUNGAN HIDUP KABUPATEN BOGOR © 2026
+                        DINAS LINGKUNGAN HIDUP KABUPATEN KOTAWARINGIN TIMUR © 2026
                     </div>
                 </div>
 
@@ -25125,7 +25289,7 @@ export default function ReportPage() {
                                                 <option value="Pencemaran Air">Pencemaran Air / Aliran Sungai</option>
                                                 <option value="Emisi Asap">Emisi Asap / Polusi Udara</option>
                                                 <option value="Pembuangan B3 Liar">Pembuangan Limbah B3 Liar</option>
-                                                <option value="Bau Menyengat">Polusi Bau / Kebisingan Kritis</option>
+                                                <option value="Bau Menyengat">Polusi Bag/Bau / Kebisingan Kritis</option>
                                             </select>
                                         </div>
 
@@ -25224,7 +25388,7 @@ export default function ReportPage() {
                                             <Label className="text-[11px] font-bold uppercase text-slate-600 tracking-wider">Cari berdasarkan alamat atau landmark wilayah</Label>
                                             <div className="flex gap-2">
                                                 <Input
-                                                    placeholder="Contoh: Cibinong, Citeureup, Cileungsi, atau Sentul Bogor..."
+                                                    placeholder="Contoh: Baamang, MB Ketapang, Cempaga, atau Pelabuhan Bagendang..."
                                                     value={addressQuery}
                                                     onChange={(e) => setAddressQuery(e.target.value)}
                                                     onKeyDown={(e) => e.key === "Enter" && handleAddressSearch()}
@@ -25288,7 +25452,7 @@ export default function ReportPage() {
                                                         ? [parseFloat(watch("lat")), parseFloat(watch("lng"))]
                                                         : DEFAULT_CENTER
                                                 }
-                                                zoom={11} // Disesuaikan zoom 11 untuk Kabupaten Bogor
+                                                zoom={10} // Default zoom level Kotim
                                                 style={{ height: "100%", width: "100%" }}
                                             >
                                                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
@@ -25452,7 +25616,7 @@ export default function ReportPage() {
 
                     <div className="py-4 text-xs space-y-3 leading-relaxed font-sans">
                         <p className="font-bold text-slate-800 text-justify">
-                            Terima kasih atas partisipasi aktif Anda dalam menjaga kelestarian lingkungan hidup daerah Kabupaten Bogor.
+                            Terima kasih atas partisipasi aktif Anda dalam menjaga kelestarian lingkungan hidup daerah Kabupaten Kotawaringin Timur.
                         </p>
                         <p className="text-slate-500 text-justify">
                             Laporan Anda telah tercatat dengan ID Pelacakan resmi: <strong className="font-mono text-slate-800 bg-slate-50 px-1.5 py-0.5 border border-slate-200">{submittedTrackingId}</strong>.
@@ -27512,22 +27676,22 @@ interface GisUIState {
     // ==========================================
     activeLayers: string[];           // Menyimpan ID layer yang aktif merender
     mapOpacity: number;               // 0 - 100 (Transparansi Poligon & Heatmap AQI)
-    maskOpacity: number;              // 0 - 100 (Transparansi Inverted Polygon Masking area luar Bogor)
+    maskOpacity: number;              // 0 - 100 (Transparansi Inverted Polygon Masking area luar Kotim)
     activeBaseMap: string;            // 'dark', 'satellite', 'street', 'esri', 'osm'
     selectedCompanyId: string | null; // ID perusahaan yang sedang di-klik/difokuskan
 
-    // [NEW STATE] Melacak ID stasiun pemantauan air sungai yang sedang aktif dipilih
+    // Melacak ID stasiun pemantauan air sungai yang sedang aktif dipilih
     selectedWaterStationId: string | null;
 
     // FASE 4 INJEKSI: Koordinat & Zoom Global Berbasis Sumber Kebenaran Tunggal
-    mapCenter: [number, number]; // Koordinat pusat peta saat ini
+    mapCenter: [number, number]; // Koordinat pusat peta saat ini (Sampit, Kotim)
     mapZoom: number;             // Skala zoom peta saat ini (Sumber data untuk Scale-Guard AI) [3]
 
-    // FASE 3 INJEKSI: State untuk Advanced Spatial Analytics (Kabupaten Bogor)
+    // FASE 3 INJEKSI: State untuk Advanced Spatial Analytics (Kabupaten Kotawaringin Timur)
     activeAdminBoundary: 'none' | 'kecamatan' | 'desa';
     showImpactRadius: boolean;
 
-    // [NEW STATE] Cache spasial sementara di sisi klien untuk menghemat memori
+    // Cache spasial sementara di sisi klien untuk menghemat memori
     aqiCache: Record<string, any>; // Key format: "roundedLat_roundedLng" -> Value: AqiData
 
     // ==========================================
@@ -27547,7 +27711,7 @@ interface GisUIState {
     setActiveBaseMap: (baseMapId: string) => void;
     setSelectedCompanyId: (id: string | null) => void;
 
-    // [NEW ACTION] Mengubah stasiun air terpilih
+    // Mengubah stasiun air terpilih
     setSelectedWaterStationId: (id: string | null) => void;
 
     // Aksi Pengubah Koordinat & Zoom Peta secara Global
@@ -27568,19 +27732,19 @@ export const useGisUIStore = create<GisUIState>((set) => ({
     // Inisialisasi State Default
     activePanels: [],
 
-    // FASE 1 DECOPULING: Memulai aplikasi dengan mode 'AMDAL' sebagai state tunggal aktif [3]
+    // FASE 1 DECOUPLING: Memulai aplikasi dengan mode 'AMDAL' sebagai state tunggal aktif [3]
     activeLayers: ['layer-amdal'],
     mapOpacity: 80,
-    maskOpacity: 60, // Default 60% redup untuk area di luar Kabupaten Bogor
+    maskOpacity: 60, // Default 60% redup untuk area di luar Kabupaten Kotawaringin Timur
     activeBaseMap: 'dark', // Default ke 'dark'
     selectedCompanyId: null,
 
     // Inisialisasi awal ID stasiun air kosong
     selectedWaterStationId: null,
 
-    // Fokus otomatis dikunci ke wilayah Cibinong, Kabupaten Bogor
-    mapCenter: [-6.4816, 106.8560],
-    mapZoom: 11, // Zoom awal default disesuaikan untuk wilayah Bogor
+    // SINKRONISASI BOGOR KE KOTIM: Fokus otomatis dikunci ke wilayah Sampit, Kotawaringin Timur [3]
+    mapCenter: [-2.5337, 112.9515],
+    mapZoom: 10, // Tingkat zoom default 10 agar pas menyajikan bentang alam hilir Sungai Mentaya
 
     // Inisialisasi State Spasial Lanjutan
     activeAdminBoundary: 'none',
@@ -27717,11 +27881,9 @@ export const useGisUIStore = create<GisUIState>((set) => ({
                 const waterGroup = ['layer-river', 'layer-water-stations']; // Kelompok Air/Sungai [3]
 
                 if (singleExclusiveLayers.includes(layerId)) {
-                    // Jika menyalakan kelompok Single Mode (AMDAL, UKL-UPL, SPPL, atau AQI):
                     // Sifat: Mutually Exclusive Mutlak. Reset array dan jadikan ia satu-satunya yang aktif.
                     nextLayers = [layerId];
                 } else if (waterGroup.includes(layerId)) {
-                    // Jika menyalakan bagian dari Kelompok Air/Sungai:
                     // Sifat: Matikan semua kelompok Single Mode, namun izinkan sesama elemen kelompok air bersanding
                     nextLayers = nextLayers.filter(id => !singleExclusiveLayers.includes(id));
                     nextLayers.push(layerId);
@@ -27768,8 +27930,8 @@ export const useGisUIStore = create<GisUIState>((set) => ({
             mapOpacity: 80,
             maskOpacity: 60,
             activeBaseMap: 'dark',
-            mapCenter: [-6.4816, 106.8560], // Reset kembali ke pusat Bogor (Cibinong)
-            mapZoom: 11, // Reset kembali ke skala default Bogor [3]
+            mapCenter: [-2.5337, 112.9515], // Reset kembali ke pusat Sampit, Kotim
+            mapZoom: 10, // Reset kembali ke skala default Kotim [3]
             aqiCache: {},
         }),
 }));

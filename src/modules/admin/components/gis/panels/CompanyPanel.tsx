@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 
 // @ts-ignore - Bypass bundler mapping untuk Turf di TypeScript modern [3]
 import * as turf from '@turf/turf';
-import kecData from "@/assets/geojson/bogor-kecamatan.json";
+import kecData from "@/assets/geojson/kotim-kecamatan.json";
 
 export default function CompanyPanel() {
     const { companies, currentUser } = useSijagaStore();
