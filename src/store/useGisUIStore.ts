@@ -79,9 +79,9 @@ export const useGisUIStore = create<GisUIState>((set) => ({
     // Inisialisasi awal ID stasiun air kosong
     selectedWaterStationId: null,
 
-    // SINKRONISASI BOGOR KE KOTIM: Fokus otomatis dikunci ke wilayah Sampit, Kotawaringin Timur [3]
-    mapCenter: [-2.5337, 112.9515],
-    mapZoom: 10, // Tingkat zoom default 10 agar pas menyajikan bentang alam hilir Sungai Mentaya
+    // SINKRONISASI BOGOR: Fokus otomatis dikunci ke wilayah Kabupaten Bogor
+    mapCenter: [-6.4816, 106.8560],
+    mapZoom: 11, // Tingkat zoom default 11 agar pas menyajikan bentang alam Kabupaten Bogor
 
     // Inisialisasi State Spasial Lanjutan
     activeAdminBoundary: 'none',
@@ -267,8 +267,8 @@ export const useGisUIStore = create<GisUIState>((set) => ({
             mapOpacity: 80,
             maskOpacity: 60,
             activeBaseMap: 'dark',
-            mapCenter: [-2.5337, 112.9515], // Reset kembali ke pusat Sampit, Kotim
-            mapZoom: 10, // Reset kembali ke skala default Kotim [3]
+            mapCenter: [-6.4816, 106.8560], // Reset kembali ke pusat Kabupaten Bogor
+            mapZoom: 11, // Reset kembali ke skala default Bogor
             aqiCache: {},
         }),
 }));

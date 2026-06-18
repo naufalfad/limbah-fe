@@ -5,25 +5,25 @@ import { spatialMath, AqiNode } from '@/lib/spatialMath';
 import { useSijagaStore } from '@/store/useSijagaStore';
 
 // Impor GeoJSON Wilayah Kabupaten Kotawaringin Timur untuk menciptakan path Clipping Canvas (Information Expert) [3]
-import kecData from '@/assets/geojson/kotim-kecamatan.json';
+import kecData from '@/assets/geojson/bogor-kecamatan.json';
 
 interface AqiSurfaceLayerProps {
     companies: any[];
     mapOpacity: number; // 0 - 100
 }
 
-// Bounding Box Kabupaten Kotawaringin Timur (Diselaraskan persis dari letak geografis aslinya) [3]
-const KWT_BOUNDS = {
-    latMin: -3.35,  // Batas Selatan (Muara Mentaya Hilir Selatan / Laut Jawa)
-    latMax: -1.15,  // Batas Utara (Kawasan Bukit Santuai)
-    lngMin: 111.90, // Batas Barat (Perbatasan Seruyan)
-    lngMax: 113.35  // Batas Timur (Perbatasan Katingan)
+// Bounding Box Kabupaten Bogor (Diselaraskan persis dari letak geografis aslinya) [3]
+const BOGOR_BOUNDS = {
+    latMin: -6.80,  // Batas Selatan
+    latMax: -6.30,  // Batas Utara
+    lngMin: 106.40, // Batas Barat
+    lngMax: 107.23  // Batas Timur
 };
 
 // Bounds format Leaflet: [[South, West], [North, East]]
 const LEAFLET_BOUNDS: [number, number][] = [
-    [KWT_BOUNDS.latMin, KWT_BOUNDS.lngMin],
-    [KWT_BOUNDS.latMax, KWT_BOUNDS.lngMax]
+    [BOGOR_BOUNDS.latMin, BOGOR_BOUNDS.lngMin],
+    [BOGOR_BOUNDS.latMax, BOGOR_BOUNDS.lngMax]
 ];
 
 // Resolusi Kanvas. Semakin tinggi semakin detail, namun lebih berat di CPU.
@@ -75,15 +75,15 @@ export default function AqiSurfaceLayer({ companies, mapOpacity }: AqiSurfaceLay
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
         if (!ctx) return;
 
-        const latStep = (KWT_BOUNDS.latMax - KWT_BOUNDS.latMin) / (CANVAS_RESOLUTION - 1);
-        const lngStep = (KWT_BOUNDS.lngMax - KWT_BOUNDS.lngMin) / (CANVAS_RESOLUTION - 1);
+        const latStep = (BOGOR_BOUNDS.latMax - BOGOR_BOUNDS.latMin) / (CANVAS_RESOLUTION - 1);
+        const lngStep = (BOGOR_BOUNDS.lngMax - BOGOR_BOUNDS.lngMin) / (CANVAS_RESOLUTION - 1);
 
-        // --- A. PEMBUATAN CLIPPING PATH KOTIM ---
-        const kotimPath = new Path2D();
+        // --- A. PEMBUATAN CLIPPING PATH BOGOR ---
+        const bogorPath = new Path2D();
 
-        const getX = (lng: number) => ((lng - KWT_BOUNDS.lngMin) / (KWT_BOUNDS.lngMax - KWT_BOUNDS.lngMin)) * CANVAS_RESOLUTION;
+        const getX = (lng: number) => ((lng - BOGOR_BOUNDS.lngMin) / (BOGOR_BOUNDS.lngMax - BOGOR_BOUNDS.lngMin)) * CANVAS_RESOLUTION;
         // Y di-inverse karena 0,0 di Canvas ada di atas, sedangkan LatMax ada di Utara (atas)
-        const getY = (lat: number) => ((KWT_BOUNDS.latMax - lat) / (KWT_BOUNDS.latMax - KWT_BOUNDS.latMin)) * CANVAS_RESOLUTION;
+        const getY = (lat: number) => ((BOGOR_BOUNDS.latMax - lat) / (BOGOR_BOUNDS.latMax - BOGOR_BOUNDS.latMin)) * CANVAS_RESOLUTION;
 
         (kecData as any).features.forEach((feature: any) => {
             const geom = feature.geometry;
@@ -94,10 +94,10 @@ export default function AqiSurfaceLayer({ companies, mapOpacity }: AqiSurfaceLay
                     ring.forEach((coord, i) => {
                         const x = getX(coord[0]);
                         const y = getY(coord[1]);
-                        if (i === 0) kotimPath.moveTo(x, y);
-                        else kotimPath.lineTo(x, y);
+                        if (i === 0) bogorPath.moveTo(x, y);
+                        else bogorPath.lineTo(x, y);
                     });
-                    kotimPath.closePath();
+                    bogorPath.closePath();
                 });
             } else if (geom.type === "MultiPolygon") {
                 geom.coordinates.forEach((poly: any[][]) => {
@@ -105,10 +105,10 @@ export default function AqiSurfaceLayer({ companies, mapOpacity }: AqiSurfaceLay
                         ring.forEach((coord, i) => {
                             const x = getX(coord[0]);
                             const y = getY(coord[1]);
-                            if (i === 0) kotimPath.moveTo(x, y);
-                            else kotimPath.lineTo(x, y);
+                            if (i === 0) bogorPath.moveTo(x, y);
+                            else bogorPath.lineTo(x, y);
                         });
-                        kotimPath.closePath();
+                        bogorPath.closePath();
                     });
                 });
             }
@@ -116,19 +116,19 @@ export default function AqiSurfaceLayer({ companies, mapOpacity }: AqiSurfaceLay
 
         // Terapkan Path sebagai Masking Canvas
         ctx.save();
-        ctx.clip(kotimPath);
+        ctx.clip(bogorPath);
 
         // --- B. RENDERING PIKSEL & OPTIMASI CPU ---
         for (let y = 0; y < CANVAS_RESOLUTION; y++) {
             for (let x = 0; x < CANVAS_RESOLUTION; x++) {
 
-                // OPTIMASI KRITIS: Jika titik X/Y ini jatuh di luar batas Kabupaten Kotim, skip kalkulasi [3]
-                if (!ctx.isPointInPath(kotimPath, x, y)) {
+                // OPTIMASI KRITIS: Jika titik X/Y ini jatuh di luar batas Kabupaten Bogor, skip kalkulasi [3]
+                if (!ctx.isPointInPath(bogorPath, x, y)) {
                     continue;
                 }
 
-                const currentLat = KWT_BOUNDS.latMax - (y * latStep);
-                const currentLng = KWT_BOUNDS.lngMin + (x * lngStep);
+                const currentLat = BOGOR_BOUNDS.latMax - (y * latStep);
+                const currentLng = BOGOR_BOUNDS.lngMin + (x * lngStep);
 
                 // Tarik nilai tebakan dari Engine IDW kita
                 const interpolatedAqi = spatialMath.interpolateAqi(currentLat, currentLng, aqiSensors);

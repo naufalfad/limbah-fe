@@ -60,8 +60,8 @@ function MapPicker({ lat, lng, onChange }: { lat: string; lng: string; onChange:
   });
 
   // Fallback dialihkan ke pusat koordinat Sampit, Kabupaten Kotawaringin Timur
-  const parsedLat = parseFloat(lat) || -2.5337;
-  const parsedLng = parseFloat(lng) || 112.9515;
+  const parsedLat = parseFloat(lat) || -6.4816;
+  const parsedLng = parseFloat(lng) || 106.8560;
 
   return <Marker position={[parsedLat, parsedLng]} />;
 }

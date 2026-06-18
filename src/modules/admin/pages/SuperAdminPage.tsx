@@ -457,24 +457,24 @@ export default function SuperAdminPage() {
               </div>
               <div className="h-[300px] w-full bg-slate-100 relative z-10">
 
-                {/* FASE 2: SINKRONISASI KOORDINAT DEFAULT PETALAYER KE SAMPIT KOTIM [3] */}
-                <MapContainer center={[-2.5337, 112.9515]} zoom={10} style={{ height: "100%", width: "100%" }}>
+                {/* FASE 2: SINKRONISASI KOORDINAT DEFAULT PETALAYER KE CIBINONG BOGOR [3] */}
+                <MapContainer center={[-6.4816, 106.8560]} zoom={11} style={{ height: "100%", width: "100%" }}>
                   <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                   />
                   {riverLayer && (
                     <FeatureGroup>
-                      {/* Cincin DAS disinkronkan ke area aliran sungai Mentaya (Sampit) [3] */}
-                      <Circle center={[-2.5337, 112.9515]} radius={4000} pathOptions={{ color: "blue", fillColor: "blue", fillOpacity: 0.15 }} />
-                      <Circle center={[-2.5800, 112.9900]} radius={3000} pathOptions={{ color: "blue", fillColor: "blue", fillOpacity: 0.15 }} />
+                       {/* Cincin DAS disinkronkan ke area aliran sungai (Bogor) [3] */}
+                       <Circle center={[-6.4816, 106.8560]} radius={4000} pathOptions={{ color: "blue", fillColor: "blue", fillOpacity: 0.15 }} />
+                       <Circle center={[-6.4980, 106.8850]} radius={3000} pathOptions={{ color: "blue", fillColor: "blue", fillOpacity: 0.15 }} />
                     </FeatureGroup>
                   )}
                   {industrialLayer && (
                     <FeatureGroup>
-                      {/* Cincin Zonasi disinkronkan ke area industri Baamang/Cempaga (Sampit) [3] */}
-                      <Circle center={[-2.4900, 112.9300]} radius={2000} pathOptions={{ color: "orange", fillColor: "orange", fillOpacity: 0.2 }} />
-                      <Circle center={[-2.2500, 113.0500]} radius={2500} pathOptions={{ color: "orange", fillColor: "orange", fillOpacity: 0.2 }} />
+                       {/* Cincin Zonasi disinkronkan ke area industri (Bogor) [3] */}
+                       <Circle center={[-6.4680, 106.8320]} radius={2000} pathOptions={{ color: "orange", fillColor: "orange", fillOpacity: 0.2 }} />
+                       <Circle center={[-6.3500, 106.9100]} radius={2500} pathOptions={{ color: "orange", fillColor: "orange", fillOpacity: 0.2 }} />
                     </FeatureGroup>
                   )}
                   <ResizeMap />

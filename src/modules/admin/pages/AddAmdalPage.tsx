@@ -50,8 +50,8 @@ function MapPicker({ lat, lng, onChange }: { lat: string; lng: string; onChange:
   });
 
   // Fallback dialihkan ke titik pusat kota Sampit, Kabupaten Kotawaringin Timur [3]
-  const parsedLat = parseFloat(lat) || -2.5337;
-  const parsedLng = parseFloat(lng) || 112.9515;
+  const parsedLat = parseFloat(lat) || -6.4816;
+  const parsedLng = parseFloat(lng) || 106.8560;
 
   return <Marker position={[parsedLat, parsedLng]} />;
 }
@@ -75,8 +75,8 @@ export default function AddAmdalPage() {
     companyName: "",
     activityName: "",
     address: "",
-    lat: "-2.5337", // Diubah secara internal mengikuti koordinat default Sampit
-    lng: "112.9515",
+    lat: "-6.4816", // Diubah secara internal mengikuti koordinat default Bogor
+    lng: "106.8560",
     envApprovalNo: "",
     envApprovalDate: "",
     amdalNo: "",
@@ -543,7 +543,7 @@ export default function AddAmdalPage() {
                         name="lat"
                         value={form.lat}
                         onChange={handleTextChange}
-                        placeholder="-2.5337"
+                        placeholder="-6.4816"
                         className="h-10 rounded-none border-slate-200 font-bold text-xs"
                       />
                     </div>
@@ -554,7 +554,7 @@ export default function AddAmdalPage() {
                         name="lng"
                         value={form.lng}
                         onChange={handleTextChange}
-                        placeholder="112.9515"
+                        placeholder="106.8560"
                         className="h-10 rounded-none border-slate-200 font-bold text-xs"
                       />
                     </div>
@@ -572,7 +572,7 @@ export default function AddAmdalPage() {
 
                   <div className="h-[280px] w-full bg-slate-100 border border-slate-200 rounded-none relative z-10 overflow-hidden shadow-inner">
                     <MapContainer
-                      center={[-2.5337, 112.9515]} // Pusat peta Sampit
+                      center={[-6.4816, 106.8560]} // Pusat peta Bogor
                       zoom={11}
                       zoomControl={true}
                       style={{ height: "100%", width: "100%" }}

@@ -8,8 +8,8 @@ import { useSijagaStore } from '@/store/useSijagaStore';
 // @ts-ignore - Bypass issue mapping exports Turf.js v6.5 di TypeScript modern (Vite Bundler)
 import * as turf from '@turf/turf';
 
-// @ts-ignore - Hanya mengimpor garis aliran sungai utama Kabupaten Kotawaringin Timur [3]
-import kotimSungaiLine from '@/assets/geojson/kotim-sungai-line.json';
+// @ts-ignore - Hanya mengimpor garis aliran sungai utama Kabupaten Bogor [3]
+import bogorSungaiLine from '@/assets/geojson/bogor-sungai-line.json';
 
 // --- KONTRAK DATA INTERNAL ENGINE ---
 interface RiverSegment {
@@ -60,11 +60,11 @@ export default function RiverLayer() {
     // 1. SPATIAL JOIN (Turf.js Optimasi O(1)) - Pembagian Zona Kualitas Air Kotim [3]
     // ==========================================================================
     const processedGeoJson = useMemo(() => {
-        if (!kotimSungaiLine || !waterStations || waterStations.length === 0) {
-            return kotimSungaiLine;
+        if (!bogorSungaiLine || !waterStations || waterStations.length === 0) {
+            return bogorSungaiLine;
         }
 
-        const geojson = JSON.parse(JSON.stringify(kotimSungaiLine));
+        const geojson = JSON.parse(JSON.stringify(bogorSungaiLine));
 
         geojson.features.forEach((feature: any) => {
             const geom = feature.geometry;

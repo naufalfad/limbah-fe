@@ -20,7 +20,7 @@ let DefaultIcon = L.icon({
 L.Marker.prototype.options.icon = DefaultIcon;
 
 // PUSAT PETA DIKUNCI DI KOTA SAMPIT (KABUPATEN KOTAWARINGIN TIMUR) [3]
-const DEFAULT_CENTER: [number, number] = [-2.5337, 112.9515];
+const DEFAULT_CENTER: [number, number] = [-6.4816, 106.8560];
 
 export default function GisTab() {
     // MODIFIKASI ARSITEKTURAL: Menghapus fetchAdminReports & adminReports demi isolasi data [3]
@@ -94,7 +94,7 @@ export default function GisTab() {
             <Card className="rounded-none border border-slate-200 shadow-sm overflow-hidden bg-white lg:col-span-2">
                 <div className="h-[400px] w-full relative z-10">
                     {/* FASE 2: Sinkronisasi Default Center peta pimpinan ke Sampit Kotim [3] */}
-                    <MapContainer center={DEFAULT_CENTER} zoom={10} zoomControl={true} style={{ height: "100%", width: "100%" }}>
+                    <MapContainer center={DEFAULT_CENTER} zoom={11} zoomControl={true} style={{ height: "100%", width: "100%" }}>
                         <TileLayer
                             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

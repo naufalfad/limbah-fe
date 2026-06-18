@@ -566,7 +566,7 @@ export default function RegistrationPage() {
 
                     <div className="h-[280px] w-full bg-slate-100 rounded-none border border-slate-300 overflow-hidden relative z-10">
                       <MapContainer
-                        center={[parseFloat(watch("lat") || "-2.5337"), parseFloat(watch("lng") || "112.9515")]}
+                        center={[parseFloat(watch("lat") || "-6.4816"), parseFloat(watch("lng") || "106.8560")]}
                         zoom={13}
                         zoomControl={true}
                         style={{ height: "100%", width: "100%" }}
@@ -578,8 +578,8 @@ export default function RegistrationPage() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormGroup label="Latitude" name="lat" placeholder="-2.5337" />
-                      <FormGroup label="Longitude" name="lng" placeholder="112.9515" />
+                      <FormGroup label="Latitude" name="lat" placeholder="-6.4816" />
+                      <FormGroup label="Longitude" name="lng" placeholder="106.8560" />
                     </div>
 
                     <div className="space-y-1.5">
@@ -587,7 +587,7 @@ export default function RegistrationPage() {
                       <textarea
                         {...methods.register("address")}
                         className="w-full min-h-[70px] rounded-none border border-slate-300 p-2.5 text-xs font-bold focus:outline-none focus:border-emerald-600 focus:ring-0 bg-white"
-                        placeholder="Contoh: Jl. H.M. Arsyad No.65, Mentawa Baru Hilir, Kec. Mentawa Baru Ketapang, Kabupaten Kotawaringin Timur, Kalimantan Tengah 74312"
+                        placeholder="Contoh: Jl. Tegar Beriman No.1, Tengah, Kec. Cibinong, Kabupaten Bogor, Jawa Barat 16914"
                       />
                     </div>
 
@@ -781,8 +781,8 @@ function FileStatusRow({ label, file, required, existingUrl }: { label: string; 
 
 function InteractiveMap() {
   const { setValue, watch } = useFormContext();
-  const lat = parseFloat(watch("lat") || "-2.5337");
-  const lng = parseFloat(watch("lng") || "112.9515");
+  const lat = parseFloat(watch("lat") || "-6.4816");
+  const lng = parseFloat(watch("lng") || "106.8560");
 
   useMapEvents({
     click(e) {

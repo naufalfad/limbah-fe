@@ -4,19 +4,19 @@ import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { spatialMath, WindNode } from '@/lib/spatialMath';
 
-// Impor GeoJSON Wilayah Kabupaten Kotawaringin Timur untuk pembuatan Path Clipping (Information Expert) [3]
-import kecData from '@/assets/geojson/kotim-kecamatan.json';
+// Impor GeoJSON Wilayah Kabupaten Bogor untuk pembuatan Path Clipping (Information Expert) [3]
+import kecData from '@/assets/geojson/bogor-kecamatan.json';
 
 interface WindFlowLayerProps {
     companies: any[];
 }
 
-// Bounding Box Kabupaten Kotawaringin Timur (Disamakan persis dengan AqiSurfaceLayer) [3]
-const KWT_BOUNDS = {
-    latMin: -3.35,  // Batas Selatan (Muara Mentaya Hilir Selatan / Laut Jawa)
-    latMax: -1.15,  // Batas Utara (Kawasan Bukit Santuai)
-    lngMin: 111.90, // Batas Barat (Perbatasan Seruyan)
-    lngMax: 113.35  // Batas Timur (Perbatasan Katingan)
+// Bounding Box Kabupaten Bogor (Disamakan persis dengan AqiSurfaceLayer) [3]
+const BOGOR_BOUNDS = {
+    latMin: -6.80,  // Batas Selatan
+    latMax: -6.30,  // Batas Utara
+    lngMin: 106.40, // Batas Barat
+    lngMax: 107.23  // Batas Timur
 };
 
 // ============================================================================
@@ -62,7 +62,7 @@ export default function WindFlowLayer({ companies }: WindFlowLayerProps) {
     // 2. PRE-COMPUTE VECTOR FIELD (O(1) Lookup untuk Animasi)
     const vectorField = useMemo(() => {
         if (windSensors.length === 0) return [];
-        const grid = spatialMath.generateCanvasGrid(KWT_BOUNDS, RESOLUTION, RESOLUTION);
+        const grid = spatialMath.generateCanvasGrid(BOGOR_BOUNDS, RESOLUTION, RESOLUTION);
 
         return grid.map(pt => {
             const wind = spatialMath.interpolateWind(pt.lat, pt.lng, windSensors);
@@ -220,8 +220,8 @@ export default function WindFlowLayer({ companies }: WindFlowLayerProps) {
 
                 const pLatLng = map.containerPointToLatLng([p.x, p.y]);
 
-                const gridX = Math.floor(((pLatLng.lng - KWT_BOUNDS.lngMin) / (KWT_BOUNDS.lngMax - KWT_BOUNDS.lngMin)) * RESOLUTION);
-                const gridY = Math.floor(((KWT_BOUNDS.latMax - pLatLng.lat) / (KWT_BOUNDS.latMax - KWT_BOUNDS.latMin)) * RESOLUTION);
+                const gridX = Math.floor(((pLatLng.lng - BOGOR_BOUNDS.lngMin) / (BOGOR_BOUNDS.lngMax - BOGOR_BOUNDS.lngMin)) * RESOLUTION);
+                const gridY = Math.floor(((BOGOR_BOUNDS.latMax - pLatLng.lat) / (BOGOR_BOUNDS.latMax - BOGOR_BOUNDS.latMin)) * RESOLUTION);
 
                 if (gridX < 0 || gridX >= RESOLUTION || gridY < 0 || gridY >= RESOLUTION) {
                     p.age = PARTICLE_LIFESPAN + 1;

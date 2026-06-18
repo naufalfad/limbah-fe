@@ -19,8 +19,8 @@ import { useGisUIStore } from '@/store/useGisUIStore';
 
 // Modul Analitik & GeoJSON Wilayah (Penyelarasan ke Kabupaten Kotawaringin Timur) [3]
 import { calculateCompaniesPerKecamatan } from '@/lib/spatialAnalytics';
-import kecData from '@/assets/geojson/kotim-kecamatan.json';
-import desaData from '@/assets/geojson/kotim-desa.json';
+import kecData from '@/assets/geojson/bogor-kecamatan.json';
+import desaData from '@/assets/geojson/bogor-desa.json';
 
 // Engine Matematika Spasial (Gradient Color)
 import { spatialMath } from '@/lib/spatialMath';
@@ -49,8 +49,8 @@ let DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// PUSAT PETA DIKUNCI DI SAMPIT (KABUPATEN KOTAWARINGIN TIMUR) [3]
-const DEFAULT_CENTER: [number, number] = [-2.5337, 112.9515];
+// PUSAT PETA DIKUNCI DI CIBINONG (KABUPATEN BOGOR) [3]
+const DEFAULT_CENTER: [number, number] = [-6.4816, 106.8560];
 
 // ============================================================================
 // HELPERS & ICONS GENERATORS
@@ -240,7 +240,7 @@ export default function LimbahMap() {
         activeAdminBoundary, showImpactRadius, activePanels
     } = useGisUIStore();
 
-    const [currentZoom, setCurrentZoom] = useState(10); // Default zoom level Kotim disetel ke 10
+    const [currentZoom, setCurrentZoom] = useState(11); // Default zoom level Bogor disetel ke 11
 
     // SINKRONISASI BATCH DATA AQI & DATA STASIUN AIR SAAT AWAL LOAD PETA (Information Expert)
     useEffect(() => {
@@ -263,7 +263,7 @@ export default function LimbahMap() {
         }
     };
 
-    const invertedKotimMask = useMemo(() => {
+    const invertedBogorMask = useMemo(() => {
         const kecGeoJson = kecData as any;
         if (!kecGeoJson || !kecGeoJson.features) return null;
 
@@ -402,7 +402,7 @@ export default function LimbahMap() {
 
             <MapContainer
                 center={DEFAULT_CENTER}
-                zoom={10}
+                zoom={11}
                 zoomControl={false}
                 style={{ height: '100%', width: '100%' }}
                 maxZoom={18}
@@ -413,9 +413,9 @@ export default function LimbahMap() {
 
                 <TileLayer url={getTileUrl()} />
 
-                {invertedKotimMask && (
+                {invertedBogorMask && (
                     <Polygon
-                        positions={invertedKotimMask}
+                        positions={invertedBogorMask}
                         pathOptions={{
                             color: "#0f172a",
                             fillColor: "#0f172a",
