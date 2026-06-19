@@ -767,7 +767,6 @@ export default function AddAmdalPage() {
                   Kembali
                 </Button>
                 <Button
-                  type="submit"
                   onClick={handleSubmit}
                   disabled={loading}
                   className="bg-rose-600 hover:bg-rose-700 text-white font-black text-xs px-6 h-10 rounded-none shadow-sm tracking-wider flex items-center gap-1.5 uppercase"

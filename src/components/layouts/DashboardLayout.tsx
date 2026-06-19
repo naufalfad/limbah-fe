@@ -68,6 +68,17 @@ export default function DashboardLayout({ children, noPadding = false }: any) {
     }
   }, [currentUser, navigate]);
 
+  // Lock body & html overflow to hidden when inside dashboard layout to prevent scroll bug and hanging sidebar
+  React.useEffect(() => {
+    window.scrollTo(0, 0); // Reset window scroll to top to prevent layout shifting
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
+    };
+  }, []);
+
   if (!currentUser) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-50">
@@ -119,7 +130,7 @@ export default function DashboardLayout({ children, noPadding = false }: any) {
       )}
 
       <aside className={cn(
-        "bg-slate-900 text-slate-300 transition-all duration-300 flex flex-col h-full shrink-0 z-50 fixed md:relative",
+        "bg-slate-900 text-slate-300 transition-all duration-300 flex flex-col h-full shrink-0 z-50 fixed top-0 left-0 bottom-0 md:relative md:top-auto md:left-auto md:bottom-auto",
         sidebarOpen ? "w-64 translate-x-0" : "w-64 -translate-x-full md:w-16 md:translate-x-0"
       )}>
 
