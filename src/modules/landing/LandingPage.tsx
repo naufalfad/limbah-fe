@@ -135,13 +135,15 @@ export default function LandingPage() {
       <nav className="fixed top-0 w-full z-50 bg-white border-b border-slate-200 h-16 flex items-center">
         <div className="max-w-7xl mx-auto px-4 lg:px-6 w-full flex items-center justify-between">
 
-          <div className="flex items-center gap-2 md:gap-2.5">
+          <div className="flex items-center gap-2 md:gap-2.5 text-left">
             <div className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center shrink-0">
               <img src="/kotim-logo.png" alt="Logo Kotim" className="w-10 h-10 object-contain" />
             </div>
-            <span className="font-sans font-semibold text-lg md:text-xl tracking-tight text-slate-800">
-              Geo <span className="text-emerald-600">Pedal</span>
-            </span>
+            <div className="flex flex-col leading-none">
+              <span className="font-sans font-semibold text-base md:text-lg tracking-tight text-slate-800">
+                DLH Kabupaten Kotawaringin Timur
+              </span>
+            </div>
           </div>
 
           <div className="flex items-center gap-1 md:gap-1.5">
@@ -199,8 +201,8 @@ export default function LandingPage() {
 
           {/* Teks Informasi & Narasi Baru (Tighter & Compact Copywriting) */}
           <div className="lg:col-span-7 space-y-5 text-left">
-            <span className="uppercase tracking-[0.25em] text-[8px] font-black text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-3 py-1 w-max block">
-              GeoPedal
+            <span className="uppercase tracking-[0.25em] text-[12px] font-black text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-3 py-1 w-max block">
+              GEOPEDAL
             </span>
 
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-white tracking-tight leading-none uppercase">
@@ -427,7 +429,7 @@ export default function LandingPage() {
               <div className="w-10 h-10 flex items-center justify-center shrink-0">
                 <img src="/kotim-logo.png" alt="Logo Kotim" className="w-9 h-9 object-contain" />
               </div>
-              <span className="font-sans font-semibold text-xl tracking-tight text-white">GeoPedal</span>
+              <span className="font-sans font-semibold text-xl tracking-tight text-white">GEOPEDAL</span>
             </div>
             <p className="text-slate-400 max-w-sm font-semibold leading-relaxed">
               Platform integrasi satu pintu pengawasan, verifikasi administrasi SPPL/UKL-UPL, serta monitoring limbah industri terpadu Dinas Lingkungan Hidup.

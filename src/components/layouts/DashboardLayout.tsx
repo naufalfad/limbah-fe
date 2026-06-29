@@ -135,14 +135,17 @@ export default function DashboardLayout({ children, noPadding = false }: any) {
       )}>
 
         {/* 1. Logo Section (DIET HEIGHT: h-20 -> h-16) */}
-        <div className="h-16 flex items-center px-4 gap-3 border-b border-white/10 shrink-0">
+        <div className="h-16 flex items-center px-4 gap-3 border-b border-white/10 shrink-0 text-left">
           <div className="w-10 h-10 flex items-center justify-center shrink-0">
             <img src="/kotim-logo.png" alt="Logo Kotim" className="w-9 h-9 object-contain" />
           </div>
           {(sidebarOpen || window.innerWidth < 768) && (
             <div className={cn("flex flex-col leading-none overflow-hidden", !sidebarOpen && "md:hidden")}>
-              <span className="font-sans font-semibold text-xl tracking-tight text-white whitespace-nowrap">
-                Geo <span className="text-emerald-500">Pedal</span>
+              <span className="font-sans font-semibold text-sm tracking-tight text-white whitespace-wrap">
+                DLH Kabupaten Kotawaringin Timur
+              </span>
+              <span className="text-[8px] text-slate-400 font-semibold tracking-tight mt-0.5 whitespace-nowrap">
+                GEOPEDAL
               </span>
             </div>
           )}

@@ -76,14 +76,11 @@ export default function GisNavbar() {
 
                 <button
                     onClick={handleLogoClick}
-                    className="flex items-center gap-3 active:scale-95 transition-transform group rounded-none outline-none text-left"
+                    className="flex items-center gap-1 active:scale-95 transition-transform group rounded-none outline-none text-left"
                 >
-                    <div className="w-8 h-8 flex items-center justify-center shrink-0">
-                        <img src="/kotim-logo.png" alt="Logo Kotim" className="w-7 h-7 object-contain" />
-                    </div>
                     <div className="flex flex-col leading-none">
                         <span className="font-sans font-semibold text-lg md:text-xl tracking-tight text-slate-800">
-                            Geo <span className="text-emerald-600">Pedal</span>
+                            GEOPEDAL
                         </span>
                         <span className="text-[8px] text-slate-400 font-bold tracking-[0.2em] uppercase mt-0.5 hidden sm:block">
                             Geospasial Kepatuhan

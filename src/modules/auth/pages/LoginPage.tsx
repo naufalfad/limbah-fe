@@ -97,15 +97,15 @@ export default function LoginPage() {
           <div className="w-12 h-12 flex items-center justify-center shrink-0">
             <img src="/kotim-logo.png" alt="Logo Kotim" className="w-12 h-12 object-contain" />
           </div>
-          <span className="text-xl font-black tracking-tighter uppercase italic text-white leading-none">
-            GEO <span className="text-emerald-400 font-black">PEDAL</span>
+          <span className="text-xl font-black tracking-tighter uppercase text-white leading-none">
+            DLH Kabupaten Kotawaringin Timur
           </span>
         </div>
 
         {/* Jargon & Deskripsi */}
         <div className="space-y-4 max-w-md text-left relative z-20">
-          <span className="uppercase tracking-[0.25em] text-[8px] font-black text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-3 py-1 w-max block">
-            INTEGRATED MONITORING CONSOLE
+          <span className="uppercase tracking-[0.25em] text-[12px] font-black text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-3 py-1 w-max block">
+            GEOPEDAL
           </span>
           <h1 className="text-4xl lg:text-5xl font-black text-white tracking-tight leading-none uppercase">
             Pusat Pengawasan <br />
@@ -138,8 +138,8 @@ export default function LoginPage() {
             <div className="w-8 h-8 flex items-center justify-center shrink-0">
               <img src="/kotim-logo.png" alt="Logo Kotim" className="w-12 h-12 object-contain" />
             </div>
-            <span className="text-lg font-black tracking-tighter uppercase italic text-slate-800 leading-none">
-              GEO <span className="text-emerald-600">PEDAL</span>
+            <span className="text-lg font-black tracking-tighter uppercase text-slate-800 leading-none">
+              DLH Kabupaten Kotawaringin Timur
             </span>
           </div>
 
