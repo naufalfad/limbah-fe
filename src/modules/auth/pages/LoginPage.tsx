@@ -98,7 +98,7 @@ export default function LoginPage() {
             <Leaf size={18} strokeWidth={2.5} />
           </div>
           <span className="text-xl font-black tracking-tighter uppercase italic text-white leading-none">
-            PANTAU <span className="text-emerald-400 font-black">LIMBAH</span>
+            GEO <span className="text-emerald-400 font-black">PEDAL</span>
           </span>
         </div>
 
@@ -139,7 +139,7 @@ export default function LoginPage() {
               <Leaf size={18} strokeWidth={2.5} />
             </div>
             <span className="text-lg font-black tracking-tighter uppercase italic text-slate-800 leading-none">
-              PANTAU <span className="text-emerald-600">LIMBAH</span>
+              GEO <span className="text-emerald-600">PEDAL</span>
             </span>
           </div>
 
@@ -222,7 +222,7 @@ export default function LoginPage() {
 
           {/* Register Call to Action */}
           <div className="text-left pt-5 border-t border-slate-100 font-sans text-xs">
-            <span className="text-slate-400 font-semibold">Baru di PANTAU LIMBAH? </span>
+            <span className="text-slate-400 font-semibold">Baru di GEO PEDAL? </span>
             <button
               type="button"
               onClick={() => navigate("/register")}
