@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { API_URL } from "@/lib/api";
 
 // FASE 4 INJEKSI: Mengimpor fungsi otak analitik Turf.js dan data batas desa Kabupaten Bogor
 import { getAffectedVillages } from "@/lib/spatialAnalytics";
@@ -21,7 +22,7 @@ interface TaskDetailPanelProps {
     taskData: any; // Menerima payload Polimorfik (Bisa Inspection, bisa CitizenReport)
 }
 
-const BACKEND_URL = "http://localhost:5000";
+const BACKEND_URL = API_URL;
 
 export default function TaskDetailPanel({ taskData }: TaskDetailPanelProps) {
     const navigate = useNavigate();

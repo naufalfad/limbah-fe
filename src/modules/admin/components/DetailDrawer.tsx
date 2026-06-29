@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSijagaStore } from '@/store/useSijagaStore';
+import { API_URL } from "@/lib/api";
 import { toast } from 'sonner';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import { DocPreviewer } from './DocPreviewer';
@@ -30,7 +31,7 @@ function ResizeMap() {
   return null;
 }
 
-const BACKEND_URL = "http://localhost:5000";
+const BACKEND_URL = API_URL;
 
 interface AmdalFileState {
   fileName: string;

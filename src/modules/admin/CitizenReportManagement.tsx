@@ -20,6 +20,7 @@ import "leaflet/dist/leaflet.css";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { PaginationControls } from "@/components/ui/pagination-controls";
+import { API_URL } from "@/lib/api";
 
 // --- Fix Leaflet Default Marker Icons (Vite Bundler Safety) ---
 import icon from "leaflet/dist/images/marker-icon.png";
@@ -33,7 +34,7 @@ let DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
-const BACKEND_URL = "http://localhost:5000";
+const BACKEND_URL = API_URL;
 
 // Helper untuk memaksa Leaflet menghitung ulang ukuran kanvas (Menyelesaikan bug gray tiles di modal) [3]
 function InvalidateMapSize() {

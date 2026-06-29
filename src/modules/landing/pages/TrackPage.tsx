@@ -24,9 +24,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { API_URL } from "@/lib/api";
 
 // Base URL Backend untuk meload gambar fisik (Pilihan B)
-const BACKEND_URL = "http://localhost:5000";
+const BACKEND_URL = API_URL;
 
 // --- Fix Leaflet Default Marker Icons (Vite safety) ---
 import icon from "leaflet/dist/images/marker-icon.png";

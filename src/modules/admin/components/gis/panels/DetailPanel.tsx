@@ -7,12 +7,12 @@ import {
     Badge
 } from "lucide-react";
 import { useSijagaStore } from "@/store/useSijagaStore";
-import { apiService } from "@/lib/api";
+import { apiService, API_URL } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 // Konstanta URL Backend untuk memuat berkas statis gambar [3]
-const BACKEND_URL = "http://localhost:5000";
+const BACKEND_URL = API_URL;
 
 const FALLBACK_IMAGES = [
     "/uploads/companies/factory-automotive.jpg",

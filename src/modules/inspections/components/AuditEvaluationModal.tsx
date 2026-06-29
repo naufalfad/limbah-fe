@@ -12,8 +12,9 @@ import { toast } from "sonner";
 import SignaturePad from "./SignaturePad";
 import { DocPreviewer } from "@/modules/admin/components/DocPreviewer";
 import { Separator } from "@/components/ui/separator";
+import { API_URL } from "@/lib/api";
 
-const BACKEND_URL = "http://localhost:5000";
+const BACKEND_URL = API_URL;
 const docUrl = (path: string | null | undefined) => {
     if (!path) return null;
     return path.startsWith("http") ? path : `${BACKEND_URL}${path}`;
