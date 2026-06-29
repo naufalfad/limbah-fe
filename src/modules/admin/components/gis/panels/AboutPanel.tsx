@@ -15,7 +15,7 @@ export default function AboutPanel() {
             <div className="text-center py-5 bg-slate-900 border-b border-slate-850 text-white rounded-none shrink-0 font-sans">
                 <ShieldCheck size={28} className="mx-auto text-emerald-400 animate-pulse" />
                 <h4 className="text-[10px] font-black text-slate-100 uppercase tracking-[0.25em] mt-3 leading-none">
-                    GEO LIMBAH GIS
+                    GEOPEDAL GIS
                 </h4>
                 <p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest mt-2 leading-none">
                     Sistem Pemetaan Kepatuhan Lingkungan v1.0
@@ -27,7 +27,7 @@ export default function AboutPanel() {
 
                 {/* Pengantar Ringkas (Diubah ke Rata Kiri murni) */}
                 <p className="text-[11px] font-semibold text-slate-500 leading-relaxed text-left">
-                    Geo Limbah GIS beroperasi sebagai platform <strong>Digital Twin & Virtual Sensor (Sensor Virtual)</strong> [3]. Platform ini mensimulasikan dan menganalisis parameter fisik-kimia atmosfer serta hidrologi wilayah secara dinamis dengan mengintegrasikan data cuaca mikro dan beban pembuangan industri nyata tanpa menebak-nebak [1, 3].
+                    GeoPedal GIS beroperasi sebagai platform <strong>Digital Twin & Virtual Sensor (Sensor Virtual)</strong> [3]. Platform ini mensimulasikan dan menganalisis parameter fisik-kimia atmosfer serta hidrologi wilayah secara dinamis dengan mengintegrasikan data cuaca mikro dan beban pembuangan industri nyata tanpa menebak-nebak [1, 3].
                 </p>
 
                 {/* --- SEKSI 1: SUMBER DATA UTAMA (Left-Bordered Cohesive List) --- */}

@@ -119,7 +119,7 @@ export default function CompanyDashboard() {
                 Halo, {currentUser?.name || "Pelaku Usaha"}!
               </h1>
               <p className="text-slate-300 text-xs font-medium leading-relaxed">
-                Anda belum memiliki profil badan usaha yang terdaftar di database GEO LIMBAH. Daftarkan entitas usaha Anda sekarang untuk mulai mengajukan dokumen lingkungan (SPPL/UKL-UPL) dan mengakses layanan pengangkutan B3 daerah [3].
+                Anda belum memiliki profil badan usaha yang terdaftar di database GEOPEDAL. Daftarkan entitas usaha Anda sekarang untuk mulai mengajukan dokumen lingkungan (SPPL/UKL-UPL) dan mengakses layanan pengangkutan B3 daerah [3].
               </p>
               <div className="pt-2">
                 <Button

@@ -120,7 +120,7 @@ export default function LandingPage() {
   const [activeSector, setActiveSector] = useState<SectorType>("AIR");
 
   useEffect(() => {
-    const savedId = localStorage.getItem('geo_limbah_report_id');
+    const savedId = localStorage.getItem('geo_pedal_report_id');
     if (savedId) {
       setLocalReportId(savedId);
     }
@@ -140,7 +140,7 @@ export default function LandingPage() {
               <Leaf size={16} strokeWidth={2.5} className="md:w-[18px] md:h-[18px]" />
             </div>
             <span className="font-sans font-semibold text-lg md:text-xl tracking-tight text-slate-800">
-              Geo <span className="text-emerald-600">Limbah</span>
+              Geo <span className="text-emerald-600">Pedal</span>
             </span>
           </div>
 
@@ -200,7 +200,7 @@ export default function LandingPage() {
           {/* Teks Informasi & Narasi Baru (Tighter & Compact Copywriting) */}
           <div className="lg:col-span-7 space-y-5 text-left">
             <span className="uppercase tracking-[0.25em] text-[8px] font-black text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-3 py-1 w-max block">
-              Geo Limbah
+              GeoPedal
             </span>
 
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-white tracking-tight leading-none uppercase">
@@ -427,7 +427,7 @@ export default function LandingPage() {
               <div className="w-8 h-8 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center rounded-none">
                 <Leaf size={16} strokeWidth={2.5} />
               </div>
-              <span className="font-sans font-semibold text-xl tracking-tight text-white">Geo Limbah</span>
+              <span className="font-sans font-semibold text-xl tracking-tight text-white">GeoPedal</span>
             </div>
             <p className="text-slate-400 max-w-sm font-semibold leading-relaxed">
               Platform integrasi satu pintu pengawasan, verifikasi administrasi SPPL/UKL-UPL, serta monitoring limbah industri terpadu Dinas Lingkungan Hidup.
@@ -446,7 +446,7 @@ export default function LandingPage() {
           <div className="space-y-4">
             <h4 className="font-black uppercase tracking-widest text-[12px] text-emerald-500">Kontak Pengaduan</h4>
             <ul className="space-y-2 text-slate-400 font-bold text-[11px] tracking-wider">
-              <li className="underline text-emerald-400 hover:text-emerald-300"><a href="mailto:support@geolimbah.id">support@geolimbah.id</a></li>
+              <li className="underline text-emerald-400 hover:text-emerald-300"><a href="mailto:support@geopedal.id">support@geopedal.id</a></li>
               <li>Sekretariat DLH Bidang Tata Lingkungan</li>
             </ul>
           </div>
@@ -454,7 +454,7 @@ export default function LandingPage() {
         </div>
 
         <div className="max-w-7xl mx-auto pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] font-black uppercase tracking-widest text-slate-500">
-          <p>© 2026 Geo Limbah — DINAS LINGKUNGAN HIDUP DAERAH. ALL RIGHTS RESERVED.</p>
+          <p>© 2026 GeoPedal — DINAS LINGKUNGAN HIDUP DAERAH. ALL RIGHTS RESERVED.</p>
         </div>
       </footer>
 

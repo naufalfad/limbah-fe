@@ -83,7 +83,7 @@ export default function GisNavbar() {
                     </div>
                     <div className="flex flex-col leading-none">
                         <span className="font-sans font-semibold text-lg md:text-xl tracking-tight text-slate-800">
-                            Geo <span className="text-emerald-600">Limbah</span>
+                            Geo <span className="text-emerald-600">Pedal</span>
                         </span>
                         <span className="text-[8px] text-slate-400 font-bold tracking-[0.2em] uppercase mt-0.5 hidden sm:block">
                             Geospasial Kepatuhan

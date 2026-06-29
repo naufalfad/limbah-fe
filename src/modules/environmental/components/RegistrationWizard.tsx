@@ -286,7 +286,7 @@ export const EnvironmentalRegistration = () => {
               <div className="animate-in fade-in zoom-in-95 duration-500">
                 {/* Header penentu tipe yang lebih mencolok */}
                 <div className="text-center mb-8 bg-brand-50 p-8 rounded-2xl border-2 border-dashed border-brand-200">
-                  <Badge className="mb-2 bg-brand-600">Sistem GEO LIMBAH Berhasil Menganalisis</Badge>
+                  <Badge className="mb-2 bg-brand-600">Sistem GEOPEDAL Berhasil Menganalisis</Badge>
                   <h2 className="text-4xl font-black text-brand-900 tracking-tight">WAJIB {docType}</h2>
                   <p className="text-slate-600 mt-2">Silakan lengkapi rincian teknis pengelolaan lingkungan di bawah ini.</p>
                 </div>

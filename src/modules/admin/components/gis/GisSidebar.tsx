@@ -124,7 +124,7 @@ export default function GisSidebar() {
                                 closePanelsToTheRight(-1);
                             } else {
                                 closePanelsToTheRight(-1);
-                                openPanel("tentang", "Tentang GIS Geo Limbah");
+                                openPanel("tentang", "Tentang GIS GeoPedal");
                             }
                         }}
                         className={`w-full h-full md:h-16 flex items-center justify-center transition-colors relative active:bg-slate-100 rounded-none outline-none border-t-[3px] md:border-t-0 md:border-l-[3px] ${isPanelActive("tentang") ? "bg-emerald-50 text-emerald-700 border-emerald-600" : "bg-transparent text-slate-400 hover:bg-slate-50 hover:text-slate-800 border-transparent"}`}

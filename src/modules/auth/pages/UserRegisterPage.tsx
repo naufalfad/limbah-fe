@@ -112,7 +112,7 @@ export default function UserRegisterPage() {
                 <Leaf size={24} />
               </div>
               <h1 className="font-sans font-semibold text-xl tracking-tight text-slate-800">
-                Geo <span className="text-emerald-600">Limbah</span>
+                Geo <span className="text-emerald-600">Pedal</span>
               </h1>
               <p className="text-slate-500 text-xs font-semibold uppercase tracking-widest">
                 Registrasi Akun Pengguna Baru
@@ -219,7 +219,7 @@ export default function UserRegisterPage() {
           <span className="text-emerald-600 font-semibold cursor-pointer hover:underline">
             Syarat &amp; Ketentuan
           </span>{" "}
-          Geo Limbah.
+          Geo Pedal.
         </p>
       </div>
     </div>

@@ -231,7 +231,7 @@ export default function ReportPage() {
                 status: "PENDING",
             });
             localStorage.setItem("sijaga_citizen_reports", JSON.stringify(reportsList));
-            localStorage.setItem("geo_limbah_report_id", result.trackingId);
+            localStorage.setItem("geo_pedal_report_id", result.trackingId);
             localStorage.removeItem("SIJAGA_CITIZEN_REPORT_DRAFT");
 
             // Simpan ID pelacakan ke state lokal untuk ditampilkan di dialog terima kasih
@@ -264,7 +264,7 @@ export default function ReportPage() {
                                 <ShieldCheck size={22} />
                             </div>
                             <span className="font-sans font-semibold text-xl tracking-tight text-white">
-                                Geo <span className="text-emerald-400">Limbah</span>
+                                Geo <span className="text-emerald-400">Pedal</span>
                             </span>
                         </Link>
 
