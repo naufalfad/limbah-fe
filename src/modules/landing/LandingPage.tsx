@@ -136,8 +136,8 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 lg:px-6 w-full flex items-center justify-between">
 
           <div className="flex items-center gap-2 md:gap-2.5">
-            <div className="w-7 h-7 md:w-8 md:h-8 bg-emerald-50 border border-emerald-500/20 flex items-center justify-center text-emerald-600 rounded-none shrink-0">
-              <Leaf size={16} strokeWidth={2.5} className="md:w-[18px] md:h-[18px]" />
+            <div className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center shrink-0">
+              <img src="/kotim-logo.png" alt="Logo Kotim" className="w-10 h-10 object-contain" />
             </div>
             <span className="font-sans font-semibold text-lg md:text-xl tracking-tight text-slate-800">
               Geo <span className="text-emerald-600">Pedal</span>
@@ -424,8 +424,8 @@ export default function LandingPage() {
 
           <div className="col-span-2 space-y-6">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center rounded-none">
-                <Leaf size={16} strokeWidth={2.5} />
+              <div className="w-10 h-10 flex items-center justify-center shrink-0">
+                <img src="/kotim-logo.png" alt="Logo Kotim" className="w-9 h-9 object-contain" />
               </div>
               <span className="font-sans font-semibold text-xl tracking-tight text-white">GeoPedal</span>
             </div>

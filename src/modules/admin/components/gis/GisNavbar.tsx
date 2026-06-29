@@ -78,8 +78,8 @@ export default function GisNavbar() {
                     onClick={handleLogoClick}
                     className="flex items-center gap-3 active:scale-95 transition-transform group rounded-none outline-none text-left"
                 >
-                    <div className="w-8 h-8 bg-emerald-600 flex items-center justify-center text-white rounded-none shadow-sm group-hover:bg-emerald-700 transition-colors">
-                        <Leaf size={18} />
+                    <div className="w-8 h-8 flex items-center justify-center shrink-0">
+                        <img src="/kotim-logo.png" alt="Logo Kotim" className="w-7 h-7 object-contain" />
                     </div>
                     <div className="flex flex-col leading-none">
                         <span className="font-sans font-semibold text-lg md:text-xl tracking-tight text-slate-800">

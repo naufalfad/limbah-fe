@@ -94,8 +94,8 @@ export default function LoginPage() {
 
         {/* Logo Brand */}
         <div className="flex items-center gap-2.5 relative z-20 text-left">
-          <div className="w-8 h-8 bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 rounded-none">
-            <Leaf size={18} strokeWidth={2.5} />
+          <div className="w-12 h-12 flex items-center justify-center shrink-0">
+            <img src="/kotim-logo.png" alt="Logo Kotim" className="w-12 h-12 object-contain" />
           </div>
           <span className="text-xl font-black tracking-tighter uppercase italic text-white leading-none">
             GEO <span className="text-emerald-400 font-black">PEDAL</span>
@@ -135,8 +135,8 @@ export default function LoginPage() {
 
           {/* Logo Brand Alternatif (Hanya muncul di Mobile/Tablet sebagai pengganti sidebar kiri) */}
           <div className="lg:hidden flex items-center gap-2.5 text-left select-none pt-4 sm:pt-0">
-            <div className="w-8 h-8 bg-emerald-50 border border-emerald-500/20 flex items-center justify-center text-emerald-600 rounded-none shrink-0">
-              <Leaf size={18} strokeWidth={2.5} />
+            <div className="w-8 h-8 flex items-center justify-center shrink-0">
+              <img src="/kotim-logo.png" alt="Logo Kotim" className="w-12 h-12 object-contain" />
             </div>
             <span className="text-lg font-black tracking-tighter uppercase italic text-slate-800 leading-none">
               GEO <span className="text-emerald-600">PEDAL</span>

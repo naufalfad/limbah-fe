@@ -108,8 +108,8 @@ export default function UserRegisterPage() {
         <div className="border border-slate-200 shadow-sm bg-white p-8 md:p-10">
           <div className="space-y-6">
             <div className="text-center space-y-2">
-              <div className="w-14 h-14 bg-emerald-600 text-white flex items-center justify-center mx-auto shadow-none">
-                <Leaf size={24} />
+              <div className="w-14 h-14 flex items-center justify-center mx-auto">
+                <img src="/kotim-logo.png" alt="Logo Kotim" className="w-12 h-12 object-contain" />
               </div>
               <h1 className="font-sans font-semibold text-xl tracking-tight text-slate-800">
                 Geo <span className="text-emerald-600">Pedal</span>
