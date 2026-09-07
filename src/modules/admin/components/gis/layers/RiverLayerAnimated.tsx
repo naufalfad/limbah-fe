@@ -9,9 +9,9 @@ import { useSijagaStore } from '@/store/useSijagaStore';
 import * as turf from '@turf/turf';
 
 // @ts-ignore
-import bogorSungaiLine from '@/assets/geojson/bogor-sungai-line.json';
+import bogorSungaiLine from '@/assets/geojson/bogor/bogor-sungai-line.json';
 // @ts-ignore
-import bogorSungaiPoly from '@/assets/geojson/bogor-sungai-poly.json';
+import bogorSungaiPoly from '@/assets/geojson/bogor/bogor-sungai-poly.json';
 
 // --- KONTRAK DATA INTERNAL ENGINE ---
 interface RiverSegment {

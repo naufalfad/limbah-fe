@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 
 // FASE 4 INJEKSI: Mengimpor fungsi otak analitik Turf.js dan data batas desa Kabupaten Bogor
 import { getAffectedVillages } from "@/lib/spatialAnalytics";
-import desaData from "@/assets/geojson/bogor-desa.json";
+import desaData from "@/assets/geojson/bogor/bogor-desa.json";
 
 interface TaskDetailPanelProps {
     taskData: any; // Menerima payload Polimorfik (Bisa Inspection, bisa CitizenReport)

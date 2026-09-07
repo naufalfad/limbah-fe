@@ -216,16 +216,18 @@ export const useGisUIStore = create<GisUIState>((set) => ({
                 // Definisi Kelompok-Kelompok Mode Eksklusi
                 const singleExclusiveLayers = ['layer-amdal', 'layer-uklupl', 'layer-sppl', 'layer-aqi'];
                 const waterGroup = ['layer-river', 'layer-water-stations']; // Kelompok Air/Sungai [3]
+                const overlayGroup = ['layer-wildfire', 'layer-volcano-ash']; // Kelompok Overlay Kebencanaan / Atmosfer
 
                 if (singleExclusiveLayers.includes(layerId)) {
-                    // Sifat: Mutually Exclusive Mutlak. Reset array dan jadikan ia satu-satunya yang aktif.
-                    nextLayers = [layerId];
+                    // Sifat: Mutually Exclusive antar risiko/AQI, namun tetap pertahankan overlay aktif
+                    const currentOverlays = state.activeLayers.filter(id => overlayGroup.includes(id));
+                    nextLayers = [layerId, ...currentOverlays];
                 } else if (waterGroup.includes(layerId)) {
-                    // Sifat: Matikan semua kelompok Single Mode, namun izinkan sesama elemen kelompok air bersanding
+                    // Sifat: Matikan semua kelompok Single Mode, namun izinkan sesama elemen kelompok air & overlay bersanding
                     nextLayers = nextLayers.filter(id => !singleExclusiveLayers.includes(id));
                     nextLayers.push(layerId);
                 } else {
-                    // Penanganan fallback layer umum pendukung masa mendatang
+                    // Penanganan overlay independen (layer-wildfire, layer-volcano-ash, dll)
                     nextLayers.push(layerId);
                 }
             }

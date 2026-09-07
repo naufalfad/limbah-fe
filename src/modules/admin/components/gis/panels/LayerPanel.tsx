@@ -2,7 +2,7 @@
 import React from "react";
 import {
     Layers, Settings2, ShieldCheck,
-    MapPin, Wind, Droplets
+    MapPin, Wind, Droplets, Flame, Mountain
 } from "lucide-react";
 import { useGisUIStore } from "@/store/useGisUIStore";
 import { useSijagaStore } from "@/store/useSijagaStore";
@@ -35,6 +35,12 @@ export default function LayerPanel() {
     const waterLayers = [
         { id: "layer-river", label: "Aliran sungai", desc: "Jejak geospasial aliran sungai", color: "bg-cyan-400" },
         { id: "layer-water-stations", label: "Stasiun sampel air", desc: "Parameter baku mutu air sungai", color: "bg-blue-600" },
+    ];
+
+    // 4. Kelompok 4: Kebakaran Hutan & Vulkanik
+    const fireVolcanoLayers = [
+        { id: "layer-wildfire", label: "Titik api (Hotspots)", desc: "Deteksi termal NASA FIRMS / MODIS", color: "bg-rose-500", isPulsing: true },
+        { id: "layer-volcano-ash", label: "Abu vulkanik & aerosol", desc: "Plume SO2 & Index Aerosol NASA GIBS", color: "bg-purple-600" },
     ];
 
     return (
@@ -129,6 +135,37 @@ export default function LayerPanel() {
                                         </div>
                                         <div className="flex items-center gap-2.5">
                                             <span className={cn("w-2 h-2 rounded-full shrink-0 border border-slate-200", layer.color)} />
+                                            <div className="flex flex-col">
+                                                <span className="text-xs font-normal text-slate-700 leading-none">{layer.label}</span>
+                                                <span className="text-[10px] font-normal text-slate-400 leading-none mt-1">{layer.desc}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {/* --- KATEGORI 4: KEBAKARAN HUTAN & VULKANIK --- */}
+                    <div className="px-5 py-3 bg-slate-50 border-y border-slate-100 flex items-center gap-2 text-slate-700 select-none">
+                        <Flame size={13} className="text-rose-600" />
+                        <h4 className="text-xs font-bold text-slate-800">Kebakaran hutan & vulkanik</h4>
+                    </div>
+                    <div className="flex flex-col">
+                        {fireVolcanoLayers.map((layer) => {
+                            const isActive = activeLayers.includes(layer.id);
+                            return (
+                                <button
+                                    key={layer.id}
+                                    onClick={() => toggleLayer(layer.id)}
+                                    className="group flex items-center justify-between px-5 py-3 border-b border-slate-100 bg-white hover:bg-slate-50/60 transition-colors text-left w-full outline-none"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className={`relative inline-flex h-3.5 w-7 shrink-0 items-center rounded-full transition-colors duration-200 ease-in-out ${isActive ? (layer.id === 'layer-wildfire' ? 'bg-rose-500' : 'bg-purple-600') : 'bg-slate-300'}`}>
+                                            <span className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white shadow-sm transition duration-200 ease-in-out ${isActive ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+                                        </div>
+                                        <div className="flex items-center gap-2.5">
+                                            <span className={cn("w-2 h-2 rounded-full shrink-0 border border-slate-200", layer.color, layer.isPulsing && isActive && "animate-ping")} />
                                             <div className="flex flex-col">
                                                 <span className="text-xs font-normal text-slate-700 leading-none">{layer.label}</span>
                                                 <span className="text-[10px] font-normal text-slate-400 leading-none mt-1">{layer.desc}</span>

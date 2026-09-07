@@ -19,8 +19,8 @@ import { useGisUIStore } from '@/store/useGisUIStore';
 
 // Modul Analitik & GeoJSON Wilayah (Penyelarasan ke Kabupaten Kotawaringin Timur) [3]
 import { calculateCompaniesPerKecamatan } from '@/lib/spatialAnalytics';
-import kecData from '@/assets/geojson/bogor-kecamatan.json';
-import desaData from '@/assets/geojson/bogor-desa.json';
+import kecData from '@/assets/geojson/bogor/bogor-kecamatan.json';
+import desaData from '@/assets/geojson/bogor/bogor-desa.json';
 
 // Engine Matematika Spasial (Gradient Color)
 import { spatialMath } from '@/lib/spatialMath';
@@ -36,6 +36,10 @@ import { Sparkles } from 'lucide-react';
 // --- [INJEKSI MODUL BARU] LAYER ALIRAN SUNGAI & TITIK SAMPEL AIR (PHASE 2) ---
 import RiverLayer from './layers/RiverLayer';
 import WaterSampleMarkerLayer from './layers/WaterSampleMarkerLayer';
+
+// --- [INJEKSI MODUL BARU] LAYER TITIK API (NASA GIBS/FIRMS) & ABU VULKANIK (SO2/AEROSOL) ---
+import WildfireLayer from './layers/WildfireLayer';
+import VolcanicAshLayer from './layers/VolcanicAshLayer';
 
 // --- Fix Leaflet Default Icon ---
 import icon from "leaflet/dist/images/marker-icon.png";
@@ -252,14 +256,24 @@ export default function LimbahMap() {
     const isExecutive = currentUser?.role === "AUDITOR" || currentUser?.role === "ADMIN_DLH" || currentUser?.role === "SUPER_ADMIN";
 
     const getTileUrl = () => {
+        const cartoKey = import.meta.env.VITE_CARTO_API_KEY;
         switch (activeBaseMap) {
-            case 'dark': return "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+            case 'dark':
+                if (cartoKey) {
+                    return `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?api_key=${cartoKey}`;
+                }
+                // Esri World Dark Gray Canvas: 100% Free, Official ArcGIS, No Watermark, No Key Required
+                return "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}";
             case 'satellite': return "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
             case 'street': return "https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}";
             case 'esri': return "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
             case 'osm': return "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
             case 'voyager':
-            default: return "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
+            default:
+                if (cartoKey) {
+                    return `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?api_key=${cartoKey}`;
+                }
+                return "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
         }
     };
 
@@ -446,6 +460,16 @@ export default function LimbahMap() {
 
                 <RiverLayer />
                 <WaterSampleMarkerLayer />
+
+                {/* LAYER OVERLAY TITIK API / WILDFIRE (NASA GIBS & FIRMS) */}
+                {activeLayers.includes("layer-wildfire") && (
+                    <WildfireLayer mapOpacity={mapOpacity} />
+                )}
+
+                {/* LAYER OVERLAY ABU VULKANIK & EMISI GAS SO2 (NASA GIBS) */}
+                {activeLayers.includes("layer-volcano-ash") && (
+                    <VolcanicAshLayer mapOpacity={mapOpacity} />
+                )}
 
                 {!isOfficer && activeLayers.includes("layer-aqi") && (
                     <AqiSurfaceLayer companies={companies} mapOpacity={mapOpacity} />

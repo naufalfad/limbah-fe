@@ -5,7 +5,7 @@ import { spatialMath, AqiNode } from '@/lib/spatialMath';
 import { useSijagaStore } from '@/store/useSijagaStore';
 
 // Impor GeoJSON Wilayah Kabupaten Kotawaringin Timur untuk menciptakan path Clipping Canvas (Information Expert) [3]
-import kecData from '@/assets/geojson/bogor-kecamatan.json';
+import kecData from '@/assets/geojson/bogor/bogor-kecamatan.json';
 
 interface AqiSurfaceLayerProps {
     companies: any[];

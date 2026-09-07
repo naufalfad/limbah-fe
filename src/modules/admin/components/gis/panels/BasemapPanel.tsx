@@ -13,7 +13,7 @@ export default function BasemapPanel() {
 
     // 5 Standar Peta Dasar
     const baseMaps = [
-        { id: "dark", label: "Carto Dark", icon: Moon, desc: "Kanvas Gelap (Mode Optimal AQI)" },
+        { id: "dark", label: "Dark Canvas", icon: Moon, desc: "Kanvas Gelap (Mode Optimal AQI & Hotspots)" },
         { id: "satellite", label: "Google Satellite", icon: Sun, desc: "Citra Satelit Resolusi Tinggi" },
         { id: "street", label: "Google Roadmap", icon: MapIcon, desc: "Navigasi Jalan & Fasilitas" },
         { id: "esri", label: "Esri World Imagery", icon: MapIcon, desc: "Citra Satelit Alternatif" },
@@ -28,7 +28,7 @@ export default function BasemapPanel() {
                 <MapIcon size={14} className="text-emerald-600 mt-0.5 shrink-0" />
                 <p className="text-[10px] text-slate-600 leading-relaxed font-medium">
                     Ubah kanvas peta dasar sesuai kebutuhan pengamatan spasial Anda.
-                    <strong className="text-slate-800 font-bold"> Carto Dark</strong> direkomendasikan untuk melihat persebaran Kualitas Udara (AQI).
+                    <strong className="text-slate-800 font-bold"> Dark Canvas</strong> direkomendasikan untuk melihat persebaran Kualitas Udara (AQI) dan Titik Api.
                 </p>
             </div>
 

@@ -224,6 +224,11 @@ export const apiService = {
     getBatchAqiData: async () => {
       const response = await api.get("/api/analytics/aqi-batch");
       return response.data;
+    },
+    // INJEKSI BARU: Pemanggil data titik api / hotspot aktif dari NASA FIRMS
+    getWildfires: async () => {
+      const response = await api.get("/api/analytics/wildfires");
+      return response.data;
     }
   },
   // [NEW MODULE] AI Agent Spatial Forensic Services

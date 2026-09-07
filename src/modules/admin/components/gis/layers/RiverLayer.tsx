@@ -9,7 +9,7 @@ import { useSijagaStore } from '@/store/useSijagaStore';
 import * as turf from '@turf/turf';
 
 // @ts-ignore - Hanya mengimpor garis aliran sungai utama Kabupaten Bogor [3]
-import bogorSungaiLine from '@/assets/geojson/bogor-sungai-line.json';
+import bogorSungaiLine from '@/assets/geojson/bogor/bogor-sungai-line.json';
 
 // --- KONTRAK DATA INTERNAL ENGINE ---
 interface RiverSegment {

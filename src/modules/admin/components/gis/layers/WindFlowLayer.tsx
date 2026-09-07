@@ -5,7 +5,7 @@ import L from 'leaflet';
 import { spatialMath, WindNode } from '@/lib/spatialMath';
 
 // Impor GeoJSON Wilayah Kabupaten Bogor untuk pembuatan Path Clipping (Information Expert) [3]
-import kecData from '@/assets/geojson/bogor-kecamatan.json';
+import kecData from '@/assets/geojson/bogor/bogor-kecamatan.json';
 
 interface WindFlowLayerProps {
     companies: any[];
