@@ -218,7 +218,10 @@ function MapEventsHandler() {
         },
         moveend: (e) => {
             const center = e.target.getCenter();
-            setMapCenter([center.lat, center.lng]);
+            const current = useGisUIStore.getState().mapCenter;
+            if (Math.abs(current[0] - center.lat) > 0.001 || Math.abs(current[1] - center.lng) > 0.001) {
+                setMapCenter([center.lat, center.lng]);
+            }
         }
     });
     return null;
