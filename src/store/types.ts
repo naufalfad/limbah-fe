@@ -182,7 +182,16 @@ export interface AqiData {
     windDirection: number;
     pressure: number;
   };
+  pollutants?: {
+    pm2_5: number;
+    pm10: number;
+    co: number;
+    no2: number;
+    so2: number;
+    o3: number;
+  };
   source: 'live' | 'cache' | 'simulation';
+  provider?: string;
   cachedAt?: string;
 }
 
