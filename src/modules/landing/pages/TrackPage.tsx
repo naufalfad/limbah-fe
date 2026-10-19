@@ -26,7 +26,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 
 // Base URL Backend untuk meload gambar fisik (Pilihan B)
-const BACKEND_URL = "http://localhost:5000";
+const BACKEND_URL = import.meta.env.VITE_API_URL;
 
 // --- Fix Leaflet Default Marker Icons (Vite safety) ---
 import icon from "leaflet/dist/images/marker-icon.png";

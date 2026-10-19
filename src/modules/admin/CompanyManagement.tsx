@@ -767,7 +767,7 @@ export default function CompanyManagement() {
                 <div className="grid grid-cols-2 gap-2">
                   {selectedCompany.docNibUrl ? (
                     <a
-                      href={`http://localhost:5000${selectedCompany.docNibUrl}`}
+                      href={`${import.meta.env.VITE_API_URL}${selectedCompany.docNibUrl}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="border border-slate-200 bg-slate-50 p-2 text-center rounded-none font-bold hover:bg-slate-100 transition-colors flex flex-col items-center justify-center text-[10px] text-slate-700"
@@ -783,7 +783,7 @@ export default function CompanyManagement() {
                   )}
                   {selectedCompany.docNpwpUrl ? (
                     <a
-                      href={`http://localhost:5000${selectedCompany.docNpwpUrl}`}
+                      href={`${import.meta.env.VITE_API_URL}${selectedCompany.docNpwpUrl}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="border border-slate-200 bg-slate-50 p-2 text-center rounded-none font-bold hover:bg-slate-100 transition-colors flex flex-col items-center justify-center text-[10px] text-slate-700"
