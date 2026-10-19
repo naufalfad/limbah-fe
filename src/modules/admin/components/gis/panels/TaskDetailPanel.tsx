@@ -21,7 +21,7 @@ interface TaskDetailPanelProps {
     taskData: any; // Menerima payload Polimorfik (Bisa Inspection, bisa CitizenReport)
 }
 
-const BACKEND_URL = "http://localhost:5000";
+const BACKEND_URL = import.meta.env.VITE_API_URL;
 
 export default function TaskDetailPanel({ taskData }: TaskDetailPanelProps) {
     const navigate = useNavigate();

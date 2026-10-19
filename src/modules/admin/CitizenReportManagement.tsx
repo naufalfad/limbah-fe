@@ -33,7 +33,7 @@ let DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
-const BACKEND_URL = "http://localhost:5000";
+const BACKEND_URL = import.meta.env.VITE_API_URL;
 
 // Helper untuk memaksa Leaflet menghitung ulang ukuran kanvas (Menyelesaikan bug gray tiles di modal) [3]
 function InvalidateMapSize() {

@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 // Konstanta URL Backend untuk memuat berkas statis gambar [3]
-const BACKEND_URL = "http://localhost:5000";
+const BACKEND_URL = import.meta.env.VITE_API_URL;
 
 const FALLBACK_IMAGES = [
     "/uploads/companies/factory-automotive.jpg",

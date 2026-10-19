@@ -13,7 +13,7 @@ import SignaturePad from "./SignaturePad";
 import { DocPreviewer } from "@/modules/admin/components/DocPreviewer";
 import { Separator } from "@/components/ui/separator";
 
-const BACKEND_URL = "http://localhost:5000";
+const BACKEND_URL = import.meta.env.VITE_API_URL;
 const docUrl = (path: string | null | undefined) => {
     if (!path) return null;
     return path.startsWith("http") ? path : `${BACKEND_URL}${path}`;
