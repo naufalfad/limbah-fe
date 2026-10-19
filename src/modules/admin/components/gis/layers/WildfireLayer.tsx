@@ -3,25 +3,8 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { WMSTileLayer, CircleMarker, Popup, useMap } from 'react-leaflet';
 import { Flame, Activity, Thermometer, Clock, MapPin, Satellite, ShieldAlert } from 'lucide-react';
 import { apiService } from '@/lib/api';
-
-interface WildfireHotspot {
-    id: string;
-    latitude: number;
-    longitude: number;
-    brightness: number; // Kelvin
-    scan?: number;
-    track?: number;
-    acq_date: string;
-    acq_time: string;
-    satellite: string;
-    instrument: string;
-    confidence: string | number;
-    frp: number; // Fire Radiative Power (MW)
-    daynight?: 'D' | 'N';
-    locationName?: string;
-    source?: string;
-}
-
+import { useSijagaStore } from '@/store/useSijagaStore';
+import { WildfireHotspot } from '@/store/types';
 interface WildfireLayerProps {
     mapOpacity?: number; // 0 - 100
 }
@@ -72,6 +55,7 @@ const getHotspotMarkerOptions = (frp: number, confidence: string | number, zoom 
 };
 
 export default function WildfireLayer({ mapOpacity = 80 }: WildfireLayerProps) {
+    const { wildfires, fetchWildfires } = useSijagaStore();
     const [hotspots, setHotspots] = useState<WildfireHotspot[]>([]);
     const [firmsWmsUrl, setFirmsWmsUrl] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -94,19 +78,16 @@ export default function WildfireLayer({ mapOpacity = 80 }: WildfireLayerProps) {
         return new Date().toISOString().split('T')[0];
     }, []);
 
-    // Mengambil data koordinat titik api aktif dari backend proxy NASA FIRMS
+    // Mengambil data koordinat titik api aktif dari backend proxy NASA FIRMS via Store
     useEffect(() => {
         let isMounted = true;
 
-        async function fetchHotspots() {
+        async function loadHotspots() {
             try {
                 setIsLoading(true);
-                const response = await apiService.analytics.getWildfires();
-                if (isMounted && response?.success && Array.isArray(response.data)) {
-                    setHotspots(response.data);
-                    if (response.wmsUrl) {
-                        setFirmsWmsUrl(response.wmsUrl);
-                    }
+                const data = await fetchWildfires();
+                if (isMounted && data && Array.isArray(data) && data.length > 0) {
+                    setHotspots(data);
                 }
             } catch (err: any) {
                 console.warn('[WildfireLayer] Menggunakan data simulasi fallback:', err.message);
@@ -158,11 +139,17 @@ export default function WildfireLayer({ mapOpacity = 80 }: WildfireLayerProps) {
             }
         }
 
-        fetchHotspots();
+        if (wildfires && wildfires.length > 0) {
+            setHotspots(wildfires);
+            setIsLoading(false);
+        } else {
+            loadHotspots();
+        }
+
         return () => {
             isMounted = false;
         };
-    }, [todayIso]);
+    }, [todayIso, wildfires, fetchWildfires]);
 
     const layerOpacity = mapOpacity / 100;
 

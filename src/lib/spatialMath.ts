@@ -53,9 +53,8 @@ const BOGOR_VIRTUAL_NODES: AqiNode[] = [
 ];
 
 // Parameter kekuatan tarikan gravitasi polusi (Power parameter).
-// Semakin tinggi nilainya, polusi semakin "lokal" (jatuh tajam/drop-off cepat).
-// P = 3 ideal untuk mensimulasikan polutan udara industri.
-const IDW_POWER = 3;
+// P = 1.9 ideal untuk mensimulasikan dispersi atmosferik asap karhutla & emisi industri secara kontinu.
+const IDW_POWER = 1.9;
 
 /**
  * 1. KALKULASI JARAK (Optimasi CPU: Euclidean Squared)
@@ -86,16 +85,21 @@ const AQI_COLOR_STOPS = [
 export const spatialMath = {
 
     /**
-     * 2. INTERPOLASI KUALITAS UDARA (AQI) MENGGUNAKAN IDW
+     * 2. INTERPOLASI KUALITAS UDARA (AQI) MENGGUNAKAN IDW (DYNAMIC BASELINE)
      * 
      * Menghitung tebakan nilai AQI pada titik koordinat kosong berdasarkan
-     * sensor-sensor di sekitarnya dan diakhiri tarikan dari Virtual Nodes.
+     * sensor pabrik, titik api karhutla, dan latar belakang atmosfer dinamis.
      */
-    interpolateAqi: (targetLat: number, targetLng: number, realSensors: AqiNode[]): number => {
-        // Gabungkan sensor nyata (dari pabrik) dengan sensor imajiner pelindung (Virtual Nodes)
-        const allSensors = [...realSensors, ...BOGOR_VIRTUAL_NODES];
+    interpolateAqi: (targetLat: number, targetLng: number, realSensors: AqiNode[], baselineAqi: number = 95): number => {
+        // Gabungkan sensor nyata (dari pabrik & karhutla) dengan sensor batas perbatasan yang dinamis
+        const dynamicVirtualNodes: AqiNode[] = BOGOR_VIRTUAL_NODES.map(node => ({
+            ...node,
+            aqi: baselineAqi
+        }));
 
-        if (allSensors.length === 0) return 20; // Fallback sangat bersih
+        const allSensors = [...realSensors, ...dynamicVirtualNodes];
+
+        if (allSensors.length === 0) return baselineAqi;
 
         let totalWeight = 0;
         let weightedSum = 0;
@@ -109,7 +113,6 @@ export const spatialMath = {
             }
 
             // Rumus Inti IDW: W = 1 / (d^p)
-            // Karena distSq sudah d^2, jika P=3, maka kita perlu d^3 = distSq * sqrt(distSq)
             const dist = Math.sqrt(distSq);
             const weight = 1 / Math.pow(dist, IDW_POWER);
 
@@ -118,7 +121,7 @@ export const spatialMath = {
         }
 
         // Kembalikan rata-rata berbobot
-        return totalWeight > 0 ? Math.round(weightedSum / totalWeight) : 20;
+        return totalWeight > 0 ? Math.round(weightedSum / totalWeight) : baselineAqi;
     },
 
     /**

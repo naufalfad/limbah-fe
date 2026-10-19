@@ -18,7 +18,8 @@ import {
   ReportSlice,
   AiForensicResult,
   AqiData,
-  BogorClusterTelemetry // INJEKSI: Mengimpor tipe data Klaster
+  BogorClusterTelemetry, // INJEKSI: Mengimpor tipe data Klaster
+  WildfireHotspot
 } from "./types";
 
 // Mengimpor kontrak tipe data kualitas air baru
@@ -37,7 +38,8 @@ export type {
   AuditLog,
   AiForensicResult,
   AqiData,
-  BogorClusterTelemetry
+  BogorClusterTelemetry,
+  WildfireHotspot
 };
 
 // Mengimpor modul laci-laci state (Slices)
@@ -92,6 +94,11 @@ export interface SijagaState extends BaseSijagaState, ReportSlice {
   waterStations: WaterStationNode[];
   isWaterLoading: boolean;
   fetchWaterStations: () => Promise<void>;
+
+  // [NEW STATE] Penampung data titik api aktif NASA FIRMS
+  wildfires: WildfireHotspot[];
+  isWildfiresLoading: boolean;
+  fetchWildfires: () => Promise<WildfireHotspot[]>;
 
   // State & Action khusus AI Agent (Forensic Spasial)
   aiForensicResult: AiForensicResult | null;
@@ -341,6 +348,26 @@ export const useSijagaStore = create<SijagaState>((set, get, store) => ({
   },
 
   clearAqiData: () => set({ currentAqiData: null, batchAqiData: [] }),
+
+  // MANAJEMEN TITIK API / WILDFIRES SPASIAL (NASA FIRMS)
+  wildfires: [],
+  isWildfiresLoading: false,
+  fetchWildfires: async () => {
+    set({ isWildfiresLoading: true });
+    try {
+      const response = await apiService.analytics.getWildfires();
+      if (response && response.success && Array.isArray(response.data)) {
+        set({ wildfires: response.data });
+        return response.data;
+      }
+      return [];
+    } catch (e) {
+      console.warn("Gagal menarik data titik api karhutla:", e);
+      return [];
+    } finally {
+      set({ isWildfiresLoading: false });
+    }
+  },
 
   // ==========================================================================
   // AI AGENT FORENSIC ENGINE LOGIC

@@ -37,32 +37,85 @@ const CANVAS_RESOLUTION = 80;
  * terpotong rapi mengikuti lekukan geografis Kabupaten Kotawaringin Timur [3].
  */
 export default function AqiSurfaceLayer({ companies, mapOpacity }: AqiSurfaceLayerProps) {
-    const { batchAqiData } = useSijagaStore(); // INJEKSI: Mengambil data batch kualitas udara real-time
+    const { batchAqiData, wildfires, fetchWildfires } = useSijagaStore();
     const [canvasDataUrl, setCanvasDataUrl] = useState<string | null>(null);
 
-    // 1. Ekstrak Data Sensor (Dihubungkan ke Batch Cluster hasil API jika tersedia)
-    const aqiSensors = useMemo(() => {
+    // Ambil data titik api jika belum ada di store
+    useEffect(() => {
+        if (!wildfires || wildfires.length === 0) {
+            fetchWildfires();
+        }
+    }, [wildfires, fetchWildfires]);
+
+    // 1. Ekstrak Data Sensor Gabungan: Emisi Pabrik + Titik Api Karhutla + Telemetri Atmosferik
+    const { aqiSensors, baselineAqi } = useMemo(() => {
+        const sensors: AqiNode[] = [];
+
+        // --- A. KLASTER TELEMETRI ATMOSFERIK OPEN-METEO (CAMS MODEL) ---
+        let totalClusterAqi = 0;
+        let clusterCount = 0;
         if (batchAqiData && batchAqiData.length > 0) {
-            // Mengubah format batch klaster ke bentuk AqiNode untuk interpolasi IDW
-            return batchAqiData.map(cluster => ({
-                lat: cluster.lat,
-                lng: cluster.lng,
-                aqi: cluster.telemetry?.aqi ?? 35
-            })) as AqiNode[];
+            batchAqiData.forEach(cluster => {
+                const aqiVal = cluster.telemetry?.aqi ?? 120;
+                sensors.push({
+                    lat: cluster.lat,
+                    lng: cluster.lng,
+                    aqi: aqiVal
+                });
+                totalClusterAqi += aqiVal;
+                clusterCount++;
+            });
         }
 
-        // Fallback Simulasi Luring jika data backend belum termuat
-        return companies.map(c => {
+        // Baseline dinamis atmosfer: mengikuti rata-rata Open-Meteo atau ambient default
+        const computedBaseline = clusterCount > 0 ? Math.round(totalClusterAqi / clusterCount) : 115;
+
+        // --- B. EMISI LOKAL PABRIK (KUMULATIF: AREA SEKITAR PABRIK TETAP JELEK/MERAH) ---
+        // Polusi pabrik bersifat aditif di atas kondisi udara wilayah (point-source emission)
+        companies.forEach(c => {
             const lat = parseFloat(c.lat);
             const lng = parseFloat(c.lng);
-            if (isNaN(lat) || isNaN(lng)) return null;
+            if (isNaN(lat) || isNaN(lng)) return;
 
-            const seed = Math.abs(Math.sin(lat) * Math.cos(lng));
-            const aqi = Math.floor(25 + (seed * 60)); // Rentang 25 - 85
+            // Beban emisi cerobong pabrik berdasarkan skala AMDAL/UKL-UPL:
+            let emissionLoad = 45; // Beban standar industri aktif
 
-            return { lat, lng, aqi } as AqiNode;
-        }).filter(Boolean) as AqiNode[];
-    }, [companies, batchAqiData]);
+            if (c.docType === 'AMDAL') {
+                emissionLoad = 75; // AMDAL = Industri skala besar / cerobong tinggi
+            } else if (c.docType === 'UKL-UPL' || c.docType === 'UKL_UPL') {
+                emissionLoad = 55;
+            }
+
+            // Kepatuhan buruk / status ditangguhkan memperparah polusi di sekitar pabrik
+            if (c.status === 'SUSPENDED' || c.status === 'REJECTED') {
+                emissionLoad += 35; // Pelanggaran berat
+            } else if (c.score && c.score < 60) {
+                emissionLoad += 25; // Skor kepatuhan rendah
+            }
+
+            // Kumulatif: emisi pabrik bertumpuk di atas kualitas udara regional,
+            // dan dijamin MINIMAL berada di zona Merah (AQI >= 180) untuk AMDAL/pelanggar.
+            const minFloor = (c.docType === 'AMDAL' || (c.score && c.score < 60) || c.status === 'SUSPENDED') ? 180 : 155;
+            const factoryAqi = Math.max(minFloor, Math.min(300, computedBaseline + emissionLoad));
+
+            sensors.push({ lat, lng, aqi: factoryAqi });
+        });
+
+        // --- C. TITIK API KARHUTLA DARI NASA FIRMS (HAZARDOUS SMOKE) ---
+        if (wildfires && wildfires.length > 0) {
+            wildfires.forEach(spot => {
+                // Karhutla memancarkan polusi partikulat PM2.5 & gas CO masif (AQI 280 - 500)
+                const fireAqi = Math.min(500, Math.round(280 + (spot.frp * 2.5)));
+                sensors.push({
+                    lat: spot.latitude,
+                    lng: spot.longitude,
+                    aqi: fireAqi
+                });
+            });
+        }
+
+        return { aqiSensors: sensors, baselineAqi: computedBaseline };
+    }, [companies, batchAqiData, wildfires]);
 
     // 2. Render Canvas di Background Memory (Pure Fabrication)
     useEffect(() => {
@@ -130,8 +183,8 @@ export default function AqiSurfaceLayer({ companies, mapOpacity }: AqiSurfaceLay
                 const currentLat = BOGOR_BOUNDS.latMax - (y * latStep);
                 const currentLng = BOGOR_BOUNDS.lngMin + (x * lngStep);
 
-                // Tarik nilai tebakan dari Engine IDW kita
-                const interpolatedAqi = spatialMath.interpolateAqi(currentLat, currentLng, aqiSensors);
+                // Tarik nilai tebakan dari Engine IDW kita dengan dynamic atmospheric baseline
+                const interpolatedAqi = spatialMath.interpolateAqi(currentLat, currentLng, aqiSensors, baselineAqi);
                 const [r, g, b] = spatialMath.interpolateColorRgb(interpolatedAqi);
 
                 ctx.fillStyle = `rgb(${r},${g},${b})`;
@@ -143,7 +196,7 @@ export default function AqiSurfaceLayer({ companies, mapOpacity }: AqiSurfaceLay
 
         // Simpan sebagai URI Gambar agar bisa ditangkap oleh ImageOverlay Leaflet
         setCanvasDataUrl(canvas.toDataURL('image/png'));
-    }, [aqiSensors]);
+    }, [aqiSensors, baselineAqi]);
 
     if (!canvasDataUrl) return null;
 

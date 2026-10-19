@@ -204,6 +204,25 @@ export interface BogorClusterTelemetry {
   telemetry: AqiData;
 }
 
+// [NEW INTERFACE] Struktur data titik api / hotspot aktif dari NASA FIRMS
+export interface WildfireHotspot {
+  id: string;
+  latitude: number;
+  longitude: number;
+  brightness: number; // Kelvin
+  scan?: number;
+  track?: number;
+  acq_date: string;
+  acq_time: string;
+  satellite: string;
+  instrument: string;
+  confidence: string | number;
+  frp: number; // Fire Radiative Power (MW)
+  daynight?: 'D' | 'N';
+  locationName?: string;
+  source?: string;
+}
+
 // [NEW INTERFACE] Kontrak Data ketat untuk Output AI Agent Forensik
 export interface AiForensicResult {
   culpritName: string;
