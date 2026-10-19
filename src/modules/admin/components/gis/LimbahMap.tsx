@@ -423,6 +423,7 @@ export default function LimbahMap() {
                 zoomControl={false}
                 style={{ height: '100%', width: '100%' }}
                 maxZoom={18}
+                preferCanvas={true}
             >
                 <ExternalMapController />
                 <MapZoomListener onChange={setCurrentZoom} />

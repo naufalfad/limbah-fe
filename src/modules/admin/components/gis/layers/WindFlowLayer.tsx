@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { spatialMath, WindNode } from '@/lib/spatialMath';
+import { useSijagaStore } from '@/store/useSijagaStore';
 
 // Impor GeoJSON Wilayah Kabupaten Bogor untuk pembuatan Path Clipping (Information Expert) [3]
 import kecData from '@/assets/geojson/bogor/bogor-kecamatan.json';
@@ -32,32 +33,44 @@ const FADE_RATE = 0.04;          // Kecepatan Pudar Ekor Komet (Semakin kecil = 
  * ============================================================================
  * WIND FLOW LAYER (CUSTOM CANVAS PARTICLE ENGINE - CLIPPED)
  * ============================================================================
- * Menciptakan ilusi Fluid Dynamics (seperti IQAir) menggunakan HTML5 Canvas.
- * Seluruh pergerakan partikel angin dikunci rapi di dalam poligon Kabupaten Kotawaringin Timur.
+ * Menciptakan ilusi Fluid Dynamics (seperti IQAir / Windy) menggunakan HTML5 Canvas.
+ * Menggunakan vektor arah dan kecepatan angin faktual dari Open-Meteo CAMS Model.
  */
 export default function WindFlowLayer({ companies }: WindFlowLayerProps) {
     const map = useMap();
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const animationRef = useRef<number | null>(null);
+    const { batchAqiData } = useSijagaStore();
 
     // Cache Memori untuk menahan bentuk koordinat piksel Kabupaten Kotim (Mencegah Lag 60FPS)
     const clipPathRef = useRef<Path2D | null>(null);
 
-    // 1. Ekstrak Data Sensor Angin
+    // 1. Ekstrak Data Sensor Angin Faktual (Real-time Open-Meteo & CAMS)
     const windSensors = useMemo(() => {
+        // Jika data batch telemetri riil dari backend sudah termuat, gunakan arah & kecepatan angin aktual
+        if (batchAqiData && batchAqiData.length > 0) {
+            return batchAqiData.map(cluster => ({
+                lat: cluster.lat,
+                lng: cluster.lng,
+                wd: cluster.telemetry?.weather?.windDirection ?? 45,
+                ws: cluster.telemetry?.weather?.windSpeed ?? 2.5
+            })) as WindNode[];
+        }
+
+        // Fallback jika backend belum selesai fetch: gunakan posisi koordinat industri
         return companies.map(c => {
             const lat = parseFloat(c.lat);
             const lng = parseFloat(c.lng);
             if (isNaN(lat) || isNaN(lng)) return null;
 
-            // Seed generator (Sama seperti AQI)
+            // Seed generator darurat
             const seed = Math.abs(Math.sin(lat) * Math.cos(lng));
             const wd = Math.floor(seed * 360);
-            const ws = parseFloat((1.5 + (seed * 4)).toFixed(1)); // Dinamis antara 1.5 - 5.5 m/s
+            const ws = parseFloat((1.5 + (seed * 4)).toFixed(1));
 
             return { lat, lng, wd, ws } as WindNode;
         }).filter(Boolean) as WindNode[];
-    }, [companies]);
+    }, [companies, batchAqiData]);
 
     // 2. PRE-COMPUTE VECTOR FIELD (O(1) Lookup untuk Animasi)
     const vectorField = useMemo(() => {

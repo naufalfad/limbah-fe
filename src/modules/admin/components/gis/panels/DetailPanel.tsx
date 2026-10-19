@@ -264,7 +264,7 @@ export default function DetailPanel({ companyData }: DetailPanelProps) {
                                         <CloudSun size={13} className="text-emerald-700 animate-pulse" />
                                         <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Telemetri udara terdekat</h4>
                                     </div>
-                                    <Badge className="bg-slate-100 text-slate-500 font-sans text-[8px] rounded-none border-none py-0.5 px-2 font-black uppercase tracking-wider">IQAir v2</Badge>
+                                    <Badge className="bg-slate-100 text-slate-500 font-sans text-[8px] rounded-none border-none py-0.5 px-2 font-black uppercase tracking-wider">{aqiData?.provider ? 'CAMS Atmosfer' : 'Sensor Telemetri'}</Badge>
                                 </div>
 
                                 {aqiLoading ? (
@@ -306,7 +306,7 @@ export default function DetailPanel({ companyData }: DetailPanelProps) {
 
                                         {/* Telemetry data info */}
                                         <div className="flex justify-between items-center text-[9px] text-slate-400 font-bold uppercase tracking-wider pt-2 border-t border-slate-100 select-none">
-                                            <span>Sumber: {aqiData.source === 'simulation' ? 'Simulasi' : aqiData.source === 'cache' ? 'Settle Cache' : 'IQAir live'}</span>
+                                            <span>Sumber: {aqiData.source === 'simulation' ? 'Simulasi' : aqiData.source === 'cache' ? 'Settle Cache' : (aqiData.provider || 'Atmosfer Live')}</span>
                                             {aqiData.cachedAt && <span>Jam: {new Date(aqiData.cachedAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>}
                                         </div>
                                     </div>
